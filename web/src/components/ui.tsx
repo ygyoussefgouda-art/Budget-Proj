@@ -226,9 +226,10 @@ export function DeleteButton({ label, onClick }: { label: string; onClick: () =>
   );
 }
 
-export function Fab({ label, onClick, icon: Icon }: { label: string; onClick: () => void; icon: LucideIcon }) {
+/** Floating round button above the bottom bar (e.g. quick add). `title` is the spoken / tooltip name. */
+export function Fab({ label, title, onClick, icon: Icon }: { label: string; title: string; onClick: () => void; icon: LucideIcon }) {
   return (
-    <button type="button" className="fab" onClick={onClick} aria-label={`Add ${label.toLowerCase()}`}>
+    <button type="button" className="fab" onClick={onClick} aria-label={title} title={title}>
       <Icon size={20} strokeWidth={2.5} />
       <span>{label}</span>
     </button>

@@ -1,9 +1,11 @@
-import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Minus, Pencil, PiggyBank, Plus, Trash2 } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, Minus, Pencil, PiggyBank, Plus, Trash2, TrendingUp } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, saveWithConfirm } from '../api';
 import { LineArea } from '../components/charts';
 import { Sheet, useOverlay } from '../components/Overlays';
+import { SwipeRow } from '../components/SwipeRow';
+import { useUndoDelete } from '../components/useUndoDelete';
 import {
   AddButton,
   Bar,
@@ -23,10 +25,10 @@ import {
   Segmented,
   tint,
 } from '../components/ui';
-import { goalMonthly, goalProgress, monthsToGoal, netSaved, remaining, type Goal, type GoalEntry } from '../domain/calc';
+import { goalForecast, goalMonthly, goalProgress, monthsToGoal, netSaved, remaining, type Goal, type GoalEntry } from '../domain/calc';
 import { parseMoney, plain, plainOrEmpty } from '../domain/money';
 import { t } from '../i18n';
-import { defaultDate, monthLabel, shortDate, useApp } from '../state';
+import { defaultDate, monthLabel, shortDate, thisMonth, useApp } from '../state';
 
 function monthsText(m: number, monthly: string) {
   if (m === 0) return t('Goal reached');
@@ -34,6 +36,38 @@ function monthsText(m: number, monthly: string) {
   return m === 1
     ? t('About 1 month at {amount} a month', { amount: monthly })
     : t('About {n} months at {amount} a month', { n: m, amount: monthly });
+}
+
+/** "At this pace you'll reach Laptop in March 2027" + a "behind plan" hint, from the last 3 budget periods. */
+function ForecastLines({ g, balance, planned, compact = false }: { g: Goal; balance: number; planned: number; compact?: boolean }) {
+  const { data, fmt, startDay } = useApp();
+  if (!data) return null;
+  const fc = goalForecast(g, balance, data.goalEntries, thisMonth(startDay), planned, startDay);
+  if (!fc || fc.reached) return null;
+  return (
+    <div className={`forecast ${compact ? 'tiny' : 'small'}`}>
+      <div className="row gap">
+        <TrendingUp size={compact ? 13 : 15} aria-hidden="true" style={{ color: COLORS.accent, flex: 'none' }} />
+        <span>
+          {fc.reach
+            ? t("At this pace you'll reach {goal} in {month}", { goal: g.name, month: monthLabel(fc.reach) })
+            : t('At this pace you won’t reach it: nothing saved lately.')}
+        </span>
+      </div>
+      {!compact && fc.pace > 0 && (
+        <div className="tiny mute">
+          {fc.periods === 1
+            ? t('Based on {amount} saved this month.', { amount: fmt(fc.pace) })
+            : t('Based on {amount} a month, the average of the last {n} months.', { amount: fmt(fc.pace), n: fc.periods })}
+        </div>
+      )}
+      {fc.behind && (
+        <div className="behind" style={{ color: COLORS.highlight }}>
+          {t('Behind plan: saving about {pace} a month, planned {planned}.', { pace: fmt(Math.max(0, fc.pace)), planned: fmt(planned) })}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Savings() {
@@ -92,6 +126,7 @@ export default function Savings() {
                     <div className="tiny mute">
                       {t('{amount} to go', { amount: fmt(rem) })} · {monthsText(months, fmt(monthly))}
                     </div>
+                    <ForecastLines g={g} balance={bal} planned={monthly} compact />
                   </div>
                 </div>
               </button>
@@ -116,6 +151,7 @@ export function GoalDetail() {
   const nav = useNavigate();
   const [editGoal, setEditGoal] = useState(false);
   const [entryForm, setEntryForm] = useState<{ deposit: boolean; edit?: GoalEntry } | null>(null);
+  const undoDelete = useUndoDelete();
   if (!data) return null;
   const g = data.goals.find((x) => x.id === goalId);
   if (!g) {
@@ -146,18 +182,8 @@ export function GoalDetail() {
       toast((x as Error).message);
     }
   };
-  const delEntry = async (e: GoalEntry) => {
-    const msg = e.deposit
-      ? t('Deposit of {amount} will be removed and the balance recalculated.', { amount: fmt(e.amount) })
-      : t('Withdrawal of {amount} will be removed and the balance recalculated.', { amount: fmt(e.amount) });
-    if (!(await confirm(t('Delete entry?'), msg))) return;
-    try {
-      await api(`/goal-entries/${e.id}`, 'DELETE');
-      await refresh();
-    } catch (x) {
-      toast((x as Error).message);
-    }
-  };
+  // One entry: delete at once, with Undo in the toast. (Deleting the whole goal still asks first.)
+  const delEntry = (e: GoalEntry) => undoDelete(`/goal-entries/${e.id}`);
 
   return (
     <div className="page">
@@ -182,6 +208,7 @@ export function GoalDetail() {
         <div className="tiny mute">
           {t('{amount} net saved in {month}', { amount: fmt(netSaved(data.goalEntries, month, goalId, startDay)), month: monthLabel(month) })}
         </div>
+        <ForecastLines g={g} balance={bal} planned={monthly} />
       </Card>
 
       <div className="grid2">
@@ -212,7 +239,7 @@ export function GoalDetail() {
           const color = e.deposit ? COLORS.accent : COLORS.red;
           const Icon = e.deposit ? ArrowUpRight : ArrowDownLeft;
           return (
-            <div key={e.id} className="list-item">
+            <SwipeRow key={e.id} className="list-item" onDelete={() => delEntry(e)} onEdit={() => setEntryForm({ deposit: e.deposit, edit: e })}>
               <button className="list-main" onClick={() => setEntryForm({ deposit: e.deposit, edit: e })}>
                 <span className="avatar" style={{ background: tint(color, 14), color }}>
                   <Icon size={19} className="flip-rtl" />
@@ -230,7 +257,7 @@ export function GoalDetail() {
                 </span>
               </button>
               <DeleteButton label={t('Delete entry')} onClick={() => delEntry(e)} />
-            </div>
+            </SwipeRow>
           );
         })}
       </div>

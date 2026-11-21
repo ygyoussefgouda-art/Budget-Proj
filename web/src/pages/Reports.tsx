@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { PairBars } from '../components/charts';
+import { MonthCompare, TagSpending, WeekdaySpending } from '../components/ReportCards';
 import { Card, COLORS, IconButton, KV, PageHeader, SectionTitle } from '../components/ui';
 import { isRtl, locale, t } from '../i18n';
 import { useApp } from '../state';
@@ -34,6 +35,11 @@ export default function Reports() {
   return (
     <div className="page">
       <PageHeader title={t('Reports')} left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/')} flip />} />
+      <MonthCompare />
+      <WeekdaySpending year={year} />
+      <TagSpending year={year} />
+
+      <SectionTitle>{t('Year overview')}</SectionTitle>
       <div className="month-bar">
         <button className="icon-btn" aria-label={t('Previous year')} onClick={() => setYear(year - 1)}>
           <ChevronLeft size={22} className="flip-rtl" />

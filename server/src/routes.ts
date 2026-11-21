@@ -4,8 +4,9 @@ import type { Db, Queryable } from './db.js';
 import { ah, ConfirmNeeded, forced, HttpError } from './http.js';
 import {
   ensureMonth,
+  EXPENSE_EXTRAS,
+  expenseWhere,
   goalsWithBalance,
-  HAS_RECEIPT,
   inMonth,
   loadBudget,
   mapCategory,
@@ -13,9 +14,24 @@ import {
   mapGoalEntry,
   mapLoan,
   recentActivity,
+  SPLIT_JOIN,
 } from './repo.js';
+import { publicUser } from './auth.js';
 import { exportBackup, restoreBackup } from './backup.js';
-import { id as idSchema, monthStr, schemas } from './validation.js';
+import { localToday } from './dates.js';
+import { underLimit } from './limits.js';
+import { applyAutoAdd, pendingDue } from './recurring.js';
+import { moveToTrash, purgeTrash } from './undo.js';
+import { convert, id as idSchema, monthStr, schemas } from './validation.js';
+
+/** SQL: month budget row `mb` has something in it (income, a plan, or a category budget). */
+const MONTH_HAS_DATA = `(mb.income > 0 OR mb.save_plan > 0 OR mb.loan_plan > 0 OR mb.uni_cost > 0
+  OR EXISTS (SELECT 1 FROM category_plans cp WHERE cp.user_id = mb.user_id AND cp.month = mb.month AND cp.planned > 0))`;
+
+/** The latest month before `month` that has a budget worth copying. */
+const copySource = async (q: Queryable, u: number, month: string) =>
+  ((await q.query(`SELECT * FROM month_budgets mb WHERE mb.user_id = $1 AND mb.month < $2 AND ${MONTH_HAS_DATA} ORDER BY mb.month DESC LIMIT 1`, [u, month])).rows[0] ??
+    null) as Record<string, any> | null;
 
 const fmtMinor = (minor: number) => {
   const neg = minor < 0;
@@ -33,16 +49,24 @@ export function apiRoutes(db: Db): Router {
   /** Accounts with a backup restore in progress (one at a time per account). */
   const restoring = new Set<number>();
 
-  /** Generous per-account caps so one account cannot grow the database without bound. */
-  const LIMITS = { categories: 200, goals: 200, expenses: 50_000, goal_entries: 50_000, loan_entries: 20_000 } as const;
-  const underLimit = async (q: Queryable, table: keyof typeof LIMITS, u: number) => {
-    const n = (await q.query(`SELECT COUNT(*)::int AS n FROM ${table} WHERE user_id = $1`, [u])).rows[0].n as number;
-    if (n >= LIMITS[table]) throw new HttpError(409, 'You have reached the limit for this kind of item.', 'limit');
-  };
+  // Deleted items wait in the trash for the undo window; clear old ones now and then (at most every 30 s per account).
+  const lastPurge = new Map<number, number>();
+  r.use(
+    ah(async (req, _res, next) => {
+      const u = uid(req);
+      const now = Date.now();
+      if (now - (lastPurge.get(u) ?? 0) > 30_000) {
+        lastPurge.set(u, now);
+        if (lastPurge.size > 10_000) lastPurge.clear();
+        await purgeTrash(db, u);
+      }
+      next();
+    }),
+  );
 
   // ---------- profile / settings ----------
   r.get('/auth/me', (req, res) => {
-    res.json({ user: req.user });
+    res.json({ user: publicUser(req.user!) });
   });
 
   r.put(
@@ -55,7 +79,7 @@ export function apiRoutes(db: Db): Router {
         user.monthStartDay,
         uid(req),
       ]);
-      res.json({ user });
+      res.json({ user: publicUser(user) });
     }),
   );
 
@@ -65,12 +89,14 @@ export function apiRoutes(db: Db): Router {
     ah(async (req, res) => {
       const month = monthStr.parse(req.query.month);
       const u = uid(req);
+      const today = localToday(req);
       await db.tx((q) => ensureMonth(q, u, month));
-      const [budget, cats, expenses, goals, entries, loans, recent, earlier] = await Promise.all([
+      await applyAutoAdd(db, u, today); // recurring expenses set to "add automatically"
+      const [budget, cats, expenses, goals, entries, loans, recent, earlier, due, thisHasData, source] = await Promise.all([
         loadBudget(db, u, month),
         db.query('SELECT * FROM categories WHERE user_id = $1 ORDER BY sort, id', [u]),
         db.query(
-          `SELECT e.*, ${HAS_RECEIPT} FROM expenses e WHERE e.user_id = $1 AND ${inMonth('e.date', '$2', '$3')} ORDER BY e.date DESC, e.id DESC`,
+          `SELECT e.*, ${EXPENSE_EXTRAS} FROM expenses e ${SPLIT_JOIN} WHERE e.user_id = $1 AND ${inMonth('e.date', '$2', '$3')} ORDER BY e.date DESC, e.id DESC`,
           [u, month, req.user!.monthStartDay],
         ),
         goalsWithBalance(db, u),
@@ -78,6 +104,9 @@ export function apiRoutes(db: Db): Router {
         db.query('SELECT * FROM loan_entries WHERE user_id = $1 ORDER BY date, id', [u]),
         recentActivity(db, u, 6),
         db.query('SELECT 1 FROM month_budgets WHERE user_id = $1 AND month < $2 LIMIT 1', [u, month]),
+        pendingDue(db, u, today),
+        db.query(`SELECT 1 FROM month_budgets mb WHERE mb.user_id = $1 AND mb.month = $2 AND ${MONTH_HAS_DATA}`, [u, month]),
+        copySource(db, u, month),
       ]);
       res.json({
         month,
@@ -89,6 +118,10 @@ export function apiRoutes(db: Db): Router {
         loans: loans.rows.map(mapLoan),
         recent,
         hasEarlierMonth: earlier.rows.length > 0,
+        // Empty month and an earlier month to copy from: offer "Same as last month".
+        canCopyPrevious: thisHasData.rows.length === 0 && source !== null,
+        copyFrom: source?.month ?? null,
+        recurringDue: due,
       });
     }),
   );
@@ -116,14 +149,25 @@ export function apiRoutes(db: Db): Router {
     ah(async (req, res) => {
       const month = monthStr.parse(req.params.month);
       const u = uid(req);
-      await db.tx(async (q) => {
-        const prev = await q.query('SELECT 1 FROM month_budgets WHERE user_id = $1 AND month < $2 LIMIT 1', [u, month]);
-        if (!prev.rows.length) throw new HttpError(400, 'There is no earlier month to copy from.');
+      const from = await db.tx(async (q) => {
+        // The latest earlier month that has a budget (skipping empty ones in between).
+        const src = await copySource(q, u, month);
+        if (!src) throw new HttpError(400, 'There is no earlier month to copy from.');
         await q.query('DELETE FROM category_plans WHERE user_id = $1 AND month = $2', [u, month]);
         await q.query('DELETE FROM month_budgets WHERE user_id = $1 AND month = $2', [u, month]);
-        await ensureMonth(q, u, month);
+        await q.query(
+          `INSERT INTO month_budgets(user_id, month, income, uni_days, uni_weeks, uni_cost, save_plan, loan_plan)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [u, month, src.income, src.uni_days, src.uni_weeks, src.uni_cost, src.save_plan, src.loan_plan],
+        );
+        await q.query(
+          `INSERT INTO category_plans(user_id, month, category_id, planned)
+           SELECT user_id, $2, category_id, planned FROM category_plans WHERE user_id = $1 AND month = $3`,
+          [u, month, src.month],
+        );
+        return src.month as string;
       });
-      res.json({ ok: true });
+      res.json({ ok: true, from });
     }),
   );
 
@@ -212,6 +256,8 @@ export function apiRoutes(db: Db): Router {
         if (!cur) throw new HttpError(404, 'Category not found.');
         const n = (await q.query('SELECT COUNT(*)::int AS n FROM expenses WHERE category_id = $1', [id])).rows[0].n;
         if (n > 0) throw new HttpError(400, `This category has ${n} expense(s). Move or delete them first.`);
+        const rules = (await q.query('SELECT COUNT(*)::int AS n FROM recurring_rules WHERE category_id = $1', [id])).rows[0].n;
+        if (rules > 0) throw new HttpError(400, `This category is used by ${rules} recurring expense(s). Change or delete them first.`);
         await q.query('DELETE FROM categories WHERE id = $1', [id]);
       });
       res.status(204).end();
@@ -223,24 +269,14 @@ export function apiRoutes(db: Db): Router {
     '/expenses',
     ah(async (req, res) => {
       const f = schemas.expenseQuery.parse(req.query);
-      const where = ['e.user_id = $1'];
-      const params: unknown[] = [uid(req)];
-      const add = (sql: string, v: unknown) => {
-        params.push(v);
-        where.push(sql.replace('?', `$${params.length}`));
-      };
-      if (f.from) add('e.date >= ?::date', f.from);
-      if (f.to) add('e.date <= ?::date', f.to);
-      if (f.categoryId) add('e.category_id = ?', f.categoryId);
-      if (f.q) add(`(e.description ILIKE ? OR c.name ILIKE $${params.length + 1})`, `%${f.q.replace(/[\\%_]/g, '\\$&')}%`);
-      const w = where.join(' AND ');
+      const { where: w, params } = expenseWhere(uid(req), f);
       const totals = await db.query(
         `SELECT COUNT(*)::int AS count, COALESCE(SUM(e.amount), 0) AS total
          FROM expenses e JOIN categories c ON c.id = e.category_id WHERE ${w}`,
         params,
       );
       const items = await db.query(
-        `SELECT e.*, c.name AS category_name, ${HAS_RECEIPT} FROM expenses e JOIN categories c ON c.id = e.category_id
+        `SELECT e.*, c.name AS category_name, ${EXPENSE_EXTRAS} FROM expenses e JOIN categories c ON c.id = e.category_id ${SPLIT_JOIN}
          WHERE ${w} ORDER BY e.date DESC, e.id DESC LIMIT ${f.limit} OFFSET ${f.offset}`,
         params,
       );
@@ -253,8 +289,17 @@ export function apiRoutes(db: Db): Router {
       const e = schemas.expense.parse(req.body);
       const u = uid(req);
       const id = mode === 'update' ? pid(req.params.id) : 0;
-      const row = await db.tx(async (q) => {
-        const cat = await q.query('SELECT 1 FROM categories WHERE id = $1 AND user_id = $2', [e.categoryId, u]);
+      // Foreign currency: the bill converted at the user's rate must equal my share + their share.
+      if (e.foreign) {
+        if (e.foreign.currency === req.user!.currency) throw new HttpError(400, 'Pick a currency different from your own.');
+        if (convert(e.foreign.amount, e.foreign.rate) !== e.amount + (e.split?.share ?? 0)) {
+          throw new HttpError(400, 'The amounts do not add up. Check the rate and the split.');
+        }
+      }
+      const fx = e.foreign ? [e.foreign.amount, e.foreign.currency, e.foreign.rate] : [null, null, null];
+      let alreadySaved = false;
+      const savedId = await db.tx(async (q) => {
+        const cat = await q.query('SELECT name FROM categories WHERE id = $1 AND user_id = $2', [e.categoryId, u]);
         if (!cat.rows.length) throw new HttpError(400, 'Pick a valid category.');
         if (!forced(req)) {
           const dup = await q.query(
@@ -264,34 +309,107 @@ export function apiRoutes(db: Db): Router {
           );
           if (dup.rows.length) throw new ConfirmNeeded('An identical expense already exists. Save it anyway?');
         }
+        let expenseId: number;
         if (mode === 'create') {
           await underLimit(q, 'expenses', u);
-          return (
-            await q.query(
-              `INSERT INTO expenses(user_id, date, category_id, description, amount) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-              [u, e.date, e.categoryId, e.description, e.amount],
-            )
-          ).rows[0];
+          const ins = await q.query(
+            `INSERT INTO expenses(user_id, date, category_id, description, amount, tags, orig_amount, orig_currency, fx_rate, client_id)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL DO NOTHING RETURNING id`,
+            [u, e.date, e.categoryId, e.description, e.amount, e.tags, ...fx, e.clientId ?? null],
+          );
+          if (!ins.rows.length) {
+            // Sent before (offline sync retried): hand back the expense it already created, change nothing.
+            const existing = await q.query('SELECT id FROM expenses WHERE user_id = $1 AND client_id = $2', [u, e.clientId]);
+            alreadySaved = true;
+            return existing.rows[0].id as number;
+          }
+          expenseId = ins.rows[0].id;
+        } else {
+          const up = await q.query(
+            `UPDATE expenses SET date = $3, category_id = $4, description = $5, amount = $6, tags = $7,
+               orig_amount = $8, orig_currency = $9, fx_rate = $10
+             WHERE id = $1 AND user_id = $2 RETURNING id`,
+            [id, u, e.date, e.categoryId, e.description, e.amount, e.tags, ...fx],
+          );
+          if (!up.rows.length) throw new HttpError(404, 'Expense not found.');
+          expenseId = id;
         }
-        const up = await q.query(
-          `UPDATE expenses SET date = $3, category_id = $4, description = $5, amount = $6
-           WHERE id = $1 AND user_id = $2 RETURNING *`,
-          [id, u, e.date, e.categoryId, e.description, e.amount],
-        );
-        if (!up.rows.length) throw new HttpError(404, 'Expense not found.');
-        return up.rows[0];
+        // Split: keep the linked "Owed to me" entry in step with the expense (create, update or remove it).
+        const link = (await q.query('SELECT id FROM loan_entries WHERE expense_id = $1 AND user_id = $2', [expenseId, u])).rows[0];
+        if (e.split) {
+          const note = e.description || (cat.rows[0].name as string);
+          if (link) {
+            await q.query('UPDATE loan_entries SET date = $2, person = $3, amount = $4, note = $5 WHERE id = $1', [
+              link.id,
+              e.date,
+              e.split.person,
+              e.split.share,
+              note,
+            ]);
+          } else {
+            await underLimit(q, 'loan_entries', u);
+            await q.query(
+              `INSERT INTO loan_entries(user_id, date, person, direction, kind, amount, note, expense_id)
+               VALUES ($1, $2, $3, 'lent', 'principal', $4, $5, $6)`,
+              [u, e.date, e.split.person, e.split.share, note, expenseId],
+            );
+          }
+        } else if (link) {
+          await q.query('DELETE FROM loan_entries WHERE id = $1', [link.id]);
+        }
+        return expenseId;
       });
-      res.status(mode === 'create' ? 201 : 200).json(mapExpense(row));
+      const row = (
+        await db.query(`SELECT e.*, ${EXPENSE_EXTRAS} FROM expenses e ${SPLIT_JOIN} WHERE e.id = $1`, [savedId])
+      ).rows[0];
+      res.status(mode === 'create' && !alreadySaved ? 201 : 200).json(mapExpense(row));
     });
+
+  // Tags used so far (most used first), for the filter chips and the tag picker.
+  r.get(
+    '/tags',
+    ah(async (req, res) => {
+      const rows = await db.query(
+        `SELECT t AS tag, COUNT(*)::int AS n FROM expenses, unnest(tags) AS t
+         WHERE user_id = $1 GROUP BY t ORDER BY n DESC, t LIMIT 40`,
+        [uid(req)],
+      );
+      res.json(rows.rows.map((x) => ({ tag: x.tag, count: x.n })));
+    }),
+  );
+
+  // Quick add: the descriptions used most in the last 6 months (with their usual category), as tap-to-fill chips.
+  r.get(
+    '/expenses/suggestions',
+    ah(async (req, res) => {
+      const rows = await db.query(
+        `SELECT (array_agg(description ORDER BY date DESC, id DESC))[1] AS description,
+                (array_agg(category_id ORDER BY date DESC, id DESC))[1] AS category_id,
+                COUNT(*)::int AS n
+         FROM expenses
+         WHERE user_id = $1 AND trim(description) <> '' AND date > CURRENT_DATE - 183
+         GROUP BY lower(trim(description))
+         ORDER BY n DESC, MAX(date) DESC
+         LIMIT 8`,
+        [uid(req)],
+      );
+      res.json(rows.rows.map((x) => ({ description: x.description, categoryId: x.category_id, count: x.n })));
+    }),
+  );
 
   r.post('/expenses', saveExpense('create'));
   r.put('/expenses/:id', saveExpense('update'));
   r.delete(
     '/expenses/:id',
     ah(async (req, res) => {
-      const d = await db.query('DELETE FROM expenses WHERE id = $1 AND user_id = $2', [pid(req.params.id), uid(req)]);
-      if (!d.rowCount) throw new HttpError(404, 'Expense not found.');
-      res.status(204).end();
+      const u = uid(req);
+      const undo = await db.tx(async (q) => {
+        const row = (await q.query('SELECT * FROM expenses WHERE id = $1 AND user_id = $2 FOR UPDATE', [pid(req.params.id), u])).rows[0];
+        if (!row) throw new HttpError(404, 'Expense not found.');
+        return moveToTrash(q, u, 'expense', row);
+      });
+      res.json({ undo });
     }),
   );
 
@@ -419,7 +537,7 @@ export function apiRoutes(db: Db): Router {
     ah(async (req, res) => {
       const u = uid(req);
       const id = pid(req.params.id);
-      await db.tx(async (q) => {
+      const undo = await db.tx(async (q) => {
         const cur = (await q.query('SELECT * FROM goal_entries WHERE id = $1 AND user_id = $2', [id, u])).rows[0];
         if (!cur) throw new HttpError(404, 'Entry not found.');
         if (cur.type === 'deposit') {
@@ -431,9 +549,9 @@ export function apiRoutes(db: Db): Router {
             );
           }
         }
-        await q.query('DELETE FROM goal_entries WHERE id = $1', [id]);
+        return moveToTrash(q, u, 'goal_entry', cur);
       });
-      res.status(204).end();
+      res.json({ undo });
     }),
   );
 
@@ -491,9 +609,13 @@ export function apiRoutes(db: Db): Router {
   r.delete(
     '/loans/:id',
     ah(async (req, res) => {
-      const d = await db.query('DELETE FROM loan_entries WHERE id = $1 AND user_id = $2', [pid(req.params.id), uid(req)]);
-      if (!d.rowCount) throw new HttpError(404, 'Entry not found.');
-      res.status(204).end();
+      const u = uid(req);
+      const undo = await db.tx(async (q) => {
+        const row = (await q.query('SELECT * FROM loan_entries WHERE id = $1 AND user_id = $2 FOR UPDATE', [pid(req.params.id), u])).rows[0];
+        if (!row) throw new HttpError(404, 'Entry not found.');
+        return moveToTrash(q, u, 'loan_entry', row);
+      });
+      res.json({ undo });
     }),
   );
 
@@ -559,6 +681,69 @@ export function apiRoutes(db: Db): Router {
     }),
   );
 
+  // Month-over-month: spending per category in `month` and in the month before (same start day).
+  r.get(
+    '/reports/compare',
+    ah(async (req, res) => {
+      const month = monthStr.parse(req.query.month);
+      const prev = (() => {
+        const [y, m] = month.split('-').map(Number);
+        return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+      })();
+      const rows = await db.query(
+        `SELECT c.id, c.name,
+           COALESCE(SUM(e.amount) FILTER (WHERE ${inMonth('e.date', '$2', '$4')}), 0) AS current,
+           COALESCE(SUM(e.amount) FILTER (WHERE ${inMonth('e.date', '$3', '$4')}), 0) AS previous
+         FROM categories c LEFT JOIN expenses e ON e.category_id = c.id AND e.user_id = $1
+         WHERE c.user_id = $1 GROUP BY c.id ORDER BY c.sort, c.id`,
+        [uid(req), month, prev, req.user!.monthStartDay],
+      );
+      const categories = rows.rows.map((x) => ({ categoryId: x.id, name: x.name, current: x.current, previous: x.previous }));
+      res.json({
+        month,
+        previous: prev,
+        categories,
+        total: {
+          current: categories.reduce((s, c) => s + c.current, 0),
+          previous: categories.reduce((s, c) => s + c.previous, 0),
+        },
+      });
+    }),
+  );
+
+  // Spending by day of the week: total and average per weekday (every Saturday counts, even with no spending).
+  r.get(
+    '/reports/weekdays',
+    ah(async (req, res) => {
+      const q = schemas.weekdayQuery.parse(req.query);
+      const today = localToday(req);
+      const to = q.to > today ? today : q.to; // future days would only pull the averages down
+      if (to < q.from) {
+        res.json({ from: q.from, to, days: [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ dow, total: 0, days: 0, average: 0 })) });
+        return;
+      }
+      const sums = await db.query(
+        `SELECT EXTRACT(DOW FROM date)::int AS dow, COALESCE(SUM(amount), 0) AS total
+         FROM expenses WHERE user_id = $1 AND date >= $2::date AND date <= $3::date GROUP BY 1`,
+        [uid(req), q.from, to],
+      );
+      const totals = new Map<number, number>(sums.rows.map((x) => [x.dow as number, x.total as number]));
+      // How many of each weekday the range has (calendar maths in UTC, no timezone shifts).
+      const count = [0, 0, 0, 0, 0, 0, 0];
+      for (let d = Date.parse(`${q.from}T00:00:00Z`), end = Date.parse(`${to}T00:00:00Z`); d <= end; d += 86_400_000) {
+        count[new Date(d).getUTCDay()] += 1;
+      }
+      res.json({
+        from: q.from,
+        to,
+        days: count.map((days, dow) => {
+          const total = totals.get(dow) ?? 0;
+          return { dow, total, days, average: days ? Math.round(total / days) : 0 };
+        }),
+      });
+    }),
+  );
+
   // ---------- backup / reset ----------
   r.get(
     '/backup',
@@ -591,7 +776,7 @@ export function apiRoutes(db: Db): Router {
     ah(async (req, res) => {
       const u = uid(req);
       await db.tx(async (q) => {
-        for (const t of ['expenses', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
+        for (const t of ['trash', 'recurring_rules', 'expenses', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
           await q.query(`DELETE FROM ${t} WHERE user_id = $1`, [u]);
         }
         // Start completely blank: no template categories, the user builds their own.

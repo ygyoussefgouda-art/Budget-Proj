@@ -42,7 +42,8 @@ export default defineConfig({
       PGLITE_DIR: '',
       PUBLIC_DIR: path.join(here, '..', 'web', 'dist'),
       ALLOW_SIGNUP: 'true',
-      APP_PASSWORD: '',
+      // Built-in "owner" account (always an admin) for the admin-page tests. Test-only password.
+      APP_PASSWORD: 'e2e-owner-pass-123',
       LOGIN_RATE_LIMIT: '1000',
       SIGNUP_RATE_LIMIT: '1000',
     },

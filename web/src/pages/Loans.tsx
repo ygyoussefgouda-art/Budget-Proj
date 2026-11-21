@@ -2,6 +2,8 @@ import { ArrowDownLeft, ArrowUpRight, HandCoins, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { api, saveWithConfirm } from '../api';
 import { Sheet, useOverlay } from '../components/Overlays';
+import { SwipeRow } from '../components/SwipeRow';
+import { useUndoDelete } from '../components/useUndoDelete';
 import {
   AddButton,
   Bar,
@@ -29,6 +31,7 @@ const sideName = (borrowed: boolean) => (borrowed ? t('I owe') : t('Owed to me')
 export default function Loans() {
   const { data, fmt, refresh } = useApp();
   const { confirm, toast } = useOverlay();
+  const undoDelete = useUndoDelete();
   const [borrowed, setBorrowed] = useState(true); // true = money I owe
   const [form, setForm] = useState<{ edit?: LoanEntry; person?: string } | null>(null);
   const [person, setPerson] = useState<string | null>(null);
@@ -59,16 +62,8 @@ export default function Loans() {
     }
   };
 
-  const del = async (l: LoanEntry, label: string) => {
-    const msg = t('{label} {amount} ({name}) will be removed and balances recalculated.', { label, amount: fmt(l.amount), name: l.person });
-    if (!(await confirm(t('Delete entry?'), msg))) return;
-    try {
-      await api(`/loans/${l.id}`, 'DELETE');
-      await refresh();
-    } catch (x) {
-      toast((x as Error).message);
-    }
-  };
+  // One entry: delete at once, with Undo in the toast. (Removing a whole person still asks first.)
+  const del = (l: LoanEntry, _label: string) => undoDelete(`/loans/${l.id}`);
 
   return (
     <div className="page">
@@ -138,7 +133,7 @@ export default function Loans() {
           const label = l.borrowed ? (l.repayment ? t('Paid back') : t('Borrowed')) : l.repayment ? t('Received back') : t('Lent');
           const Icon = inflow ? ArrowDownLeft : ArrowUpRight;
           return (
-            <div key={l.id} className="list-item">
+            <SwipeRow key={l.id} className="list-item" onDelete={() => del(l, label)} onEdit={() => setForm({ edit: l })}>
               <button className="list-main" onClick={() => setForm({ edit: l })}>
                 <span className="avatar" style={{ background: tint(color, 14), color }}>
                   <Icon size={19} className="flip-rtl" />
@@ -150,6 +145,7 @@ export default function Loans() {
                   <span className="tiny mute block">
                     {shortDate(l.date)}
                     {l.note ? ` · ${l.note}` : ''}
+                    {l.expenseId ? ` · ${t('From a split expense')}` : ''}
                   </span>
                 </span>
                 <span className="txn-amount" style={{ color }}>
@@ -158,7 +154,7 @@ export default function Loans() {
                 </span>
               </button>
               <DeleteButton label={t('Delete entry')} onClick={() => del(l, label)} />
-            </div>
+            </SwipeRow>
           );
         })}
       </div>

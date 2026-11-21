@@ -56,6 +56,7 @@ Checklist for `.env`:
 |---|---|
 | `POSTGRES_PASSWORD` | random, 16+ chars (the app refuses to start with `change-me…`) |
 | `SIGNUP_INVITE_CODE` | set it, so strangers can't create accounts; share it with your users |
+| `ADMIN_USERNAMES` | your own username, after you've created your account (see "Admin page" below) |
 | `APP_PORT` | a free port (default `8090`) — must match your proxy config |
 | `APP_BIND` | `127.0.0.1` |
 | `COOKIE_SECURE` | `true` (requires HTTPS) |
@@ -127,6 +128,22 @@ sh deploy/update.sh
 It backs up the database, pulls the latest code, rebuilds, restarts and waits until the
 app is healthy. Database migrations run automatically on start.
 
+## Admin page
+
+Admins see **Settings → Admin**: every account (joined, last active, storage used), sign-ups
+on/off and the invite code (these override `ALLOW_SIGNUP` / `SIGNUP_INVITE_CODE` once saved there),
+removing an account (type its username + your password), and **password reset codes**.
+Every admin action is written to an activity log on that page.
+
+1. Create your own account in the app first.
+2. Put its username in `.env`: `ADMIN_USERNAMES=yourname` (comma-separate several), then `docker compose up -d`.
+   A listed name that has no account yet is blocked from sign-up, so nobody else can register it.
+   The built-in `owner` account (when `APP_PASSWORD` is set) is always an admin.
+
+**Someone forgot their password:** on the Admin page tap the key next to their name. Give them the
+code (it works once, for 1 hour; only a hash is stored). On the sign-in screen they tap **Forgot password?**,
+enter the code and a new password; all their sessions are signed out.
+
 ## 9. Day-to-day
 
 | Task | Command |
@@ -135,7 +152,7 @@ app is healthy. Database migrations run automatically on start.
 | Status | `docker compose ps` |
 | Restart | `docker compose restart app` |
 | Stop everything | `docker compose down` (data stays in the `pgdata` volume) |
-| Close sign-ups | set `ALLOW_SIGNUP=false` in `.env`, then `docker compose up -d` |
+| Close sign-ups | on the Admin page (Settings → Admin), or set `ALLOW_SIGNUP=false` in `.env` and `docker compose up -d` |
 
 **Never** run `docker compose down -v` — `-v` deletes the database volume.
 

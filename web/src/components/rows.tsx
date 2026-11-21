@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
   CalendarDays,
@@ -10,7 +11,7 @@ import {
   Undo2,
   type LucideIcon,
 } from 'lucide-react';
-import { rowBar, rowLeft, rowMet, rowOver, rowStatus, type BudgetRow, type Txn } from '../domain/calc';
+import { alertLevel, budgetAlerts, rowBar, rowLeft, rowMet, rowStatus, type BudgetRow, type Txn } from '../domain/calc';
 import { t } from '../i18n';
 import { monthLabel, periodLabel, shiftMonth, shortDate, useApp } from '../state';
 import { Bar, COLORS, Pill } from './ui';
@@ -44,7 +45,9 @@ export function MonthBar() {
 
 export function BudgetRowTile({ r, onClick }: { r: BudgetRow; onClick?: () => void }) {
   const { fmt } = useApp();
-  const color = rowOver(r) ? COLORS.red : r.isGoal ? (rowMet(r) ? COLORS.accent : COLORS.amber) : COLORS.accent;
+  // Spending rows: amber from 80% of the budget, red at 100% and over (same colours as the alert banner).
+  const alert = alertLevel(r);
+  const color = alert === 'over' || alert === 'full' ? COLORS.red : alert === 'warn' ? COLORS.amber : r.isGoal ? (rowMet(r) ? COLORS.accent : COLORS.amber) : COLORS.accent;
   const left = rowLeft(r);
   const body = (
     <>
@@ -70,6 +73,40 @@ export function BudgetRowTile({ r, onClick }: { r: BudgetRow; onClick?: () => vo
     </button>
   ) : (
     <div className="budget-row">{body}</div>
+  );
+}
+
+/**
+ * Banner on Home and Budget: categories that used 80% of their budget or more (red at 100%).
+ * Hidden when everything is fine.
+ */
+export function BudgetAlerts({ rows }: { rows: BudgetRow[] }) {
+  const { fmt } = useApp();
+  const alerts = budgetAlerts(rows);
+  if (!alerts.length) return null;
+  const red = alerts.some((a) => a.level !== 'warn');
+  const color = red ? COLORS.red : COLORS.amber;
+  return (
+    <div className={`alert-banner ${red ? 'is-red' : 'is-amber'}`} role="status">
+      <AlertTriangle size={18} style={{ color, flex: 'none' }} aria-hidden="true" />
+      <div className="grow">
+        <strong className="small block">
+          {alerts.length === 1 ? t('1 category needs a look') : t('{n} categories need a look', { n: alerts.length })}
+        </strong>
+        <ul className="alert-list">
+          {alerts.slice(0, 4).map((a) => (
+            <li key={a.catId} style={{ color: a.level === 'warn' ? COLORS.amber : COLORS.red }}>
+              {a.level === 'over'
+                ? t('{name}: over budget by {amount}', { name: a.name, amount: fmt(a.over) })
+                : a.level === 'full'
+                  ? t('{name}: budget used up', { name: a.name })
+                  : t('{name}: {pct}% of the budget used', { name: a.name, pct: a.pct ?? 0 })}
+            </li>
+          ))}
+          {alerts.length > 4 && <li className="mute">{t('and {n} more', { n: alerts.length - 4 })}</li>}
+        </ul>
+      </div>
+    </div>
   );
 }
 

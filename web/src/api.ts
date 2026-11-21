@@ -14,6 +14,12 @@ type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 const CSRF = { 'X-Requested-With': 'budget-me' };
 
+/** Today's date on this phone, so "due today" follows the user's clock, not the server's timezone. */
+const localDate = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export async function api<T = unknown>(path: string, method: Method = 'GET', body?: unknown): Promise<T> {
   let res: Response;
   try {
@@ -21,6 +27,7 @@ export async function api<T = unknown>(path: string, method: Method = 'GET', bod
       method,
       credentials: 'same-origin',
       headers: {
+        'X-Local-Date': localDate(),
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         // Proves the request comes from this app (the server refuses writes without it: CSRF defence).
         ...(method !== 'GET' ? CSRF : {}),

@@ -12,11 +12,16 @@ import {
   logoutAllHandler,
   logoutHandler,
   requireAuth,
+  setAdminUsernames,
   signupHandler,
 } from './auth.js';
 import type { Db } from './db.js';
-import { errorHandler, HttpError } from './http.js';
+import { ah, errorHandler, HttpError } from './http.js';
 import { receiptRoutes } from './receipts.js';
+import { recurringRoutes } from './recurring.js';
+import { exportRoutes } from './export.js';
+import { adminRoutes, resetPasswordHandler, signupConfig } from './admin.js';
+import { undoRoutes } from './undo.js';
 import { apiRoutes } from './routes.js';
 import { schemas } from './validation.js';
 
@@ -37,6 +42,8 @@ export interface AppOptions {
   hsts?: boolean;
   /** Require the X-Requested-With header on writes (CSRF defence). Default true. */
   csrfHeader?: boolean;
+  /** Usernames that may open the admin page (the built-in "owner" always can). From ADMIN_USERNAMES. */
+  adminUsernames?: string[];
 }
 
 export const CSRF_HEADER = 'x-requested-with';
@@ -138,11 +145,16 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     }
   });
 
-  const allowSignup = opts.allowSignup ?? true;
-  const inviteCode = opts.inviteCode ?? '';
-  api.get('/auth/config', (_req, res) => {
-    res.json({ signupEnabled: allowSignup, inviteRequired: allowSignup && !!inviteCode });
-  });
+  // .env defaults; an admin can change them in the app (stored in app_settings).
+  const signupDefaults = { allowSignup: opts.allowSignup ?? true, inviteCode: opts.inviteCode ?? '' };
+  setAdminUsernames(opts.adminUsernames ?? []);
+  api.get(
+    '/auth/config',
+    ah(async (_req, res) => {
+      const c = await signupConfig(db, signupDefaults);
+      res.json({ signupEnabled: c.allowed, inviteRequired: c.allowed && !!c.inviteCode });
+    }),
+  );
 
   const loginIpLimiter = limiter(15, opts.loginLimit ?? 20, 'Too many sign-in attempts. Try again in 15 minutes.');
   // Per-account limit on *failed* sign-ins: stops password guessing spread over many IPs.
@@ -155,8 +167,10 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   api.post(
     '/auth/signup',
     signupLimiter,
-    signupHandler(db, (b) => schemas.signup.parse(b), () => ({ allowed: allowSignup, inviteCode })),
+    signupHandler(db, (b) => schemas.signup.parse(b), () => signupConfig(db, signupDefaults)),
   );
+  // "Forgot password?": a one-time code from an admin. Same limits as sign-in (per network + failures per account).
+  api.post('/auth/reset', loginIpLimiter, loginAccountLimiter, resetPasswordHandler(db));
   api.post('/auth/logout', logoutHandler(db));
 
   api.use(requireAuth(db));
@@ -177,6 +191,10 @@ export function createApp(db: Db, opts: AppOptions = {}) {
 
   api.use(receiptRoutes(db));
   api.use(apiRoutes(db));
+  api.use(recurringRoutes(db));
+  api.use(exportRoutes(db));
+  api.use(undoRoutes(db));
+  api.use(adminRoutes(db, signupDefaults));
   api.use((_req, res) => {
     res.status(404).json({ error: 'Not found.' });
   });

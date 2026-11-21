@@ -50,6 +50,8 @@ services:
       ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
       SIGNUP_INVITE_CODE: ${SIGNUP_INVITE_CODE:-}
       APP_PASSWORD: ${APP_PASSWORD:-}
+      # Accounts that can open the Admin page (comma separated; "owner" always can)
+      ADMIN_USERNAMES: ${ADMIN_USERNAMES:-}
       # HTTPS: the session cookie is only sent over HTTPS (set false only for a plain-HTTP test)
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       HSTS: ${HSTS:-false}

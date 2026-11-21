@@ -1,9 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Home, PieChart, PiggyBank, ReceiptText, HandCoins } from 'lucide-react';
-import { useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, type ReactNode } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { api, ApiError } from './api';
+import { AppLock } from './components/AppLock';
+import OfflineApp from './components/OfflineApp';
+import { OfflineBar, OfflineProvider } from './components/OfflineQueue';
 import Tutorial from './components/Tutorial';
+import { budgetAlerts } from './domain/calc';
+import Admin from './pages/Admin';
 import Budget from './pages/Budget';
 import Dashboard from './pages/Dashboard';
 import Expenses from './pages/Expenses';
@@ -13,6 +18,7 @@ import Reports from './pages/Reports';
 import Savings, { GoalDetail } from './pages/Savings';
 import Settings from './pages/Settings';
 import { t } from './i18n';
+import { isNetworkError, readKit, saveKit } from './offline';
 import { AppStateProvider, useApp, type User } from './state';
 
 export default function App() {
@@ -31,13 +37,36 @@ export default function App() {
   });
 
   if (me.isLoading) return <Splash />;
-  if (me.isError) return <Splash text={(me.error as Error).message} retry={() => me.refetch()} />;
+  if (me.isError) {
+    // Opened with no connection: still let the user log expenses (they sync later).
+    const kit = isNetworkError(me.error) ? readKit() : null;
+    if (kit) return <OfflineApp kit={kit} retry={() => void me.refetch()} />;
+    return <Splash text={(me.error as Error).message} retry={() => me.refetch()} />;
+  }
   if (!me.data) return <Login />;
 
   return (
     <AppStateProvider user={me.data.user}>
-      <Shell />
+      <OfflineLayer>
+        <AppLock>
+          <Shell />
+        </AppLock>
+      </OfflineLayer>
     </AppStateProvider>
+  );
+}
+
+/** Offline expense queue for the signed-in user; keeps the small offline kit up to date. */
+function OfflineLayer({ children }: { children: ReactNode }) {
+  const { user, data, refresh } = useApp();
+  const categories = data?.categories;
+  useEffect(() => {
+    if (categories) saveKit({ user, categories: categories.map((c) => ({ id: c.id, name: c.name })) });
+  }, [user, categories]);
+  return (
+    <OfflineProvider userId={user.id} onSynced={refresh}>
+      {children}
+    </OfflineProvider>
   );
 }
 
@@ -51,12 +80,16 @@ function ScrollToTop() {
 }
 
 function Shell() {
-  const { data, error, loading } = useApp();
+  const { data, error, loading, summary } = useApp();
+  // Badge on the Budget tab: categories at 80%+ of their budget (red when one is at 100% or over).
+  const alerts = summary ? budgetAlerts(summary.rows) : [];
+  const alertBadge = alerts.length ? { n: alerts.length, red: alerts.some((a) => a.level !== 'warn') } : undefined;
   if (loading && !data) return <Splash />;
   if (error && !data) return <Splash text={error.message} />;
   return (
     <div className="shell">
       <ScrollToTop />
+      <OfflineBar />
       <main className="content">
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -67,13 +100,14 @@ function Shell() {
           <Route path="/savings/:id" element={<GoalDetail />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
       <Tutorial />
       <nav className="bottom-nav" aria-label={t('Main')}>
         <Tab to="/" icon={Home} label={t('Home')} end />
-        <Tab to="/budget" icon={PieChart} label={t('Budget')} />
+        <Tab to="/budget" icon={PieChart} label={t('Budget')} badge={alertBadge} />
         <Tab to="/expenses" icon={ReceiptText} label={t('Expenses')} />
         <Tab to="/loans" icon={HandCoins} label={t('Loans')} />
         <Tab to="/savings" icon={PiggyBank} label={t('Savings')} />
@@ -82,11 +116,21 @@ function Shell() {
   );
 }
 
-function Tab({ to, icon: Icon, label, end }: { to: string; icon: typeof Home; label: string; end?: boolean }) {
+function Tab({ to, icon: Icon, label, end, badge }: { to: string; icon: typeof Home; label: string; end?: boolean; badge?: { n: number; red: boolean } }) {
   return (
-    <NavLink to={to} end={end} className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}
+      aria-label={badge ? `${label}, ${badge.n === 1 ? t('1 budget alert') : t('{n} budget alerts', { n: badge.n })}` : undefined}
+    >
       <span className="tab-icon">
         <Icon size={22} />
+        {badge && (
+          <span className={`nav-badge ${badge.red ? '' : 'is-amber'}`} aria-hidden="true">
+            {badge.n}
+          </span>
+        )}
       </span>
       <span>{label}</span>
     </NavLink>

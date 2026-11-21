@@ -28,6 +28,8 @@ export default function Login() {
   const [show, setShow] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const signup = mode === 'signup' && signupEnabled;
 
   const switchMode = (m: Mode) => {
@@ -61,6 +63,25 @@ export default function Login() {
       setBusy(false);
     }
   };
+
+  if (resetting) {
+    return (
+      <div className="login">
+        <ResetPassword
+          initialUsername={username}
+          onCancel={() => setResetting(false)}
+          onDone={(name) => {
+            setResetting(false);
+            setMode('signin');
+            setUsername(name);
+            setPassword('');
+            setErr(null);
+            setNotice(t('Password changed. Sign in with your new password.'));
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="login">
@@ -166,10 +187,16 @@ export default function Login() {
           </label>
         )}
 
+        {notice && !err && <p className="small notice">{notice}</p>}
         <FormError text={err} />
         <button className="btn primary block" disabled={busy}>
           {busy ? (signup ? t('Creating account…') : t('Signing in…')) : signup ? t('Create account') : t('Sign in')}
         </button>
+        {!signup && (
+          <button type="button" className="link-btn tiny center-self" onClick={() => setResetting(true)}>
+            {t('Forgot password?')}
+          </button>
+        )}
         {signupEnabled && (
           <p className="tiny mute center">
             {signup ? t('Already have an account?') : t('New here?')}{' '}
@@ -180,5 +207,66 @@ export default function Login() {
         )}
       </form>
     </div>
+  );
+}
+
+/** "Forgot password?": a one-time code from the person who runs the app, plus a new password. */
+function ResetPassword({ initialUsername, onCancel, onDone }: { initialUsername: string; onCancel: () => void; onDone: (username: string) => void }) {
+  const [username, setUsername] = useState(initialUsername);
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const name = username.trim().toLowerCase();
+    if (!name) return setErr(t('Enter your username.'));
+    if (!code.trim()) return setErr(t('Enter the reset code.'));
+    if (password.length < 10) return setErr(t('Use a password of at least 10 characters.'));
+    if (password.toLowerCase() === name) return setErr(t('Your password must not be the same as your username.'));
+    if (password !== confirm) return setErr(t('The two passwords do not match.'));
+    setBusy(true);
+    setErr(null);
+    try {
+      await api('/auth/reset', 'POST', { username: name, code: code.trim(), password });
+      onDone(name);
+    } catch (x) {
+      setErr((x as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="login-card" onSubmit={submit} noValidate>
+      <h1>{t('Reset your password')}</h1>
+      <p className="small mute">{t('Ask the person who runs this app for a reset code. It works once, for 1 hour.')}</p>
+      <label className="field">
+        <span className="field-label">{t('Username')}</span>
+        <input className="input" dir="ltr" autoComplete="username" autoCapitalize="none" value={username} onChange={(e) => setUsername(e.target.value)} maxLength={30} />
+      </label>
+      <label className="field">
+        <span className="field-label">{t('Reset code')}</span>
+        <input className="input" dir="ltr" autoComplete="one-time-code" autoCapitalize="characters" value={code} onChange={(e) => setCode(e.target.value)} placeholder="XXXXX-XXXXX" maxLength={40} />
+      </label>
+      <label className="field">
+        <span className="field-label">{t('New password')}</span>
+        <input className="input" dir="ltr" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <span className="field-hint">{t('At least 10 characters.')}</span>
+      </label>
+      <label className="field">
+        <span className="field-label">{t('Repeat new password')}</span>
+        <input className="input" dir="ltr" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+      </label>
+      <p className="tiny mute">{t('All phones and computers signed in to this account will be signed out.')}</p>
+      <FormError text={err} />
+      <button className="btn primary block" disabled={busy}>
+        {t('Set new password')}
+      </button>
+      <button type="button" className="btn ghost block" onClick={onCancel}>
+        {t('Back to sign in')}
+      </button>
+    </form>
   );
 }

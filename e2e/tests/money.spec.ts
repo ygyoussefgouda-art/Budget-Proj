@@ -64,10 +64,11 @@ test.describe('budget, expenses and receipts', () => {
     await expect(edited).toContainText('60 EGP');
     await expect(edited.getByRole('button', { name: 'View receipt' })).toHaveCount(0);
 
-    // Delete
+    // Delete: instant, with Undo in the toast instead of a confirm dialog
     await edited.getByRole('button', { name: 'Delete expense' }).click();
-    await confirmDialog(page, 'Delete');
+    await expect(page.getByRole('alertdialog')).toHaveCount(0);
     await expect(page.locator('.list-item', { hasText: 'Koshary' })).toHaveCount(0);
+    await expect(page.locator('.toast', { hasText: 'Deleted' }).getByRole('button', { name: 'Undo' })).toBeVisible();
   });
 
   test('receipts that are not photos/PDFs are refused', async ({ page }) => {

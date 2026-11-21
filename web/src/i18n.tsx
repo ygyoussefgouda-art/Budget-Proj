@@ -75,6 +75,7 @@ const SERVER_PATTERNS: [RegExp, string][] = [
   [/^You cannot withdraw more than the balance \((.+)\)\.$/, 'مينفعش تسحب أكتر من الرصيد ($1).'],
   [/^This is more than the outstanding (.+) for (.+)\. Save anyway\?$/, 'ده أكتر من الـ $1 اللي فاضلين لـ $2. تحفظ برضه؟'],
   [/^Restore failed, nothing was changed: (.+)$/, 'الاسترجاع فشل ومفيش حاجة اتغيرت: $1'],
+  [/^This category is used by (\d+) recurring expense\(s\)\. Change or delete them first\.$/, 'الفئة دي مستخدمة في $1 مصروف متكرر. غيّرهم أو امسحهم الأول.'],
 ];
 
 function apply(lang: Lang) {

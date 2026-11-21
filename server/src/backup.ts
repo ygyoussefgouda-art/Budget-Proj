@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Db } from './db.js';
 import { HttpError } from './http.js';
-import { CURRENCIES, isoDate, monthStr } from './validation.js';
+import { CURRENCIES, isoDate, monthStr, tag } from './validation.js';
 
 /**
  * Backup format (version 2). Same table/column names as the original phone
@@ -29,11 +29,18 @@ export async function exportBackup(db: Db, userId: number) {
         'SELECT id, goal_id, date, type, amount, note FROM goal_entries WHERE user_id = $1 ORDER BY date, id',
       ),
       expenses: await q(
-        'SELECT id, date, category_id, description, amount FROM expenses WHERE user_id = $1 ORDER BY date, id',
+        `SELECT id, date, category_id, description, amount, tags, orig_amount, orig_currency, fx_rate
+         FROM expenses WHERE user_id = $1 ORDER BY date, id`,
       ),
       loan_entries: await q(
-        'SELECT id, date, person, direction, kind, amount, note FROM loan_entries WHERE user_id = $1 ORDER BY date, id',
+        'SELECT id, date, person, direction, kind, amount, note, expense_id FROM loan_entries WHERE user_id = $1 ORDER BY date, id',
       ),
+      recurring_rules: await q(
+        `SELECT id, category_id, amount, description, day_of_month, start_date, end_date, auto_add, paused
+         FROM recurring_rules WHERE user_id = $1 ORDER BY id`,
+      ),
+      // Which occurrences were already added or skipped, so a restore doesn't make them due again.
+      recurring_done: await q('SELECT rule_id, due_date, status FROM recurring_occurrences WHERE user_id = $1 ORDER BY rule_id, due_date'),
     },
   };
 }
@@ -74,7 +81,20 @@ const backupSchema = z.object({
       .array(z.object({ id: int.optional(), goal_id: int, date: isoDate, type: z.enum(['deposit', 'withdrawal']), amount, note: str(200) }))
       .max(50_000),
     expenses: z
-      .array(z.object({ id: int.optional(), date: isoDate, category_id: int, description: str(200), amount: amount.refine((v) => v > 0) }))
+      .array(
+        z.object({
+          id: int.optional(),
+          date: isoDate,
+          category_id: int,
+          description: str(200),
+          amount: amount.refine((v) => v > 0),
+          // 0.5.4+: tags, foreign currency
+          tags: z.array(tag).max(5).nullish().transform((v) => [...new Set(v ?? [])]),
+          orig_amount: amount.refine((v) => v > 0).nullish(),
+          orig_currency: z.string().regex(/^[A-Z]{3}$/).nullish(),
+          fx_rate: z.coerce.number().positive().max(1_000_000).nullish(),
+        }),
+      )
       .max(50_000),
     loan_entries: z
       .array(
@@ -86,9 +106,31 @@ const backupSchema = z.object({
           kind: z.enum(['principal', 'repayment']),
           amount: amount.refine((v) => v > 0),
           note: str(200),
+          expense_id: int.nullish(), // 0.5.4+: the split expense it belongs to
         }),
       )
       .max(20_000),
+    // Added in 0.1.0 (recurring expenses); older backups don't have them.
+    recurring_rules: z
+      .array(
+        z.object({
+          id: int,
+          category_id: int,
+          amount: amount.refine((v) => v > 0),
+          description: str(200),
+          day_of_month: z.coerce.number().int().min(1).max(31),
+          start_date: isoDate,
+          end_date: isoDate.nullish(),
+          auto_add: bool,
+          paused: bool,
+        }),
+      )
+      .max(100)
+      .default([]),
+    recurring_done: z
+      .array(z.object({ rule_id: int, due_date: isoDate, status: z.enum(['added', 'skipped']) }))
+      .max(50_000)
+      .default([]),
   }),
 });
 
@@ -107,7 +149,7 @@ export async function restoreBackup(db: Db, userId: number, body: unknown) {
     if (settings?.monthStartDay) {
       await q.query('UPDATE users SET month_start_day = $1 WHERE id = $2', [settings.monthStartDay, userId]);
     }
-    for (const table of ['expenses', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
+    for (const table of ['trash', 'recurring_rules', 'expenses', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
       await q.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
     }
     const catMap = new Map<number, number>();
@@ -160,19 +202,44 @@ export async function restoreBackup(db: Db, userId: number, body: unknown) {
         e.note,
       ]);
     }
+    const expMap = new Map<number, number>();
     for (const e of t.expenses) {
-      await q.query('INSERT INTO expenses(user_id, date, category_id, description, amount) VALUES ($1, $2, $3, $4, $5)', [
-        userId,
-        e.date,
-        cat(e.category_id),
-        e.description,
-        e.amount,
-      ]);
+      // Foreign currency only when all three parts are there.
+      const fx = e.orig_amount && e.orig_currency && e.fx_rate ? [e.orig_amount, e.orig_currency, e.fx_rate] : [null, null, null];
+      const ins = await q.query(
+        `INSERT INTO expenses(user_id, date, category_id, description, amount, tags, orig_amount, orig_currency, fx_rate)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        [userId, e.date, cat(e.category_id), e.description, e.amount, e.tags, ...fx],
+      );
+      if (e.id !== undefined) expMap.set(e.id, ins.rows[0].id);
     }
+    const linked = new Set<number>();
     for (const l of t.loan_entries) {
+      // Keep the link to its split expense (each expense has at most one).
+      let expenseId: number | null = l.expense_id != null ? (expMap.get(l.expense_id) ?? null) : null;
+      if (expenseId !== null && linked.has(expenseId)) expenseId = null;
+      if (expenseId !== null) linked.add(expenseId);
       await q.query(
-        'INSERT INTO loan_entries(user_id, date, person, direction, kind, amount, note) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [userId, l.date, l.person, l.direction, l.kind, l.amount, l.note],
+        'INSERT INTO loan_entries(user_id, date, person, direction, kind, amount, note, expense_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [userId, l.date, l.person, l.direction, l.kind, l.amount, l.note, expenseId],
+      );
+    }
+    const ruleMap = new Map<number, number>();
+    for (const r of t.recurring_rules) {
+      const end = r.end_date && r.end_date >= r.start_date ? r.end_date : null;
+      const ins = await q.query(
+        `INSERT INTO recurring_rules(user_id, category_id, amount, description, day_of_month, start_date, end_date, auto_add, paused)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        [userId, cat(r.category_id), r.amount, r.description, r.day_of_month, r.start_date, end, r.auto_add, r.paused],
+      );
+      ruleMap.set(r.id, ins.rows[0].id);
+    }
+    for (const o of t.recurring_done) {
+      const rid = ruleMap.get(o.rule_id);
+      if (rid === undefined) continue;
+      await q.query(
+        `INSERT INTO recurring_occurrences(rule_id, due_date, user_id, status) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+        [rid, o.due_date, userId, o.status],
       );
     }
   });

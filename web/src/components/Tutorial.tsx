@@ -43,7 +43,12 @@ const STEPS: Step[] = [
     icon: Home,
     title: 'Your month at a glance',
     text: 'Home shows how much money is left this month, your income and expenses, savings and debts.',
-    tips: ['Use the arrows at the top to move between months.', 'Tap Income or any Budget usage row to edit it.'],
+    tips: [
+      'Use the arrows at the top to move between months.',
+      'Tap Income or any Budget usage row to edit it.',
+      'Tap "+ Expense" at the bottom to log something quickly. Under your balance you see how much you can spend per day.',
+      'The chart icon at the top opens Reports: this month against last month, and which weekdays you spend the most.',
+    ],
     route: '/',
   },
   {
@@ -53,6 +58,8 @@ const STEPS: Step[] = [
     tips: [
       'Add spending categories with "+ Add", tap one to rename it or change its budget, use the bin to remove it.',
       'Tick "Budget per day" for costs like uni or work days (days × weeks × cost per day).',
+      'An empty month? Tap "Same as last month" to copy your budget over.',
+      'A category turns amber at 80% of its budget and red at 100%; a banner on Home tells you which.',
     ],
     route: '/budget',
   },
@@ -62,7 +69,10 @@ const STEPS: Step[] = [
     text: 'Tap "+ Add" every time you spend money. It counts in that month\'s budget straight away.',
     tips: [
       'You can attach a photo or PDF of the receipt (optional). Tap the clip to see it later.',
-      'Search, or filter by month, date range or category. Tap an expense to edit it, or the bin to delete it.',
+      'Search, or filter by month, date range or category. Tap an expense to edit it. The bin deletes it at once; tap Undo if that was a mistake.',
+      'Rent or a subscription every month? Tap the repeat icon at the top to add a recurring expense.',
+      'An expense can have #tags, be split with a friend (their share goes to "Owed to me"), or be paid in another currency.',
+      'Swipe a row left to delete it or right to edit it. No connection? New expenses wait on your phone and sync later.',
     ],
     route: '/expenses',
   },
@@ -70,7 +80,11 @@ const STEPS: Step[] = [
     icon: PiggyBank,
     title: 'Save for goals',
     text: 'Create a goal (a laptop, a trip...), then add deposits or withdrawals as you save.',
-    tips: ['See your progress and about how many months are left.', 'Open a goal to edit or delete it.'],
+    tips: [
+      'See your progress and about how many months are left.',
+      'Each goal shows when you\'ll reach it at your current pace, and warns you when you\'re behind plan.',
+      'Open a goal to edit or delete it.',
+    ],
     route: '/savings',
   },
   {
@@ -84,7 +98,13 @@ const STEPS: Step[] = [
     icon: Settings,
     title: 'Make it yours',
     text: 'In Settings you can switch the language (English or Arabic), change your month start day, pick light or dark mode and your currency, and download backups.',
-    tips: ['You can replay this tutorial from Settings at any time.'],
+    tips: [
+      'Export your expenses, loans or savings to Excel or CSV from Settings.',
+      'Want privacy? Turn on App lock to ask for a PIN when the app is opened again.',
+      'Found a bug or have an idea? Use "Contact us" at the bottom of Settings.',
+      'Forgot your password? Ask the person who runs the app for a reset code, then tap "Forgot password?" on the sign-in screen.',
+      'You can replay this tutorial from Settings at any time.',
+    ],
     route: '/settings',
   },
 ];

@@ -1,5 +1,6 @@
 import {
   ArrowUp,
+  CalendarDays,
   CheckCircle2,
   ClipboardCheck,
   HandCoins,
@@ -7,28 +8,38 @@ import {
   LineChart,
   PieChart,
   PiggyBank,
+  Plus,
   Settings,
   ShoppingBag,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CategoryForm, SettingsForm, useRemoveCategory } from '../components/BudgetForms';
 import { Donut } from '../components/charts';
 import { Sheet } from '../components/Overlays';
-import type { Category } from '../domain/calc';
+import { QueuedList } from '../components/OfflineQueue';
+import { DueList } from '../components/Recurring';
+import { ExpenseForm } from './Expenses';
+import { dailyAllowance, type Category } from '../domain/calc';
 import { t } from '../i18n';
 import { APP_VERSION, STAGE, VERSION_KEY } from '../version';
-import { BudgetRowTile, MonthBar, TxnTile } from '../components/rows';
-import { AddButton, Card, COLORS, DeleteButton, Empty, IconBadge, IconButton, PageHeader, PALETTE, SectionTitle, StatTile } from '../components/ui';
-import { monthLabel, useApp } from '../state';
+import { BudgetAlerts, BudgetRowTile, MonthBar, TxnTile } from '../components/rows';
+import { AddButton, Card, COLORS, DeleteButton, Empty, Fab, IconBadge, IconButton, PageHeader, PALETTE, SectionTitle, StatTile } from '../components/ui';
+import { monthLabel, shortDate, todayIso, useApp } from '../state';
 
 export default function Dashboard() {
-  const { data, summary: s, fmt, totals, month } = useApp();
+  const { data, summary: s, fmt, totals, month, startDay, user } = useApp();
   const nav = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [catEdit, setCatEdit] = useState<Category | 'new' | null>(null);
+  const [params, setParams] = useSearchParams();
+  // Home-screen shortcut "Add expense" opens /?add=expense: show the quick-add sheet right away.
+  const [quickAdd, setQuickAdd] = useState(() => params.get('add') === 'expense');
+  useEffect(() => {
+    if (params.has('add')) setParams({}, { replace: true });
+  }, [params, setParams]);
   const removeCategory = useRemoveCategory();
   if (!data || !s) return null;
 
@@ -38,9 +49,11 @@ export default function Dashboard() {
   const savePlan = s.budget.savePlan;
   const slices = s.rows.filter((r) => r.catId !== null && r.actual > 0);
   const sliceTotal = slices.reduce((sum, r) => sum + r.actual, 0);
+  // Only for the budget month we're in: what's left ÷ days remaining (today included).
+  const allowance = dailyAllowance(left, todayIso(), month, startDay);
 
   return (
-    <div className="page">
+    <div className="page has-fab">
       <PageHeader
         left={<IconButton icon={Settings} label={t('Settings')} onClick={() => nav('/settings')} />}
         title={
@@ -80,6 +93,14 @@ export default function Dashboard() {
             {t('{pct}% of {income} income used', { pct: Math.round(usageIncome * 100), income: fmt(s.income) })}
           </span>
         </div>
+        {allowance && (s.income > 0 || s.actualTotal > 0) && (
+          <div className="allowance small" style={{ color: allowance.perDay < 0 ? COLORS.highlight : undefined }}>
+            <CalendarDays size={15} aria-hidden="true" />
+            <span>
+              {t('You can spend {amount} a day until {date}', { amount: fmt(allowance.perDay), date: shortDate(allowance.until) })}
+            </span>
+          </div>
+        )}
         {s.unallocated !== 0 && (
           <div className="tiny" style={{ color: s.unallocated < 0 ? COLORS.red : 'var(--mute)', marginTop: 4 }}>
             {s.unallocated < 0
@@ -88,6 +109,10 @@ export default function Dashboard() {
           </div>
         )}
       </Card>
+
+      <BudgetAlerts rows={s.rows} />
+      <DueList />
+      <QueuedList categories={data.categories} currency={user.currency} />
 
       <div className="grid2">
         <MiniStat label={t('Income')} value={fmt(s.income)} icon={Wallet} color={COLORS.accent} onClick={() => setSettingsOpen(true)} />
@@ -194,6 +219,11 @@ export default function Dashboard() {
       </Sheet>
       <Sheet open={!!catEdit} onClose={() => setCatEdit(null)} title={catEdit === 'new' ? t('New category') : t('Edit category')}>
         {catEdit && <CategoryForm edit={catEdit === 'new' ? undefined : catEdit} onDone={() => setCatEdit(null)} />}
+      </Sheet>
+
+      <Fab icon={Plus} label={t('Expense')} title={t('Quick add an expense')} onClick={() => setQuickAdd(true)} />
+      <Sheet open={quickAdd} onClose={() => setQuickAdd(false)} title={t('Quick add')}>
+        {quickAdd && <ExpenseForm quick onDone={() => setQuickAdd(false)} />}
       </Sheet>
     </div>
   );

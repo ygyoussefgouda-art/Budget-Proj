@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  alertLevel,
   balances,
+  budgetAlerts,
+  changePct,
+  convert,
+  parseTags,
+  splitShares,
+  dailyAllowance,
+  goalForecast,
   goalBalance,
   goalProgress,
   inMonth,
@@ -107,5 +115,104 @@ describe('workbook formulas', () => {
     expect(parseMoney('-5')).toBeNull();
     expect(fmtMoney(120000, 'EGP')).toBe('1,200 EGP');
     expect(fmtMoney(-5050, 'EGP')).toBe('−50.50 EGP');
+  });
+});
+
+describe('daily allowance', () => {
+  it('divides what is left by the days remaining, today included', () => {
+    // November (1st–30th), today the 21st: 21..30 = 10 days
+    expect(dailyAllowance(100_000, '2026-11-21', '2026-11')).toEqual({ perDay: 10_000, days: 10, until: '2026-11-30' });
+    // last day of the month: 1 day
+    expect(dailyAllowance(5_000, '2026-11-30', '2026-11')?.days).toBe(1);
+  });
+  it('follows the month start day', () => {
+    // months start on the 25th: the "November" period runs 25 Nov – 24 Dec
+    const r = dailyAllowance(33_000, '2026-12-14', '2026-11', 25); // 14..24 Dec = 11 days
+    expect(r).toEqual({ perDay: 3_000, days: 11, until: '2026-12-24' });
+  });
+  it('is negative when over budget, and null outside the month', () => {
+    expect(dailyAllowance(-1_000, '2026-11-28', '2026-11')?.perDay).toBe(-333);
+    expect(dailyAllowance(10_000, '2026-12-01', '2026-11')).toBeNull();
+  });
+});
+
+describe('budget alerts', () => {
+  const row = (catId: number | null, planned: number, actual: number, isGoal = false) => ({ catId, name: `c${catId}`, planned, actual, isGoal });
+  it('amber from 80%, "used up" at exactly 100%, red above it', () => {
+    expect(alertLevel(row(1, 1000, 799))).toBeNull();
+    expect(alertLevel(row(1, 1000, 800))).toBe('warn');
+    expect(alertLevel(row(1, 1000, 1000))).toBe('full');
+    expect(alertLevel(row(1, 1000, 1001))).toBe('over');
+    expect(alertLevel(row(1, 0, 5))).toBe('over'); // spending with no budget
+    expect(alertLevel(row(1, 0, 0))).toBeNull();
+    expect(alertLevel(row(null, 1000, 5000, true))).toBeNull(); // savings / loan rows never alert
+    expect(rowStatus(row(1, 1000, 850))).toBe('Almost used up');
+    expect(rowStatus(row(1, 1000, 1000))).toBe('Used up');
+    expect(rowStatus(row(1, 1000, 1200))).toBe('Over budget');
+  });
+  it('lists the worst first: over budget (by how much), used up, then almost used up', () => {
+    const a = budgetAlerts([row(1, 1000, 850), row(2, 1000, 1500), row(3, 500, 500), row(4, 1000, 1100), row(5, 1000, 100), row(null, 10, 99, true)]);
+    expect(a.map((x) => [x.catId, x.level])).toEqual([
+      [2, 'over'],
+      [4, 'over'],
+      [3, 'full'],
+      [1, 'warn'],
+    ]);
+    expect(a[0]).toMatchObject({ pct: 150, over: 500 });
+  });
+});
+
+describe('month-over-month change', () => {
+  it('in whole percent; null for a category that is new this month', () => {
+    expect(changePct(1200, 1000)).toBe(20);
+    expect(changePct(850, 1000)).toBe(-15);
+    expect(changePct(0, 0)).toBe(0);
+    expect(changePct(500, 0)).toBeNull();
+    expect(changePct(0, 400)).toBe(-100);
+  });
+});
+
+describe('savings goal forecast', () => {
+  const goal = { id: 1, name: 'Laptop', target: 10_000, start: 0, monthly: 0, sort: 0 };
+  const dep = (date: string, amount: number, deposit = true) => ({ id: Math.random(), goalId: 1, date, deposit, amount, note: '' });
+  it('uses the average of the last 3 budget months', () => {
+    const e = [dep('2026-09-05', 1000), dep('2026-10-05', 1000), dep('2026-11-05', 1000)];
+    const f = goalForecast(goal, 3000, e, '2026-11', 1500);
+    // 7,000 left at 1,000 a month: June 2027; planned 1,500 a month, so behind plan
+    expect(f).toEqual({ pace: 1000, periods: 3, reach: '2027-06', reached: false, behind: true });
+    expect(goalForecast(goal, 3000, e, '2026-11', 1000)?.behind).toBe(false);
+  });
+  it('a goal started this month only counts this month; older history beyond 3 months is ignored', () => {
+    expect(goalForecast(goal, 2000, [dep('2026-11-02', 2000)], '2026-11', 0)).toMatchObject({ pace: 2000, periods: 1, reach: '2027-03' });
+    const old = [dep('2026-01-10', 9000), dep('2026-11-01', 300)];
+    expect(goalForecast(goal, 9300, old, '2026-11', 0)).toMatchObject({ pace: 100, periods: 3 });
+  });
+  it('withdrawals count against the pace; no deposits lately means no date; reached goals have none', () => {
+    const e = [dep('2026-11-01', 500), dep('2026-11-02', 500, false)];
+    expect(goalForecast(goal, 0, e, '2026-11', 0)).toMatchObject({ pace: 0, reach: null, reached: false });
+    expect(goalForecast(goal, 10_000, [dep('2026-11-01', 10_000)], '2026-11', 500)).toMatchObject({ reached: true, reach: null, behind: false });
+    expect(goalForecast(goal, 0, [], '2026-11', 500)).toBeNull();
+  });
+  it('follows the month start day', () => {
+    // months start on the 25th: 20 Nov belongs to the "October" period
+    const f = goalForecast(goal, 1000, [dep('2026-11-20', 1000)], '2026-10', 0, 25);
+    expect(f).toMatchObject({ periods: 1, pace: 1000 });
+  });
+});
+
+describe('split, currency and tags helpers', () => {
+  it('even split: they owe half rounded down, I keep the odd piastre', () => {
+    expect(splitShares(30_000, 'even', 0)).toEqual({ mine: 15_000, their: 15_000 });
+    expect(splitShares(30_001, 'even', 0)).toEqual({ mine: 15_001, their: 15_000 });
+    expect(splitShares(30_000, 'share', 10_000)).toEqual({ mine: 20_000, their: 10_000 });
+  });
+  it('converts with the same rounding as the server', () => {
+    expect(convert(1_000, 49.5)).toBe(49_500);
+    expect(convert(333, 1.005)).toBe(335);
+  });
+  it('reads tags typed with #, commas or spaces, Arabic included', () => {
+    expect(parseTags('#Trip, friends  #TRIP #سفر')).toEqual({ tags: ['trip', 'friends', 'سفر'], bad: null });
+    expect(parseTags('')).toEqual({ tags: [], bad: null });
+    expect(parseTags('ok bad!tag').bad).toBe('bad!tag');
   });
 });

@@ -64,6 +64,47 @@ export function PairBars({ a, b, labels, colorA, colorB, height = 180 }: { a: nu
   );
 }
 
+/** One bar per label (e.g. average spending per weekday). The highest bar gets `highlightColor`. */
+export function Bars({
+  values,
+  labels,
+  color,
+  highlightColor,
+  ariaLabel,
+  height = 160,
+}: {
+  values: number[];
+  labels: string[];
+  color: string;
+  highlightColor?: string;
+  ariaLabel: string;
+  height?: number;
+}) {
+  const max = Math.max(1, ...values);
+  const top = Math.max(...values);
+  const w = 320;
+  const slot = w / labels.length;
+  const bw = Math.min(26, slot * 0.55);
+  const chartH = height - 18;
+  return (
+    <svg viewBox={`0 0 ${w} ${height}`} width="100%" height={height} role="img" aria-label={ariaLabel}>
+      {labels.map((l, i) => {
+        const x = i * slot + slot / 2;
+        const h = (Math.max(0, values[i]) / max) * (chartH - 4);
+        const fill = highlightColor && top > 0 && values[i] === top ? highlightColor : color;
+        return (
+          <g key={i}>
+            <rect x={x - bw / 2} y={chartH - h} width={bw} height={h} rx={Math.min(6, bw / 2)} style={{ fill }} />
+            <text x={x} y={height - 3} textAnchor="middle" fontSize="10.5" style={{ fill: 'var(--mute)' }}>
+              {l}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 /** Balance over time; the top of the chart is max(target, highest balance). */
 export function LineArea({ points, max, color, height = 160 }: { points: number[]; max: number; color: string; height?: number }) {
   if (points.length < 2) return null;

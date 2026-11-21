@@ -1,9 +1,9 @@
-import { MoreVertical, Pencil } from 'lucide-react';
+import { CopyPlus, MoreVertical, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '../api';
 import { CategoryForm, SettingsForm, useRemoveCategory } from '../components/BudgetForms';
 import { useOverlay, Sheet } from '../components/Overlays';
-import { BudgetRowTile, MonthBar } from '../components/rows';
+import { BudgetAlerts, BudgetRowTile, MonthBar } from '../components/rows';
 import { AddButton, Card, COLORS, DeleteButton, Empty, IconButton, KV, PageHeader, SectionTitle } from '../components/ui';
 import type { Category } from '../domain/calc';
 import { t } from '../i18n';
@@ -29,6 +29,16 @@ export default function Budget() {
       t('Copy'),
     );
     if (!ok) return;
+    try {
+      await api(`/budget/${month}/copy-previous`, 'POST');
+      await refresh();
+      toast(t('Budget copied.'));
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  };
+  // Empty month: copy without asking (nothing gets replaced).
+  const sameAsLast = async () => {
     try {
       await api(`/budget/${month}/copy-previous`, 'POST');
       await refresh();
@@ -74,6 +84,24 @@ export default function Budget() {
         }
       />
       <MonthBar />
+      <BudgetAlerts rows={s.rows} />
+
+      {data.canCopyPrevious && data.copyFrom && (
+        <Card className="copy-card">
+          <div className="row gap">
+            <CopyPlus size={22} style={{ color: COLORS.accent, flex: 'none' }} aria-hidden="true" />
+            <div className="grow">
+              <strong className="small block">{t('{month} is empty', { month: monthLabel(month) })}</strong>
+              <span className="tiny mute">
+                {t('Use the same income, plans and category budgets as {from}.', { from: monthLabel(data.copyFrom) })}
+              </span>
+            </div>
+          </div>
+          <button className="btn primary block" style={{ marginTop: 12 }} onClick={sameAsLast}>
+            {t('Same as last month')}
+          </button>
+        </Card>
+      )}
 
       <Card onClick={() => setSettingsOpen(true)}>
         <div className="section-title">

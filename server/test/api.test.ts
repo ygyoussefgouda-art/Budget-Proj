@@ -155,7 +155,7 @@ describe('expenses', () => {
     expect(dup.body.code).toBe('confirm');
     const forced = await agent.post('/api/expenses?force=1').send(body);
     expect(forced.status).toBe(201);
-    await agent.delete(`/api/expenses/${forced.body.id}`).expect(204);
+    await agent.delete(`/api/expenses/${forced.body.id}`).expect(200);
   });
 
   it('validates input', async () => {
@@ -184,7 +184,7 @@ describe('expenses', () => {
       .send({ date: '2026-11-03', categoryId: catId, description: 'Cinema + popcorn', amount: 20000 });
     expect(u.status).toBe(200);
     expect(u.body.amount).toBe(20000);
-    await agent.delete(`/api/expenses/${expenseId}`).expect(204);
+    await agent.delete(`/api/expenses/${expenseId}`).expect(200);
   });
 });
 
@@ -320,7 +320,7 @@ describe('receipts', () => {
     await agent.delete(`/api/expenses/${expenseId}/receipt`).expect(204);
     expect((await agent.get(`/api/expenses/${expenseId}/receipt`)).status).toBe(404);
     await agent.put(`/api/expenses/${expenseId}/receipt`).set('Content-Type', 'image/png').send(PNG).expect(200);
-    await agent.delete(`/api/expenses/${expenseId}`).expect(204);
+    await agent.delete(`/api/expenses/${expenseId}`).expect(200);
     const left = await db.query('SELECT COUNT(*)::int AS n FROM receipts WHERE expense_id = $1', [expenseId]);
     expect(left.rows[0].n).toBe(0);
   });
@@ -340,7 +340,7 @@ describe('month start day', () => {
     const rep = (await agent.get('/api/reports/year?y=2026')).body.months;
     expect(rep[9].spent).toBe(4200); // October
     expect((await agent.get('/api/auth/me')).body.user.monthStartDay).toBe(10);
-    await agent.delete(`/api/expenses/${e.body.id}`).expect(204);
+    await agent.delete(`/api/expenses/${e.body.id}`).expect(200);
     await agent.put('/api/settings').send({ monthStartDay: 1 }).expect(200);
   });
 
@@ -522,11 +522,11 @@ describe('security hardening', () => {
       const e2 = await mk();
       const r = await agent.put(`/api/expenses/${e2}/receipt`).set('Content-Type', 'image/png').send(PNG);
       expect(r.status).toBe(413);
-      await agent.delete(`/api/expenses/${e2}`).expect(204);
+      await agent.delete(`/api/expenses/${e2}`).expect(200);
     } finally {
       delete process.env.RECEIPT_QUOTA_MB;
     }
-    await agent.delete(`/api/expenses/${e1}`).expect(204);
+    await agent.delete(`/api/expenses/${e1}`).expect(200);
   });
 
   it('backup restore refuses values the app itself would refuse', async () => {

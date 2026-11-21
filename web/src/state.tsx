@@ -8,6 +8,7 @@ import {
   outstanding,
   periodRange,
   type Category,
+  type DueItem,
   type Expense,
   type Goal,
   type GoalEntry,
@@ -19,7 +20,7 @@ import {
 import { fmtMoney } from './domain/money';
 import { isRtl, locale } from './i18n';
 
-export interface User { id: number; username: string; currency: string; monthStartDay: number }
+export interface User { id: number; username: string; currency: string; monthStartDay: number; isAdmin?: boolean }
 
 export interface ServerState {
   month: string;
@@ -31,6 +32,12 @@ export interface ServerState {
   loans: LoanEntry[];
   recent: Txn[];
   hasEarlierMonth: boolean;
+  /** This month is empty and an earlier month has a budget: offer "Same as last month". */
+  canCopyPrevious: boolean;
+  /** The month that would be copied ('YYYY-MM'). */
+  copyFrom: string | null;
+  /** Recurring expenses waiting for Add / Skip. */
+  recurringDue: DueItem[];
 }
 
 export const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'KWD', 'QAR', 'JOD'];

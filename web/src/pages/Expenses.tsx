@@ -1,9 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Paperclip, Search, X } from 'lucide-react';
+import { Download, FileText, Paperclip, Repeat, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, receiptUrl, saveWithConfirm, uploadReceipt } from '../api';
 import { Sheet, useOverlay } from '../components/Overlays';
+import { SwipeRow } from '../components/SwipeRow';
+import { ExportLinks } from '../components/ExportLinks';
+import { QueuedList, useOffline } from '../components/OfflineQueue';
+import { DueList, RecurringManager } from '../components/Recurring';
+import { useUndoDelete } from '../components/useUndoDelete';
 import { MonthBar } from '../components/rows';
 import {
   AddButton,
@@ -13,30 +18,37 @@ import {
   Empty,
   Field,
   FormError,
+  IconButton,
   MoneyInput,
   PageHeader,
   Pill,
   SaveButton,
   SectionTitle,
+  Segmented,
   tint,
 } from '../components/ui';
-import { periodRange, type Expense } from '../domain/calc';
-import { parseMoney, plain } from '../domain/money';
+import { convert, parseTags, periodRange, splitShares, type Expense } from '../domain/calc';
+import { fmtMoney, parseMoney, plain } from '../domain/money';
 import { t } from '../i18n';
+import { isNetworkError } from '../offline';
 import { prepareReceipt, RECEIPT_ACCEPT } from '../receipt';
-import { defaultDate, monthLabel, shortDate, useApp } from '../state';
+import { CURRENCIES, defaultDate, monthLabel, shortDate, todayIso, useApp, type User } from '../state';
 
 type Scope = 'month' | 'all' | 'range';
 
 export default function Expenses() {
-  const { data, fmt, month, refresh, startDay } = useApp();
-  const { confirm, toast } = useOverlay();
+  const { data, fmt, month, startDay, user } = useApp();
+  const undoDelete = useUndoDelete();
+  const [recurringOpen, setRecurringOpen] = useState(false);
   const [scope, setScope] = useState<Scope>('month');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [search, setSearch] = useState('');
   const [q, setQ] = useState('');
   const [catId, setCatId] = useState<number | null>(null);
+  const [tag, setTag] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const tags = useQuery({ queryKey: ['tags'], queryFn: () => api<{ tag: string; count: number }[]>('/tags'), staleTime: 60_000 });
   const [form, setForm] = useState<{ edit?: Expense } | null>(null);
   const [viewing, setViewing] = useState<Expense | null>(null);
 
@@ -56,6 +68,7 @@ export default function Expenses() {
   }
   if (q) params.set('q', q);
   if (catId) params.set('categoryId', String(catId));
+  if (tag) params.set('tag', tag);
 
   const list = useQuery({
     queryKey: ['expenses', params.toString()],
@@ -63,30 +76,25 @@ export default function Expenses() {
     placeholderData: (p) => p,
   });
 
-  const del = async (e: Expense) => {
-    const msg = t('{amount} on {date} will be removed.', { amount: fmt(e.amount), date: shortDate(e.date) });
-    if (!(await confirm(t('Delete expense?'), e.hasReceipt ? `${msg} ${t('Its receipt is deleted too.')}` : msg))) return;
-    try {
-      await api(`/expenses/${e.id}`, 'DELETE');
-      await refresh();
-    } catch (x) {
-      toast((x as Error).message);
-    }
-  };
+  // Deletes at once (receipt included); the toast offers Undo for a few seconds.
+  const del = (e: Expense) => undoDelete(`/expenses/${e.id}`);
 
   const items = list.data?.items ?? [];
   const count = list.data?.count ?? 0;
 
   return (
     <div className="page">
-      <PageHeader title={t('Expenses')} />
+      <PageHeader
+        title={t('Expenses')}
+        right={<IconButton icon={Repeat} label={t('Recurring expenses')} onClick={() => setRecurringOpen(true)} />}
+      />
       {scope === 'month' && <MonthBar />}
 
       <div className="search">
         <Search size={18} className="mute" />
         <input
           className="input bare"
-          placeholder={t('Search description or category')}
+          placeholder={t('Search description, category or tag')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label={t('Search expenses')}
@@ -121,6 +129,16 @@ export default function Expenses() {
           </Chip>
         ))}
       </div>
+      {(tags.data?.length ?? 0) > 0 && (
+        <div className="chips" role="group" aria-label={t('Tags')}>
+          <Chip on={tag === null} onClick={() => setTag(null)}>{t('All tags')}</Chip>
+          {tags.data!.slice(0, 20).map((x) => (
+            <Chip key={x.tag} on={tag === x.tag} onClick={() => setTag(tag === x.tag ? null : x.tag)}>
+              #{x.tag}
+            </Chip>
+          ))}
+        </div>
+      )}
 
       <Card>
         <div className="row between">
@@ -130,9 +148,17 @@ export default function Expenses() {
             </div>
             <div className="big-value" style={{ color: COLORS.red }}>{fmt(list.data?.total ?? 0)}</div>
           </div>
-          <Pill color={COLORS.blue}>{count === 1 ? t('1 expense') : t('{n} expenses', { n: count })}</Pill>
+          <div className="stack-end">
+            <Pill color={COLORS.blue}>{count === 1 ? t('1 expense') : t('{n} expenses', { n: count })}</Pill>
+            <button type="button" className="btn text small" onClick={() => setExportOpen(true)} disabled={count === 0}>
+              <Download size={15} /> {t('Export')}
+            </button>
+          </div>
         </div>
       </Card>
+
+      <DueList />
+      <QueuedList categories={data?.categories ?? []} currency={user.currency} />
 
       <SectionTitle trailing={<AddButton label={t('Add')} onClick={() => setForm({})} title={t('Add an expense')} />}>
         {t('Expenses')}
@@ -141,7 +167,7 @@ export default function Expenses() {
       {!list.isLoading && items.length === 0 && <Empty text={t('No expenses match. Tap "+ Add" to log one.')} />}
       <div className="list">
         {items.map((e) => (
-          <div key={e.id} className="list-item">
+          <SwipeRow key={e.id} className="list-item" onDelete={() => del(e)} onEdit={() => setForm({ edit: e })}>
             <button className="list-main" onClick={() => setForm({ edit: e })}>
               <span className="avatar" style={{ color: COLORS.red, background: tint(COLORS.red, 14) }}>
                 {(e.categoryName ?? '?').slice(0, 1).toUpperCase()}
@@ -150,7 +176,16 @@ export default function Expenses() {
                 <span className="txn-title">{e.description || e.categoryName}</span>
                 <span className="tiny mute block">
                   {e.categoryName} · {shortDate(e.date)}
+                  {e.split ? ` · ${t('Split with {name}', { name: e.split.person })}` : ''}
+                  {e.foreign ? ` · ${fmtMoney(e.foreign.amount, e.foreign.currency)}` : ''}
                 </span>
+                {(e.tags?.length ?? 0) > 0 && (
+                  <span className="row-tags">
+                    {e.tags!.map((x) => (
+                      <span key={x} className="tag">#{x}</span>
+                    ))}
+                  </span>
+                )}
               </span>
               <span className="txn-amount" style={{ color: COLORS.red }}>−{fmt(e.amount)}</span>
             </button>
@@ -160,7 +195,7 @@ export default function Expenses() {
               </button>
             )}
             <DeleteButton label={t('Delete expense')} onClick={() => del(e)} />
-          </div>
+          </SwipeRow>
         ))}
         {count > items.length && (
           <p className="tiny mute center">
@@ -171,6 +206,22 @@ export default function Expenses() {
 
       <Sheet open={!!form} onClose={() => setForm(null)} title={form?.edit ? t('Edit expense') : t('Add expense')}>
         {form && <ExpenseForm edit={form.edit} onDone={() => setForm(null)} />}
+      </Sheet>
+      <Sheet open={exportOpen} onClose={() => setExportOpen(false)} title={t('Export these expenses')}>
+        {exportOpen && (
+          <>
+            <p className="small mute" style={{ marginBottom: 12 }}>
+              {count === 1 ? t('1 expense, with the filters you picked.') : t('{n} expenses, with the filters you picked.', { n: count })}
+            </p>
+            <ExportLinks
+              kind="expenses"
+              filters={{ from: params.get('from') ?? undefined, to: params.get('to') ?? undefined, q: q || undefined, categoryId: catId ? String(catId) : undefined, tag: tag ?? undefined }}
+            />
+          </>
+        )}
+      </Sheet>
+      <Sheet open={recurringOpen} onClose={() => setRecurringOpen(false)} title={t('Recurring expenses')}>
+        {recurringOpen && <RecurringManager />}
       </Sheet>
       <Sheet open={!!viewing} onClose={() => setViewing(null)} title={t('Receipt')}>
         {viewing && <ReceiptView expense={viewing} />}
@@ -219,15 +270,61 @@ function ReceiptView({ expense, version = '' }: { expense: Expense; version?: st
   );
 }
 
-export function ExpenseForm({ edit, onDone }: { edit?: Expense; onDone: () => void }) {
+/** The category used for the last new expense on this device (per account). */
+const lastCatKey = (u: User) => `bm-last-category:${u.id}`;
+function lastCategory(u: User, ids: number[]): number | undefined {
+  try {
+    const v = Number(localStorage.getItem(lastCatKey(u)));
+    return ids.includes(v) ? v : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function rememberCategory(u: User, id: number) {
+  try {
+    localStorage.setItem(lastCatKey(u), String(id));
+  } catch {
+    /* private mode: just don't remember */
+  }
+}
+
+interface Suggestion { description: string; categoryId: number; count: number }
+
+/**
+ * Add or edit an expense. `quick` is the short version opened from the "+" on Home:
+ * dated today, no receipt field.
+ */
+export function ExpenseForm({ edit, onDone, quick = false }: { edit?: Expense; onDone: () => void; quick?: boolean }) {
   const { data, month, refresh, user, startDay } = useApp();
   const { confirm, toast } = useOverlay();
+  const offline = useOffline();
   const qc = useQueryClient();
   const cats = data?.categories ?? [];
-  const [amount, setAmount] = useState(edit ? plain(edit.amount) : '');
-  const [catId, setCatId] = useState<number>(edit?.categoryId ?? cats[0]?.id ?? 0);
+  // "Amount" is the whole bill; with a split, my share is what gets recorded.
+  const [amount, setAmount] = useState(edit ? plain(edit.amount + (edit.split?.share ?? 0)) : '');
+  const [tagText, setTagText] = useState((edit?.tags ?? []).map((x) => `#${x}`).join(' '));
+  const [splitOn, setSplitOn] = useState(!!edit?.split);
+  const [person, setPerson] = useState(edit?.split?.person ?? '');
+  const [splitMode, setSplitMode] = useState<'even' | 'share'>(edit?.split ? 'share' : 'even');
+  const [theirShare, setTheirShare] = useState(edit?.split ? plain(edit.split.share) : '');
+  const [fxOn, setFxOn] = useState(!!edit?.foreign);
+  const [fxAmount, setFxAmount] = useState(edit?.foreign ? plain(edit.foreign.amount) : '');
+  const [fxCurrency, setFxCurrency] = useState(edit?.foreign?.currency ?? CURRENCIES.find((c) => c !== user.currency) ?? 'USD');
+  const [fxRate, setFxRate] = useState(edit?.foreign ? String(edit.foreign.rate) : '');
+  const knownTags = useQuery({ queryKey: ['tags'], queryFn: () => api<{ tag: string; count: number }[]>('/tags'), enabled: !quick, staleTime: 60_000 });
+  const [catId, setCatId] = useState<number>(
+    edit?.categoryId ?? lastCategory(user, cats.map((c) => c.id)) ?? cats[0]?.id ?? 0,
+  );
   const [desc, setDesc] = useState(edit?.description ?? '');
-  const [date, setDate] = useState(edit?.date ?? defaultDate(month, startDay));
+  const [date, setDate] = useState(edit?.date ?? (quick ? todayIso() : defaultDate(month, startDay)));
+  // Most-used descriptions as tap-to-fill chips (new expenses only).
+  const suggestions = useQuery({
+    queryKey: ['suggestions'],
+    queryFn: () => api<Suggestion[]>('/expenses/suggestions'),
+    enabled: !edit,
+    staleTime: 60_000,
+  });
+  const chips = (suggestions.data ?? []).filter((s) => s.description.toLowerCase() !== desc.trim().toLowerCase()).slice(0, 6);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -258,17 +355,54 @@ export function ExpenseForm({ edit, onDone }: { edit?: Expense; onDone: () => vo
     setFile(f);
   };
 
+  // The bill in my currency: typed in, or converted from the foreign amount at the given rate.
+  const rate = Math.round(Number(fxRate.replace(/[,،]/g, '.')) * 1e6) / 1e6;
+  const fxMinor = parseMoney(fxAmount);
+  const total = fxOn ? (fxMinor && rate > 0 ? convert(fxMinor, rate) : null) : parseMoney(amount);
+  const shares = splitOn && total ? splitShares(total, splitMode, parseMoney(theirShare) ?? 0) : null;
+  const usedTags = parseTags(tagText).tags;
+  const tagChips = (knownTags.data ?? []).filter((x) => !usedTags.includes(x.tag)).slice(0, 8);
+  const people = [...new Set((data?.loans ?? []).filter((l) => !l.borrowed).map((l) => l.person.trim()))];
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (busy) return;
-    const v = parseMoney(amount);
-    if (v === null || v <= 0) return setErr(t('Enter an amount greater than 0.'));
+    if (fxOn && (!fxMinor || !(rate > 0))) return setErr(t('Enter the amount in {currency} and the rate.', { currency: fxCurrency }));
+    if (total === null || total <= 0) return setErr(t('Enter an amount greater than 0.'));
     if (!date) return setErr(t('Pick a date.'));
+    const tags = parseTags(tagText);
+    if (tags.bad) return setErr(t('"{tag}" is not a valid tag. Use letters, numbers, - or _.', { tag: tags.bad }));
+    if (tags.tags.length > 5) return setErr(t('Use at most 5 tags.'));
+    if (shares) {
+      if (!person.trim()) return setErr(t('Who did you split it with?'));
+      if (shares.their <= 0 || shares.mine <= 0) return setErr(t('Their share must be more than 0 and less than the total.'));
+    }
     setBusy(true);
+    const body = {
+      date,
+      categoryId: catId,
+      description: desc.trim(),
+      amount: shares ? shares.mine : total,
+      tags: tags.tags,
+      split: shares ? { person: person.trim(), share: shares.their } : null,
+      foreign: fxOn ? { amount: fxMinor, currency: fxCurrency, rate } : null,
+    };
+    // No connection: a new expense waits on this phone and is sent later (edits need a connection).
+    const saveOffline = async () => {
+      if (file) {
+        setErr(t('Receipts need a connection. Remove the photo to save this expense on the phone, or try again online.'));
+        return setBusy(false);
+      }
+      await offline!.queue(body);
+      rememberCategory(user, catId);
+      toast(t('Saved on this phone. It will be sent when you are back online.'));
+      onDone();
+    };
+    if (!edit && offline && !navigator.onLine) return saveOffline();
     try {
-      const body = { date, categoryId: catId, description: desc.trim(), amount: v };
       const saved = await saveWithConfirm<Expense>(edit ? `/expenses/${edit.id}` : '/expenses', edit ? 'PUT' : 'POST', body, confirm);
       if (saved === false) return setBusy(false);
+      if (!edit) rememberCategory(user, catId);
       try {
         if (file) await uploadReceipt(saved.id, await prepareReceipt(file));
         else if (edit?.hasReceipt && removeExisting) await api(`/expenses/${edit.id}/receipt`, 'DELETE');
@@ -279,6 +413,7 @@ export function ExpenseForm({ edit, onDone }: { edit?: Expense; onDone: () => vo
       await qc.invalidateQueries({ queryKey: ['expenses'] });
       onDone();
     } catch (x) {
+      if (!edit && offline && isNetworkError(x)) return saveOffline();
       setErr((x as Error).message);
       setBusy(false);
     }
@@ -297,9 +432,38 @@ export function ExpenseForm({ edit, onDone }: { edit?: Expense; onDone: () => vo
 
   return (
     <form onSubmit={submit} className="form">
-      <Field label={t('Amount')}>
-        <MoneyInput value={amount} onChange={setAmount} suffix={user.currency} autoFocus={!edit} />
-      </Field>
+      {fxOn ? (
+        <div className="fx-box">
+          <div className="grid2">
+            <Field label={t('Amount in {currency}', { currency: fxCurrency })}>
+              <MoneyInput value={fxAmount} onChange={setFxAmount} suffix={fxCurrency} autoFocus={!edit} />
+            </Field>
+            <Field label={t('Currency')}>
+              <select className="input" value={fxCurrency} onChange={(e) => setFxCurrency(e.target.value)}>
+                {CURRENCIES.filter((c) => c !== user.currency).map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field label={t('Rate: 1 {from} = ? {to}', { from: fxCurrency, to: user.currency })}>
+            <input className="input" dir="ltr" inputMode="decimal" value={fxRate} onChange={(e) => setFxRate(e.target.value)} placeholder="49.50" />
+          </Field>
+          <p className="small" aria-live="polite">
+            {total ? t('= {amount} in your currency', { amount: fmtMoney(total, user.currency) }) : t('Type the amount and the rate to see it in your currency.')}
+          </p>
+        </div>
+      ) : (
+        <Field label={splitOn ? t('Total paid') : t('Amount')}>
+          <MoneyInput value={amount} onChange={setAmount} suffix={user.currency} autoFocus={!edit} />
+        </Field>
+      )}
+      {!quick && (
+        <label className="check">
+          <input type="checkbox" checked={fxOn} onChange={(e) => setFxOn(e.target.checked)} />
+          <span>{t('Paid in another currency')}</span>
+        </label>
+      )}
       <Field label={t('Category')}>
         <select className="input" value={catId} onChange={(e) => setCatId(Number(e.target.value))}>
           {cats.map((c) => (
@@ -312,10 +476,87 @@ export function ExpenseForm({ edit, onDone }: { edit?: Expense; onDone: () => vo
       <Field label={t('What for? (optional)')}>
         <input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={200} />
       </Field>
+      {chips.length > 0 && (
+        <div className="chips wrap suggestion-chips" role="group" aria-label={t('Often used')}>
+          {chips.map((s) => (
+            <button
+              key={s.description}
+              type="button"
+              className="chip"
+              onClick={() => {
+                setDesc(s.description);
+                if (cats.some((c) => c.id === s.categoryId)) setCatId(s.categoryId);
+              }}
+            >
+              {s.description}
+            </button>
+          ))}
+        </div>
+      )}
       <Field label={t('Date')}>
         <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} required />
       </Field>
 
+      {!quick && (
+        <>
+          <Field label={t('Tags (optional)')} hint={t('Up to 5, like #trip #friends. Tap one below to add it.')}>
+            <input className="input" dir="auto" value={tagText} onChange={(e) => setTagText(e.target.value)} placeholder="#trip #friends" autoCapitalize="none" />
+          </Field>
+          {tagChips.length > 0 && (
+            <div className="chips wrap suggestion-chips" role="group" aria-label={t('Your tags')}>
+              {tagChips.map((x) => (
+                <button key={x.tag} type="button" className="chip" onClick={() => setTagText((s) => `${s.trim()} #${x.tag}`.trim())}>
+                  #{x.tag}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <label className="check">
+            <input type="checkbox" checked={splitOn} onChange={(e) => setSplitOn(e.target.checked)} />
+            <span>
+              {t('Split with someone')}
+              <span className="tiny mute block">{t('You record your share; their share goes to "Owed to me" in Loans.')}</span>
+            </span>
+          </label>
+          {splitOn && (
+            <div className="split-box">
+              <Field label={t('Split with')}>
+                <input className="input" value={person} onChange={(e) => setPerson(e.target.value)} maxLength={60} list="split-people" />
+                <datalist id="split-people">
+                  {people.map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
+              </Field>
+              <Segmented
+                value={splitMode}
+                onChange={setSplitMode}
+                options={[
+                  { value: 'even', label: t('Half each') },
+                  { value: 'share', label: t('Their share') },
+                ]}
+              />
+              {splitMode === 'share' && (
+                <Field label={t('Their share')}>
+                  <MoneyInput value={theirShare} onChange={setTheirShare} suffix={user.currency} />
+                </Field>
+              )}
+              {shares && shares.their > 0 && shares.mine > 0 && (
+                <p className="small" aria-live="polite">
+                  {t('You pay {mine} · {name} owes you {their}', {
+                    mine: fmtMoney(shares.mine, user.currency),
+                    their: fmtMoney(shares.their, user.currency),
+                    name: person.trim() || t('they'),
+                  })}
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {!quick && (
       <div className="field">
         <span className="field-label">{t('Receipt (optional)')}</span>
         <input
@@ -357,6 +598,7 @@ export function ExpenseForm({ edit, onDone }: { edit?: Expense; onDone: () => vo
         )}
         {removeExisting && !file && <span className="field-hint">{t('The receipt will be removed when you save.')}</span>}
       </div>
+      )}
 
       <FormError text={err} />
       <SaveButton label={edit ? t('Save changes') : t('Add expense')} busy={busy} />

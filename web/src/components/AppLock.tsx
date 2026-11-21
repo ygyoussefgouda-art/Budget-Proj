@@ -1,0 +1,157 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { Delete, Lock } from 'lucide-react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { api } from '../api';
+import { t } from '../i18n';
+import { clearKit } from '../offline';
+import { clearFailures, markActive, pinMatches, readFailures, readLock, recordFailure, removeLock, shouldLock } from '../pin';
+import { useApp } from '../state';
+import { COLORS } from './ui';
+
+/**
+ * Covers the app with a PIN pad when it comes back after the chosen time in the background
+ * (or is opened again). While locked, the app itself isn't rendered at all.
+ */
+export function AppLock({ children }: { children: ReactNode }) {
+  const { user } = useApp();
+  const [locked, setLocked] = useState(() => shouldLock(user.id));
+
+  useEffect(() => {
+    if (!locked) markActive();
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (!locked) markActive();
+      } else if (shouldLock(user.id)) {
+        setLocked(true);
+      }
+    };
+    const onHide = () => !locked && markActive();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onHide);
+    // Keep "last used" fresh while the app is open, so a quick reload doesn't lock it.
+    const timer = setInterval(() => document.visibilityState === 'visible' && !locked && markActive(), 15_000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onHide);
+      clearInterval(timer);
+    };
+  }, [locked, user.id]);
+
+  if (locked) {
+    return (
+      <LockScreen
+        onUnlock={() => {
+          markActive();
+          setLocked(false);
+        }}
+      />
+    );
+  }
+  return <>{children}</>;
+}
+
+function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+  const { user } = useApp();
+  const qc = useQueryClient();
+  const cfg = readLock(user.id);
+  const length = cfg?.length ?? 4;
+  const [pin, setPin] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const waitUntil = readFailures(user.id).until;
+  const waiting = waitUntil > now;
+
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [waiting]);
+
+  const check = useCallback(
+    async (value: string) => {
+      if (!cfg) return onUnlock();
+      setChecking(true);
+      const ok = await pinMatches(value, cfg);
+      setChecking(false);
+      if (ok) {
+        clearFailures(user.id);
+        onUnlock();
+        return;
+      }
+      const f = recordFailure(user.id);
+      setNow(Date.now());
+      setPin('');
+      setErr(f.until > Date.now() ? t('Too many wrong tries. Wait a moment and try again.') : t('Wrong PIN. Try again.'));
+    },
+    [cfg, onUnlock, user.id],
+  );
+
+  const press = useCallback(
+    (d: string) => {
+      if (checking || waiting) return;
+      setErr(null);
+      setPin((p) => {
+        const next = (p + d).slice(0, length);
+        if (next.length === length) void check(next);
+        return next;
+      });
+    },
+    [check, checking, length, waiting],
+  );
+  const back = () => setPin((p) => p.slice(0, -1));
+
+  // Keyboard: digits, Backspace.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (/^\d$/.test(e.key)) press(e.key);
+      else if (e.key === 'Backspace') back();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [press]);
+
+  const forgot = async () => {
+    // Forgot the PIN: sign out; signing in again with the password starts without a lock.
+    removeLock(user.id);
+    clearKit();
+    await api('/auth/logout', 'POST').catch(() => undefined);
+    qc.setQueryData(['me'], null);
+    qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
+  };
+
+  const secs = Math.ceil((waitUntil - now) / 1000);
+  return (
+    <div className="lock-screen" role="dialog" aria-modal="true" aria-label={t('App locked')}>
+      <span className="lock-icon" aria-hidden="true">
+        <Lock size={28} />
+      </span>
+      <h1 className="lock-title">{t('Enter your PIN')}</h1>
+      <div className="pin-dots" aria-label={t('{n} of {m} digits entered', { n: pin.length, m: length })} role="status">
+        {Array.from({ length }, (_, i) => (
+          <span key={i} className={`pin-dot ${i < pin.length ? 'on' : ''}`} />
+        ))}
+      </div>
+      <p className="lock-msg" role="alert" style={{ color: err ? COLORS.red : undefined }}>
+        {waiting ? t('Try again in {s} seconds.', { s: secs }) : (err ?? ' ')}
+      </p>
+      <div className="pin-pad" dir="ltr">
+        {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+          <button key={d} type="button" className="pin-key" onClick={() => press(d)} disabled={waiting || checking}>
+            {d}
+          </button>
+        ))}
+        <span />
+        <button type="button" className="pin-key" onClick={() => press('0')} disabled={waiting || checking}>
+          0
+        </button>
+        <button type="button" className="pin-key pin-back" onClick={back} aria-label={t('Delete last digit')}>
+          <Delete size={22} />
+        </button>
+      </div>
+      <button type="button" className="btn text small" onClick={forgot}>
+        {t('Forgot your PIN? Sign out')}
+      </button>
+    </div>
+  );
+}

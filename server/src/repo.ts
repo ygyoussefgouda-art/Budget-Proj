@@ -10,10 +10,17 @@ export const mapExpense = (r: Row) => ({
   amount: r.amount,
   ...(r.category_name !== undefined ? { categoryName: r.category_name } : {}),
   ...(r.has_receipt !== undefined ? { hasReceipt: r.has_receipt } : {}),
+  tags: (r.tags as string[] | undefined) ?? [],
+  // Split with someone: the linked "Owed to me" loan entry holds their share.
+  split: r.split_loan_id ? { loanId: r.split_loan_id, person: r.split_person, share: r.split_share } : null,
+  foreign: r.orig_amount ? { amount: r.orig_amount, currency: r.orig_currency, rate: Number(r.fx_rate) } : null,
 });
 
 /** SQL column: whether expense alias `e` has a receipt attached. */
 export const HAS_RECEIPT = 'EXISTS (SELECT 1 FROM receipts rc WHERE rc.expense_id = e.id) AS has_receipt';
+/** SQL: extra expense columns (receipt flag + split), used with SPLIT_JOIN. */
+export const EXPENSE_EXTRAS = `${HAS_RECEIPT}, sl.id AS split_loan_id, sl.person AS split_person, sl.amount AS split_share`;
+export const SPLIT_JOIN = 'LEFT JOIN loan_entries sl ON sl.expense_id = e.id';
 export const mapGoal = (r: Row) => ({
   id: r.id,
   name: r.name,
@@ -39,7 +46,26 @@ export const mapLoan = (r: Row) => ({
   repayment: r.kind === 'repayment',
   amount: r.amount,
   note: r.note,
+  /** Created by splitting this expense (edit the expense to change it). */
+  expenseId: r.expense_id ?? null,
 });
+
+/** Expense list filters (also used by the export). Needs `expenses e JOIN categories c`. */
+export function expenseWhere(u: number, f: { from?: string; to?: string; categoryId?: number; q?: string; tag?: string }) {
+  const where = ['e.user_id = $1'];
+  const params: unknown[] = [u];
+  const add = (sql: string, v: unknown) => {
+    params.push(v);
+    where.push(sql.replaceAll('?', `$${params.length}`));
+  };
+  if (f.from) add('e.date >= ?::date', f.from);
+  if (f.to) add('e.date <= ?::date', f.to);
+  if (f.categoryId) add('e.category_id = ?', f.categoryId);
+  if (f.tag) add('? = ANY(e.tags)', f.tag);
+  // Search matches the description, the category name and the tags.
+  if (f.q) add(`(e.description ILIKE ? OR c.name ILIKE ? OR array_to_string(e.tags, ' ') ILIKE ?)`, `%${f.q.replace(/[\\%_]/g, '\\$&')}%`);
+  return { where: where.join(' AND '), params };
+}
 
 /**
  * SQL fragment: `col` falls inside budget month `p` ('YYYY-MM'), which starts on

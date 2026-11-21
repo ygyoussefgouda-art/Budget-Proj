@@ -4,6 +4,7 @@ import { createApp } from './app.js';
 import { configureAuth, ensureOwner } from './auth.js';
 import { createPgDb, createPgliteDb, type Db } from './db.js';
 import { migrate } from './migrate.js';
+import { purgeTrash } from './undo.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..'); // server/ (dev) or /app (Docker)
@@ -61,17 +62,31 @@ async function main() {
   // New accounts start empty. SEED_EXAMPLE_DATA=true fills a brand-new owner account with example data.
   if (password) await ensureOwner(db, password, process.env.SEED_EXAMPLE_DATA === 'true');
 
+  // ADMIN_USERNAMES=alice,bob: these accounts (and "owner") can open the admin page.
+  // A listed name that doesn't exist yet is blocked from sign-up, so nobody else can grab it.
+  const adminUsernames = (process.env.ADMIN_USERNAMES ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  for (const name of adminUsernames) {
+    const found = await db.query('SELECT 1 FROM users WHERE username = $1', [name]);
+    if (!found.rows.length) console.warn(`[app] ADMIN_USERNAMES: "${name}" has no account yet (sign-up with that name is blocked).`);
+  }
+
   const app = createApp(db, {
     publicDir: process.env.PUBLIC_DIR ?? path.join(root, 'public'),
     trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
     allowSignup,
     inviteCode: process.env.SIGNUP_INVITE_CODE ?? '',
     hsts: process.env.HSTS === 'true',
+    adminUsernames,
     loginLimit: positiveInt(process.env.LOGIN_RATE_LIMIT),
     signupLimit: positiveInt(process.env.SIGNUP_RATE_LIMIT),
   });
   const port = Number(process.env.PORT ?? 3000);
   const server = app.listen(port, () => console.log(`[app] Budget me listening on :${port}`));
+  // Deleted items are kept briefly for "Undo"; clear the expired ones every few minutes.
+  setInterval(() => purgeTrash(db).catch((e) => console.error('[db] trash purge failed', e)), 5 * 60_000).unref();
 
   const stop = (sig: string) => {
     console.log(`[app] ${sig} received, shutting down`);

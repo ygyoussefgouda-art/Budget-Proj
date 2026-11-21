@@ -1,13 +1,18 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Download, GraduationCap, KeyRound, Languages, LogOut, MonitorSmartphone, Trash2, Upload, UserX } from 'lucide-react';
+import { ArrowLeft, Download, FileSpreadsheet, GraduationCap, ShieldCheck, KeyRound, Languages, LogOut, MonitorSmartphone, Trash2, Upload, UserX } from 'lucide-react';
 import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { ExportCardBody } from '../components/ExportLinks';
 import MonthStartPicker from '../components/MonthStartPicker';
 import { Sheet, useOverlay } from '../components/Overlays';
 import { restartTutorial } from '../components/Tutorial';
 import { Card, Field, FormError, IconButton, PageHeader, SaveButton, SectionTitle, Segmented } from '../components/ui';
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
+import { clearKit } from '../offline';
+import { removeLock } from '../pin';
+import AppLockSettings from '../components/AppLockSettings';
+import ContactCard from '../components/ContactCard';
 import { CURRENCIES, useApp } from '../state';
 import { getThemePref, setThemePref, type ThemePref } from '../theme';
 import { APP_NAME, APP_VERSION, STAGE, VERSION_KEY } from '../version';
@@ -81,6 +86,8 @@ export default function Settings() {
 
   /** Back to the sign-in screen and forget all cached data. */
   const signedOut = () => {
+    clearKit(); // the offline kit (name, categories) leaves the phone too
+    removeLock(user.id); // and the app lock: signing in again starts without one
     // Update the observed ['me'] query first (shows the login screen), then drop cached data.
     qc.setQueryData(['me'], null);
     qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
@@ -144,6 +151,11 @@ export default function Settings() {
       </Card>
 
       <Card>
+        <SectionTitle trailing={<FileSpreadsheet size={18} className="mute" />}>{t('Export to a spreadsheet')}</SectionTitle>
+        <ExportCardBody />
+      </Card>
+
+      <Card>
         <SectionTitle>{t('Backup & restore')}</SectionTitle>
         <p className="small mute">
           {t('Your data is stored on your server. Download a backup now and then; you can also restore a backup made by the old phone app.')}
@@ -161,6 +173,8 @@ export default function Settings() {
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => restore(e.target.files?.[0])} />
         </div>
       </Card>
+
+      <AppLockSettings />
 
       <Card>
         <SectionTitle>{t('Account')}</SectionTitle>
@@ -203,6 +217,20 @@ export default function Settings() {
           <Trash2 size={18} /> {t('Erase all data')}
         </button>
       </Card>
+
+      {user.isAdmin && (
+        <Card>
+          <SectionTitle trailing={<ShieldCheck size={18} className="mute" />}>{t('Admin')}</SectionTitle>
+          <p className="small mute">{t('Manage accounts, sign-ups and password resets.')}</p>
+          <div className="stack" style={{ marginTop: 10 }}>
+            <button className="btn tonal block" onClick={() => nav('/admin')}>
+              <ShieldCheck size={18} /> {t('Open the admin page')}
+            </button>
+          </div>
+        </Card>
+      )}
+
+      <ContactCard />
 
       <Card>
         <SectionTitle trailing={<span className="stage-badge">{t(STAGE)}</span>}>{t('About')}</SectionTitle>

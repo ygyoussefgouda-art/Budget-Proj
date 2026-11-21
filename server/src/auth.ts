@@ -78,7 +78,7 @@ export function needsRehash(stored: string) {
   return !h || h.N < PARAMS.N || h.r < PARAMS.r || h.p < PARAMS.p;
 }
 
-const sha256 = (t: string) => createHash('sha256').update(t).digest('hex');
+export const sha256 = (t: string) => createHash('sha256').update(t).digest('hex');
 
 // ---------- settings ----------
 let cookieSecureMode: 'auto' | 'always' | 'never' = 'auto';
@@ -155,13 +155,16 @@ export const requireAuth =
     }
     const hash = sha256(token);
     const r = await db.query(
-      `SELECT ${USER_COLUMNS}, s.expires_at < now() + make_interval(days => $2) AS refresh
+      `SELECT ${USER_COLUMNS}, s.expires_at < now() + make_interval(days => $2) AS refresh,
+              (u.last_active_at IS NULL OR u.last_active_at < now() - interval '1 hour') AS stale
        FROM sessions s JOIN users u ON u.id = s.user_id
        WHERE s.token_hash = $1 AND s.expires_at > now()`,
       [hash, IDLE_DAYS - 1],
     );
     if (r.rows.length === 0) throw new HttpError(401, 'Your session expired. Please sign in again.', 'unauthenticated');
-    const { refresh, ...user } = r.rows[0];
+    const { refresh, stale, ...user } = r.rows[0];
+    // "Last active" for the admin page, written at most about once an hour per account.
+    if (stale) await db.query('UPDATE users SET last_active_at = now() WHERE id = $1', [user.id]);
     // Sliding expiry (at most once a day): idle timeout, capped at MAX_DAYS after sign-in.
     if (refresh) {
       await db.query(
@@ -174,7 +177,23 @@ export const requireAuth =
     next();
   });
 
-const publicUser = (u: AuthUser) => ({ id: u.id, username: u.username, currency: u.currency, monthStartDay: u.monthStartDay });
+// ---------- admins ----------
+/** Accounts listed in ADMIN_USERNAMES (plus the built-in "owner") may open the admin page. */
+let adminNames = new Set<string>();
+export function setAdminUsernames(names: string[]) {
+  adminNames = new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean));
+}
+export const isAdminName = (username: string) => username === OWNER || adminNames.has(username);
+/** Listed admin names can't be taken by sign-up (create the account first, then list it). */
+export const isListedAdminName = (username: string) => adminNames.has(username.trim().toLowerCase());
+
+export const publicUser = (u: AuthUser) => ({
+  id: u.id,
+  username: u.username,
+  currency: u.currency,
+  monthStartDay: u.monthStartDay,
+  isAdmin: isAdminName(u.username),
+});
 
 // A real hash of a random password, so a login for an unknown username costs the
 // same scrypt work as a real one (response time doesn't reveal which usernames exist).
@@ -204,12 +223,13 @@ export function loginHandler(db: Db, parse: (b: unknown) => { username?: string;
 export function signupHandler(
   db: Db,
   parse: (b: unknown) => { username: string; password: string; inviteCode?: string },
-  opts: () => { allowed: boolean; inviteCode: string },
+  opts: () => Promise<{ allowed: boolean; inviteCode: string }>,
 ) {
   return ah(async (req: Request, res: Response) => {
-    const o = opts();
+    const o = await opts();
     if (!o.allowed) throw new HttpError(403, 'Creating new accounts is turned off on this server.', 'signup_disabled');
     const { username, password, inviteCode } = parse(req.body);
+    if (isListedAdminName(username)) throw new HttpError(403, 'That username is reserved, please choose another one.', 'reserved');
     if (o.inviteCode) {
       const a = Buffer.from(sha256(inviteCode ?? ''));
       const b = Buffer.from(sha256(o.inviteCode));
@@ -241,7 +261,7 @@ export function logoutHandler(db: Db) {
 
 // ---------- account controls (signed in) ----------
 
-async function checkPassword(db: Db, userId: number, password: string) {
+export async function checkPassword(db: Db, userId: number, password: string) {
   const r = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
   if (!r.rows.length || !(await verifyPassword(password, r.rows[0].password_hash))) {
     throw new HttpError(403, 'Your current password is not right.', 'bad_password');
