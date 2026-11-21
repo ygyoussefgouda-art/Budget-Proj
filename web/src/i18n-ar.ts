@@ -88,8 +88,8 @@ export const AR: Record<string, string> = {
   'Signing in…': 'بندخّلك…',
   'Already have an account?': 'عندك حساب؟',
   'New here?': 'أول مرة هنا؟',
-  'Early test version {v}. Things may change between updates.': 'نسخة تجريبية {v}. حاجات ممكن تتغير مع التحديثات.',
-  'Version {v}: early test version': 'إصدار {v}: نسخة تجريبية',
+  'Early test version: things may change between updates.': 'نسخة تجريبية: حاجات ممكن تتغير مع التحديثات.',
+  'Version alpha {v}': 'إصدار ألفا {v}',
 
   // ---- home ----
   'Your budget left': 'اللي فاضل من ميزانيتك',
@@ -327,7 +327,6 @@ export const AR: Record<string, string> = {
   'All expenses, receipts, loans, savings and budgets are deleted. Export a backup first if unsure.': 'كل المصاريف والإيصالات والسلف والتحويش والميزانيات هتتمسح. نزّل نسخة احتياطية الأول لو مش متأكد.',
   'All data erased.': 'كل البيانات اتمسحت.',
   'About': 'عن التطبيق',
-  'version {v}': 'إصدار {v}',
   'This is an alpha: an early test version. Screens and features may still change, and you might find bugs. Download a backup now and then so your data is safe.': 'دي نسخة تجريبية لسه في الأول. الشاشات والحاجات ممكن تتغير، وممكن تلاقي شوية مشاكل. نزّل نسخة احتياطية كل فترة عشان بياناتك تبقى في أمان.',
   'Show the tutorial again': 'ورّيني الشرح تاني',
 

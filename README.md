@@ -1,4 +1,4 @@
-# Budget me · v0.1.0-alpha
+# Budget me · Version alpha 0.1.0
 
 > **Alpha:** this is an early test version. Features and screens may change between updates, so download a backup now and then (Settings → Download backup).
 

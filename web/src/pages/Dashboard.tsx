@@ -19,7 +19,7 @@ import { Donut } from '../components/charts';
 import { Sheet } from '../components/Overlays';
 import type { Category } from '../domain/calc';
 import { t } from '../i18n';
-import { APP_VERSION, STAGE } from '../version';
+import { APP_VERSION, STAGE, VERSION_KEY } from '../version';
 import { BudgetRowTile, MonthBar, TxnTile } from '../components/rows';
 import { AddButton, Card, COLORS, DeleteButton, Empty, IconBadge, IconButton, PageHeader, PALETTE, SectionTitle, StatTile } from '../components/ui';
 import { monthLabel, useApp } from '../state';
@@ -44,10 +44,12 @@ export default function Dashboard() {
       <PageHeader
         left={<IconButton icon={Settings} label={t('Settings')} onClick={() => nav('/settings')} />}
         title={
-          <span dir="ltr">
-            Budget <span style={{ color: COLORS.accent }}>me</span>
-            <span className="stage-badge" title={t('Version {v}: early test version', { v: APP_VERSION })}>
-              {t(STAGE)}
+          <span className="brand">
+            <span dir="ltr">
+              Budget <span style={{ color: COLORS.accent }}>me</span>
+            </span>
+            <span className="stage-badge" title={t(STAGE)}>
+              {t(VERSION_KEY, { v: APP_VERSION })}
             </span>
           </span>
         }

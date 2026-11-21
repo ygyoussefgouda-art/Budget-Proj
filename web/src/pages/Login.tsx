@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { api } from '../api';
 import { COLORS, FormError, Segmented } from '../components/ui';
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
-import { APP_VERSION, STAGE } from '../version';
+import { APP_VERSION, STAGE, VERSION_KEY } from '../version';
 
 type Mode = 'signin' | 'signup';
 const USERNAME_RE = /^[a-z0-9._-]{3,30}$/;
@@ -80,11 +80,15 @@ export default function Login() {
             </select>
           </label>
         </div>
-        <h1 dir="ltr" style={{ textAlign: 'start' }}>
-          Budget <span style={{ color: COLORS.accent }}>me</span>
-          <span className="stage-badge">{t(STAGE)}</span>
+        <h1 className="brand">
+          <span dir="ltr">
+            Budget <span style={{ color: COLORS.accent }}>me</span>
+          </span>
+          <span className="stage-badge" title={t(STAGE)}>
+            {t(VERSION_KEY, { v: APP_VERSION })}
+          </span>
         </h1>
-        <p className="tiny mute">{t('Early test version {v}. Things may change between updates.', { v: APP_VERSION })}</p>
+        <p className="tiny mute">{t('Early test version: things may change between updates.')}</p>
 
         {signupEnabled && (
           <Segmented

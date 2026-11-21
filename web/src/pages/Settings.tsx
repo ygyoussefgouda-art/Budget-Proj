@@ -10,7 +10,7 @@ import { Card, Field, FormError, IconButton, PageHeader, SaveButton, SectionTitl
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
 import { CURRENCIES, useApp } from '../state';
 import { getThemePref, setThemePref, type ThemePref } from '../theme';
-import { APP_NAME, APP_VERSION, STAGE } from '../version';
+import { APP_NAME, APP_VERSION, STAGE, VERSION_KEY } from '../version';
 
 export default function Settings() {
   const { user, refresh } = useApp();
@@ -207,7 +207,7 @@ export default function Settings() {
       <Card>
         <SectionTitle trailing={<span className="stage-badge">{t(STAGE)}</span>}>{t('About')}</SectionTitle>
         <p className="small">
-          {APP_NAME} <span className="mute">{t('version {v}', { v: APP_VERSION })}</span>
+          {APP_NAME} <span className="mute">{t(VERSION_KEY, { v: APP_VERSION })}</span>
         </p>
         <p className="small mute" style={{ marginTop: 6 }}>
           {t('This is an alpha: an early test version. Screens and features may still change, and you might find bugs. Download a backup now and then so your data is safe.')}
