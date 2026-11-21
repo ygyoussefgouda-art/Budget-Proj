@@ -1,3 +1,4 @@
+import { log } from './log.js';
 import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual, type ScryptOptions } from 'node:crypto';
 import type { CookieOptions, Request, RequestHandler, Response } from 'express';
 import type { Db, Queryable } from './db.js';
@@ -120,7 +121,7 @@ export async function ensureOwner(db: Db, password: string, seed = false): Promi
       await q.query('UPDATE users SET password_hash = $1 WHERE id = $2', [await hashPassword(password), id]);
       if (changed) await q.query('DELETE FROM sessions WHERE user_id = $1', [id]);
     });
-    if (changed) console.log('[auth] APP_PASSWORD changed: password updated and old sessions signed out.');
+    if (changed) log.info('APP_PASSWORD changed: password updated and old sessions signed out.');
   }
   return id as number;
 }

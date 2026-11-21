@@ -4,6 +4,7 @@ import { createApp } from './app.js';
 import { configureAuth, ensureOwner } from './auth.js';
 import { createPgDb, createPgliteDb, type Db } from './db.js';
 import { migrate } from './migrate.js';
+import { APP_VERSION, log } from './log.js';
 import { purgeTrash } from './undo.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -20,7 +21,7 @@ const parseTrustProxy = (v: string | undefined): string | number | boolean | und
   if (/^\d+$/.test(v.trim())) return Number(v.trim());
   if (v.trim() === 'false') return false;
   if (v.trim() === 'true') {
-    console.warn('[app] TRUST_PROXY=true trusts any X-Forwarded-For value; rate limits could be bypassed. Use 1 instead.');
+    log.warn('TRUST_PROXY=true trusts any X-Forwarded-For value; rate limits could be bypassed. Use 1 instead.');
     return true;
   }
   return v;
@@ -29,7 +30,7 @@ const parseTrustProxy = (v: string | undefined): string | number | boolean | und
 async function main() {
   const production = process.env.NODE_ENV === 'production';
   const fail = (msg: string) => {
-    console.error(`[app] ${msg}`);
+    log.fatal(msg);
     process.exit(1);
   };
 
@@ -44,12 +45,12 @@ async function main() {
   }
   configureAuth({ cookieSecure: process.env.COOKIE_SECURE });
   if (production && process.env.COOKIE_SECURE === 'false') {
-    console.warn('[app] COOKIE_SECURE=false: sign-in cookies can travel over plain HTTP. Use only for testing.');
+    log.warn('COOKIE_SECURE=false: sign-in cookies can travel over plain HTTP. Use only for testing.');
   }
   // Anyone who can open the app may create an account, unless ALLOW_SIGNUP=false.
   const allowSignup = process.env.ALLOW_SIGNUP !== 'false';
   if (!allowSignup && !password) {
-    console.warn('[app] ALLOW_SIGNUP=false and no APP_PASSWORD: only existing accounts can sign in.');
+    log.warn('ALLOW_SIGNUP=false and no APP_PASSWORD: only existing accounts can sign in.');
   }
 
   // DB_DRIVER=pglite runs an embedded Postgres for local development without Docker.
@@ -58,7 +59,7 @@ async function main() {
 
   const migrationsDir = process.env.MIGRATIONS_DIR ?? path.join(root, 'migrations');
   const applied = await migrate(db, migrationsDir);
-  if (applied.length) console.log(`[db] applied migrations: ${applied.join(', ')}`);
+  if (applied.length) log.info({ migrations: applied }, 'applied migrations');
   // New accounts start empty. SEED_EXAMPLE_DATA=true fills a brand-new owner account with example data.
   if (password) await ensureOwner(db, password, process.env.SEED_EXAMPLE_DATA === 'true');
 
@@ -70,7 +71,7 @@ async function main() {
     .filter(Boolean);
   for (const name of adminUsernames) {
     const found = await db.query('SELECT 1 FROM users WHERE username = $1', [name]);
-    if (!found.rows.length) console.warn(`[app] ADMIN_USERNAMES: "${name}" has no account yet (sign-up with that name is blocked).`);
+    if (!found.rows.length) log.warn(`ADMIN_USERNAMES: "${name}" has no account yet (sign-up with that name is blocked).`);
   }
 
   const app = createApp(db, {
@@ -82,14 +83,15 @@ async function main() {
     adminUsernames,
     loginLimit: positiveInt(process.env.LOGIN_RATE_LIMIT),
     signupLimit: positiveInt(process.env.SIGNUP_RATE_LIMIT),
+    minNativeVersionCode: positiveInt(process.env.MIN_NATIVE_VERSION_CODE),
   });
   const port = Number(process.env.PORT ?? 3000);
-  const server = app.listen(port, () => console.log(`[app] Budget me listening on :${port}`));
+  const server = app.listen(port, () => log.info({ port, version: APP_VERSION }, 'Budget me listening'));
   // Deleted items are kept briefly for "Undo"; clear the expired ones every few minutes.
-  setInterval(() => purgeTrash(db).catch((e) => console.error('[db] trash purge failed', e)), 5 * 60_000).unref();
+  setInterval(() => purgeTrash(db).catch((err) => log.error({ err }, 'trash purge failed')), 5 * 60_000).unref();
 
   const stop = (sig: string) => {
-    console.log(`[app] ${sig} received, shutting down`);
+    log.info({ signal: sig }, 'shutting down');
     server.close(() => {
       db.close().finally(() => process.exit(0));
     });
@@ -100,6 +102,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error('[app] failed to start', e);
+  log.fatal({ err: e }, 'failed to start');
   process.exit(1);
 });

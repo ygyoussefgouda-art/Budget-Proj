@@ -1,3 +1,4 @@
+import { log } from './log.js';
 import pg from 'pg';
 
 export type Row = Record<string, any>;
@@ -26,7 +27,7 @@ export function createPgDb(): Db {
   pg.types.setTypeParser(INT8, (v) => Number(v));
   pg.types.setTypeParser(NUMERIC, (v) => Number(v));
   const pool = new pg.Pool({ max: Number(process.env.PG_POOL_MAX ?? 10) });
-  pool.on('error', (e) => console.error('[db] idle client error', e));
+  pool.on('error', (err) => log.error({ err }, 'idle database client error'));
 
   type PgLike = { query: (text: string, params?: unknown[]) => Promise<pg.QueryResult> };
   const wrap = (c: PgLike): Queryable => ({

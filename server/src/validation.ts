@@ -83,6 +83,15 @@ export const schemas = {
       .transform((v) => v || ''),
   }),
   adminDeleteUser: z.object({ confirmUsername: z.string().max(60), password: z.string().min(1).max(200) }),
+  /** A crash report from the web app (ErrorBoundary / window.onerror). Short, plain text only. */
+  clientError: z.object({
+    message: z.string().trim().min(1).max(500),
+    stack: z.string().max(4000).optional(),
+    componentStack: z.string().max(4000).optional(),
+    page: z.string().max(300).optional(),
+    version: z.string().max(30).optional(),
+    kind: z.enum(['render', 'error', 'unhandledrejection']).optional(),
+  }),
   resetPassword: z
     .object({
       username: z.string().trim().toLowerCase().min(1).max(60),

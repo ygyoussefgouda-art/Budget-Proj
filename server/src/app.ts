@@ -17,6 +17,7 @@ import {
 } from './auth.js';
 import type { Db } from './db.js';
 import { ah, errorHandler, HttpError } from './http.js';
+import { APP_VERSION, log, requestId, requestLogger } from './log.js';
 import { receiptRoutes } from './receipts.js';
 import { recurringRoutes } from './recurring.js';
 import { exportRoutes } from './export.js';
@@ -44,6 +45,10 @@ export interface AppOptions {
   csrfHeader?: boolean;
   /** Usernames that may open the admin page (the built-in "owner" always can). From ADMIN_USERNAMES. */
   adminUsernames?: string[];
+  /** Installed Android apps below this versionCode must update first (GET /api/version). Default 0. */
+  minNativeVersionCode?: number;
+  /** Crash reports per IP per 15 minutes (default 30). */
+  clientErrorLimit?: number;
 }
 
 export const CSRF_HEADER = 'x-requested-with';
@@ -103,6 +108,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   app.use(cookieParser());
 
   // ---------- /api ----------
+  app.use('/api', requestLogger); // request id + one log line per request
   app.use('/api', (_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store'); // never keep personal data in browser/proxy caches
     next();
@@ -144,6 +150,23 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       res.status(503).json({ ok: false });
     }
   });
+
+  // Which version is running. The web app and (later) the Android app compare against it.
+  api.get('/version', (_req, res) => {
+    res.json({ web: APP_VERSION, api: APP_VERSION, minNativeVersionCode: opts.minNativeVersionCode ?? 0 });
+  });
+
+  // Crash reports from the web app (also before sign-in, e.g. a crash on the login screen).
+  // Small, rate-limited, and only the listed text fields are written to the log.
+  api.post(
+    '/client-errors',
+    limiter(15, opts.clientErrorLimit ?? 30, 'Too many reports. Try again later.'),
+    (req, res) => {
+      const r = schemas.clientError.parse(req.body);
+      log.warn({ reqId: requestId(res), client: r }, 'client error');
+      res.status(204).end();
+    },
+  );
 
   // .env defaults; an admin can change them in the app (stored in app_settings).
   const signupDefaults = { allowSignup: opts.allowSignup ?? true, inviteCode: opts.inviteCode ?? '' };

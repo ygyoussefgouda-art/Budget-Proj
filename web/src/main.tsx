@@ -4,17 +4,22 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ApiError } from './api';
 import App from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { OverlayProvider } from './components/Overlays';
+import { UpdateBar } from './components/UpdateBar';
+import { watchGlobalErrors } from './errors';
 import { I18nProvider } from './i18n';
 // Fonts are bundled with the app: no Google request, works offline.
 import '@fontsource-variable/manrope'; // body text
 import '@fontsource/montserrat/700.css'; // headings (Montserrat Bold)
 import '@fontsource-variable/cairo'; // Arabic letters (Manrope/Montserrat have none)
 import './styles.css';
+import { registerServiceWorker } from './swUpdate';
 import { applyTheme, watchSystemTheme } from './theme';
 
 applyTheme();
 watchSystemTheme();
+watchGlobalErrors();
 
 // Any 401 (expired session, password changed) sends the user back to the login screen.
 const onError = (e: unknown) => {
@@ -35,20 +40,20 @@ const queryClient: QueryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <I18nProvider>
-          <OverlayProvider>
-            <App />
-          </OverlayProvider>
-        </I18nProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <I18nProvider>
+            <OverlayProvider>
+              <App />
+              <UpdateBar />
+            </OverlayProvider>
+          </I18nProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => undefined);
-  });
-}
+// New versions download in the background; the app asks before switching (UpdateBar).
+if (import.meta.env.PROD) registerServiceWorker();

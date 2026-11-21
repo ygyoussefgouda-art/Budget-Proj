@@ -1,14 +1,18 @@
 // Minimal service worker: makes the app installable and opens instantly.
 // API calls always go to the network (your data is never cached here).
-const CACHE = 'sb-shell-v3';
+const CACHE = 'sb-shell-v4';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches
       .open(CACHE)
-      .then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg', '/theme-init.js']))
-      .then(() => self.skipWaiting()),
+      .then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg', '/theme-init.js'])),
   );
+});
+
+// A new version waits until the user taps Reload in the app (no silent switch mid-use).
+self.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

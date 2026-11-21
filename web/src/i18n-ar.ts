@@ -731,4 +731,15 @@ export const AR: Record<string, string> = {
   'Use "Delete my account" in Settings to delete your own account.': 'استخدم "امسح حسابي" من الإعدادات عشان تمسح حسابك.',
   'The built-in owner account cannot be removed here.': 'حساب المالك الأساسي مينفعش يتشال من هنا.',
   'That reset code is not right or has expired.': 'كود إعادة التعيين غلط أو خلص وقته.',
-  'That username is reserved, please choose another one.': 'اسم المستخدم ده محجوز، اختار اسم تاني.',};
+  'That username is reserved, please choose another one.': 'اسم المستخدم ده محجوز، اختار اسم تاني.',
+
+  // 0.6.0: crash screen and app updates
+  'Something went wrong': 'حصلت مشكلة',
+  'The app hit a problem and stopped. Your data is safe on the server. Reload to continue.':
+    'الأبلكيشن وقف بسبب مشكلة. بياناتك في أمان على السيرفر. اعمل تحديث للصفحة وكمّل.',
+  Reload: 'تحديث',
+  'A new version is ready.': 'فيه نسخة جديدة جاهزة.',
+  Later: 'بعدين',
+  'ref.': 'مرجع',
+  'Too many reports. Try again later.': 'بلاغات كتير. جرّب تاني بعدين.',
+};

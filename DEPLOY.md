@@ -62,6 +62,8 @@ Checklist for `.env`:
 | `COOKIE_SECURE` | `true` (requires HTTPS) |
 | `HSTS` | `false` if the proxy sends HSTS (the examples do) |
 | `TRUST_PROXY` | default works when nginx/Caddy runs on the host; use `1` if exactly one proxy sits in front |
+| `LOG_LEVEL` | `info` (default); `debug` only while chasing a problem |
+| `MIN_NATIVE_VERSION_CODE` | `0` until the Android app exists |
 
 **Important:** never change `POSTGRES_PASSWORD` after the first start without also changing
 it inside Postgres (the database keeps the original password in its volume).
@@ -148,7 +150,8 @@ enter the code and a new password; all their sessions are signed out.
 
 | Task | Command |
 |---|---|
-| Logs | `docker compose logs -f app` |
+| Logs | `docker compose logs -f app` (one JSON line per request/event) |
+| Find one error | `docker compose logs app | grep <request id>`: the id a user sees on an error, or from the `X-Request-Id` header |
 | Status | `docker compose ps` |
 | Restart | `docker compose restart app` |
 | Stop everything | `docker compose down` (data stays in the `pgdata` volume) |
@@ -166,3 +169,4 @@ enter the code and a new password; all their sessions are signed out.
 - Receipts are checked by file signature and served sandboxed.
 - Container: non-root, read-only filesystem, all Linux capabilities dropped, no privilege escalation, memory/process limits, rotated logs.
 - Users can change their password, sign out all devices and delete their account.
+- Logs never contain request bodies, passwords, cookies or reset codes; app crashes on phones are reported to the log (message, stack, page path, version only).

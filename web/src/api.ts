@@ -39,7 +39,12 @@ export async function api<T = unknown>(path: string, method: Method = 'GET', bod
   }
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(res.status, tServer(data.error ?? `Request failed (${res.status}).`), data.code);
+  if (!res.ok) {
+    let msg = tServer(data.error ?? `Request failed (${res.status}).`);
+    // Server crash: show a short reference so the owner can find it in the server log.
+    if (typeof data.requestId === 'string') msg += ` (${t('ref.')} ${data.requestId.slice(0, 8)})`;
+    throw new ApiError(res.status, msg, data.code);
+  }
   return data as T;
 }
 

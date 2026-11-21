@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response, RequestHandler } from 'express';
 import { ZodError } from 'zod';
+import { log, requestId } from './log.js';
 
 /** An error with an HTTP status that is safe to show to the user. */
 export class HttpError extends Error {
@@ -31,7 +32,7 @@ export const ah =
     fn(req, res, next).catch(next);
   };
 
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof ZodError) {
     const i = err.issues[0];
     const field = i?.path?.join('.');
@@ -63,6 +64,8 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     res.status(413).json({ error: 'Upload is too large.' });
     return;
   }
-  console.error('[api] unexpected error', err);
-  res.status(500).json({ error: 'Something went wrong on the server.' });
+  const reqId = requestId(res);
+  log.error({ reqId, err, method: req.method, path: req.originalUrl.split('?')[0] }, 'unexpected error');
+  // The id lets the owner find this exact error in the server log.
+  res.status(500).json({ error: 'Something went wrong on the server.', requestId: reqId });
 }

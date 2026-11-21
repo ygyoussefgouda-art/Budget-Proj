@@ -58,6 +58,8 @@ services:
       # Only trust X-Forwarded-For from the reverse proxy (see DEPLOY.md)
       TRUST_PROXY: ${TRUST_PROXY:-loopback, linklocal, uniquelocal}
       RECEIPT_QUOTA_MB: ${RECEIPT_QUOTA_MB:-200}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MIN_NATIVE_VERSION_CODE: ${MIN_NATIVE_VERSION_CODE:-0}
     ports:
       # Localhost only: your existing reverse proxy (nginx/Caddy) forwards HTTPS traffic here.
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8090}:3000"

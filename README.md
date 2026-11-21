@@ -1,4 +1,4 @@
-# Budget me · Version alpha 0.5.6
+# Budget me · Version alpha 0.6.0
 
 > **Alpha:** this is an early test version. Features and screens may change between updates, so download a backup now and then (Settings → Download backup).
 
@@ -12,8 +12,12 @@ web/        React app (mobile-first UI, installable PWA)
 server/     Node API + SQL migrations + API tests
 Dockerfile  builds web + server into one small image
 docker-compose.yml  app + Postgres, isolated from anything else on the server
-legacy-flutter/     the previous Flutter version, kept for reference only (not built or deployed)
+e2e/        Playwright tests in a phone-sized browser
+deploy/     VPS scripts and reverse-proxy configs
+docs/       specs for upcoming work (Android app self-update)
 ```
+
+Working on the code (people or Claude): read `CLAUDE.md` first, then `PROGRESS.md` (what's done/next), `MEMORY.md` (decisions), `CODEMAP.md` (where things live) and `HANDOFF.md` (the Android-app phase plan).
 
 ## Deploy on the VPS (Docker)
 
@@ -86,6 +90,8 @@ GitHub Actions (`.github/workflows/ci.yml`) runs the API, web and E2E tests, a d
 | Settings | Contact us (report a bug or suggest a feature by email to youssefgoudawork@gmail.com), app lock (optional 4–6 digit PIN kept only on this phone), currency label, export to CSV / Excel (expenses, loans or savings, any date range; Arabic headers when the app is in Arabic), backup download and restore, sign out, erase all data |
 
 **On the phone:** swipe a row left to delete it (with Undo) or right to edit it, with a light vibration where supported; the buttons stay for keyboard and screen-reader users. With no connection, new expenses are saved on the phone ("Waiting to sync") and sent automatically when you are back online, never twice; the app can even be opened offline to log them. After installing, long-press the app icon for an **Add expense** shortcut.
+
+**When something goes wrong:** if a screen crashes, the app shows "Something went wrong" with a **Reload** button (and the version) instead of a blank page, and sends a short crash report to the server log. When a new version is deployed, the app shows "A new version is ready" with **Reload** / **Later** instead of switching under your fingers. Server errors show a short reference ("ref. 1a2b3c4d") that matches a line in `docker compose logs app`. The server logs one JSON line per request (never bodies, passwords, cookies or codes); `GET /api/version` tells which version is running.
 
 Deleting a single expense, savings entry or loan entry happens at once, with **Undo** in the message for a few seconds (the receipt comes back too). Bigger deletes (a category, a goal, a person, all data, the account) still ask first.
 

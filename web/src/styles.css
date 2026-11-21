@@ -510,3 +510,16 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 [dir='rtl'] .lang-switch { padding: 0 12px 0 6px; }
 .lang-switch select { appearance: none; border: 0; background: none; color: inherit; font: inherit; padding: 0 6px; cursor: pointer; outline: none; }
 .lang-switch select option { color: var(--text); background: var(--card); }
+/* Crash screen and "new version" bar (0.6.0) */
+.splash.crash { max-width: 420px; margin: 0 auto; }
+.splash.crash h1 { font-family: var(--font-head, inherit); font-size: 22px; margin: 0; }
+.splash.crash svg { color: var(--red); justify-self: center; }
+.splash.crash .btn { display: inline-flex; align-items: center; gap: 8px; justify-self: center; }
+.update-bar {
+  position: fixed; z-index: 40; left: 12px; right: 12px; max-width: 520px; margin: 0 auto;
+  bottom: calc(var(--nav-h, 64px) + var(--safe-b, 0px) + 12px);
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px;
+  background: var(--card); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  font-size: 14px; font-weight: 700;
+}
+.update-bar svg { color: var(--accent); flex: none; }
