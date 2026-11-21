@@ -46,7 +46,7 @@ const str = (max: number) => z.string().max(max).nullish().transform((v) => (v ?
 const name = (max: number) => z.string().trim().min(1).max(max);
 
 const backupSchema = z.object({
-  app: z.literal('student_budget', { errorMap: () => ({ message: 'This is not a Budget me backup.' }) }),
+  app: z.literal('student_budget', { error: 'This is not a Budget me backup.' }),
   version: z.number().int().min(1).max(2).optional(),
   settings: z
     .object({ currency: z.enum(CURRENCIES).optional(), monthStartDay: z.number().int().min(1).max(28).optional() })
