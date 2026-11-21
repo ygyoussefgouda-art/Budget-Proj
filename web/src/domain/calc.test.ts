@@ -26,7 +26,7 @@ import {
   type LoanEntry,
   type MonthBudget,
 } from './calc';
-import { fmtMoney, parseMoney } from './money';
+import { fmtMoney, parseMoney, parseRate } from './money';
 
 // Mirrors the workbook (Nov 2026) + the agreed starting data.
 const cats: Category[] = [
@@ -109,6 +109,18 @@ describe('workbook formulas', () => {
 
   it('money parsing and formatting', () => {
     expect(parseMoney('1,200.50')).toBe(120050);
+    // A comma before 1-2 final digits is a decimal comma (phone keyboards); otherwise thousands.
+    expect(parseMoney('12,50')).toBe(1250);
+    expect(parseMoney('12,5')).toBe(1250);
+    expect(parseMoney('1,250')).toBe(125000);
+    expect(parseMoney('1,250,000')).toBe(125000000);
+    expect(parseMoney('٣٥٠٫٧٥')).toBe(35075);
+    expect(parseMoney('٣٥٠،٧٥')).toBe(35075);
+    expect(parseRate('49,5')).toBe(49.5);
+    expect(parseRate('٤٩٫٥')).toBe(49.5);
+    expect(parseRate('0.0212')).toBe(0.0212);
+    expect(parseRate('0')).toBeNull();
+    expect(parseRate('abc')).toBeNull();
     expect(parseMoney('٣٥٠')).toBe(35000);
     expect(parseMoney('')).toBeNull();
     expect(parseMoney('abc')).toBeNull();

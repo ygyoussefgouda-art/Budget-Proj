@@ -321,8 +321,9 @@ export function balances(all: LoanEntry[], borrowed: boolean): PersonBalance[] {
   return [...out.values()].map((p) => ({ ...p, owed: p.principal - p.repaid, settled: p.principal - p.repaid <= 0 }));
 }
 
+/** Total still owed. Someone who was overpaid counts as 0: it never lowers what others owe. */
 export const outstanding = (all: LoanEntry[], borrowed: boolean) =>
-  balances(all, borrowed).reduce((s, p) => s + p.owed, 0);
+  balances(all, borrowed).reduce((s, p) => s + Math.max(0, p.owed), 0);
 
 /** Planned monthly contribution for a goal (own value, else an even share of the Savings plan). */
 export const goalMonthly = (g: Goal, goals: Goal[], savePlan: number) =>

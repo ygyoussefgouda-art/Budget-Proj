@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import type { Db, Queryable, Row } from './db.js';
 import { ah, HttpError } from './http.js';
+import { checkReceiptRoom } from './receipts.js';
 import { id as idSchema } from './validation.js';
 
 export const UNDO_SECONDS = 120;
@@ -54,6 +55,17 @@ export async function purgeTrash(db: Queryable, userId?: number) {
   } else {
     await db.query(`DELETE FROM trash WHERE user_id = $1 AND deleted_at < now() - make_interval(secs => $2)`, [userId, UNDO_SECONDS]);
   }
+}
+
+/**
+ * Regular clean-up (every few minutes): expired Undo items, sessions and reset codes, and admin
+ * activity older than `AUDIT_KEEP_DAYS` (default 365), so these tables don't grow forever.
+ */
+export async function housekeeping(db: Queryable, auditKeepDays = 365) {
+  await purgeTrash(db);
+  await db.query('DELETE FROM sessions WHERE expires_at < now()');
+  await db.query(`DELETE FROM password_resets WHERE expires_at < now() - interval '1 day' OR used_at < now() - interval '30 days'`);
+  await db.query('DELETE FROM audit_log WHERE created_at < now() - make_interval(days => $1)', [auditKeepDays]);
 }
 
 const gone = () => new HttpError(410, 'Too late to undo.', 'undo_expired');
@@ -108,6 +120,7 @@ export function undoRoutes(db: Db): Router {
         if (kind === 'expense' && item.linked_loan) await insertRow(q, 'loan_entry', item.linked_loan as Row);
         if (kind === 'expense' && t.receipt_data) {
           const data = Buffer.from(t.receipt_data as Uint8Array);
+          await checkReceiptRoom(q, u, data.length); // the trash row is already gone, so it isn't counted twice
           await q.query('INSERT INTO receipts(expense_id, user_id, mime, size, data) VALUES ($1, $2, $3, $4, $5)', [
             item.id,
             u,

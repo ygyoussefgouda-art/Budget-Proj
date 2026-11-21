@@ -57,6 +57,8 @@ export default function Login() {
     try {
       const body = signup && inviteRequired ? { username: name, password, inviteCode: invite.trim() } : { username: name, password };
       const r = await api(signup ? '/auth/signup' : '/auth/login', 'POST', body);
+      // Start clean: nothing cached from an earlier account on this phone.
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
       qc.setQueryData(['me'], r);
     } catch (x) {
       setErr((x as Error).message);

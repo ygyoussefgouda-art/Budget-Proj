@@ -99,9 +99,22 @@ export const clearFailures = (uid: number) => set(failKey(uid), null);
 export const markActive = () => set(ACTIVE, String(Date.now()));
 
 /** Locked if a PIN is set and the app has been away at least `minutes`. */
+/**
+ * Leaving the app to take a photo or pick a file isn't "leaving the app": the next return within
+ * 5 minutes doesn't lock (otherwise "Lock right away" would throw away the form being filled in).
+ */
+let pausedUntil = 0;
+export const pauseLockForPicker = () => {
+  pausedUntil = Date.now() + 5 * 60_000;
+};
+
 export function shouldLock(uid: number): boolean {
   const cfg = readLock(uid);
   if (!cfg) return false;
+  if (pausedUntil > Date.now()) {
+    pausedUntil = 0; // one return only
+    return false;
+  }
   const last = Number(get(ACTIVE) ?? 0);
   return Date.now() - last >= cfg.minutes * 60_000;
 }

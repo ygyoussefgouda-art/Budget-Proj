@@ -56,13 +56,26 @@ export function registerServiceWorker() {
   });
 }
 
+/** "0.6.10" is newer than "0.6.9" (compares number by number). */
+export function isNewer(a: string, b: string): boolean {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] || 0;
+    const y = pb[i] || 0;
+    if (x !== y) return x > y;
+  }
+  return false;
+}
+
 /** Asks GET /api/version which web version the server has now. */
 export async function checkServerVersion() {
   try {
     const res = await fetch('/api/version', { credentials: 'same-origin' });
     if (!res.ok) return;
     const v = (await res.json()) as { web?: string };
-    if (v.web && v.web !== APP_VERSION && !serverNewer) {
+    // Only a *newer* server version means "reload": an older one (rollback) or a mismatch can't be fixed by reloading.
+    if (v.web && isNewer(v.web, APP_VERSION) && !serverNewer) {
       serverNewer = true;
       emit();
     }

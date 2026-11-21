@@ -279,6 +279,8 @@ export function changePasswordHandler(db: Db, parse: (b: unknown) => { current: 
     await db.tx(async (q) => {
       await q.query('UPDATE users SET password_hash = $1 WHERE id = $2', [await hashPassword(next), u.id]);
       await q.query('DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2', [u.id, sha256(token)]);
+      // A reset code made before this change must not undo it.
+      await q.query('DELETE FROM password_resets WHERE user_id = $1 AND used_at IS NULL', [u.id]);
     });
     res.json({ ok: true });
   });

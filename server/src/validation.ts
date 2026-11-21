@@ -83,6 +83,9 @@ export const schemas = {
       .transform((v) => v || ''),
   }),
   adminDeleteUser: z.object({ confirmUsername: z.string().max(60), password: z.string().min(1).max(200) }),
+  adminResetCode: z.object({ password: z.string().min(1).max(200) }),
+  /** Big irreversible actions (erase all data, restore) confirm with the password. */
+  withPassword: z.object({ password: z.string().min(1).max(200) }).passthrough(),
   /** A crash report from the web app (ErrorBoundary / window.onerror). Short, plain text only. */
   clientError: z.object({
     message: z.string().trim().min(1).max(500),

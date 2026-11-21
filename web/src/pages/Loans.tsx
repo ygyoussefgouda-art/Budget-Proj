@@ -21,7 +21,7 @@ import {
   Segmented,
   tint,
 } from '../components/ui';
-import { balances, type LoanEntry } from '../domain/calc';
+import { balances, outstanding, type LoanEntry } from '../domain/calc';
 import { parseMoney, plain } from '../domain/money';
 import { t } from '../i18n';
 import { defaultDate, shortDate, useApp } from '../state';
@@ -40,7 +40,7 @@ export default function Loans() {
   const people = balances(data.loans, borrowed);
   const principal = people.reduce((s, p) => s + p.principal, 0);
   const repaid = people.reduce((s, p) => s + p.repaid, 0);
-  const owed = principal - repaid;
+  const owed = outstanding(data.loans, borrowed); // overpaid people don't lower the total
   const accent = borrowed ? COLORS.red : COLORS.accent;
   const history = data.loans
     .filter((l) => l.borrowed === borrowed)
@@ -132,9 +132,13 @@ export default function Loans() {
           const color = inflow ? COLORS.accent : COLORS.red;
           const label = l.borrowed ? (l.repayment ? t('Paid back') : t('Borrowed')) : l.repayment ? t('Received back') : t('Lent');
           const Icon = inflow ? ArrowDownLeft : ArrowUpRight;
+          // An entry made by splitting an expense is changed on that expense (Expenses tab), not here.
+          const locked = !!l.expenseId;
+          const lockedTip = () => toast(t('This entry comes from a split expense. Edit or delete the expense instead.'));
+          const edit = locked ? lockedTip : () => setForm({ edit: l });
           return (
-            <SwipeRow key={l.id} className="list-item" onDelete={() => del(l, label)} onEdit={() => setForm({ edit: l })}>
-              <button className="list-main" onClick={() => setForm({ edit: l })}>
+            <SwipeRow key={l.id} className="list-item" onDelete={locked ? lockedTip : () => del(l, label)} onEdit={edit}>
+              <button className="list-main" onClick={edit}>
                 <span className="avatar" style={{ background: tint(color, 14), color }}>
                   <Icon size={19} className="flip-rtl" />
                 </span>
@@ -153,7 +157,7 @@ export default function Loans() {
                   {fmt(l.amount)}
                 </span>
               </button>
-              <DeleteButton label={t('Delete entry')} onClick={() => del(l, label)} />
+              {!locked && <DeleteButton label={t('Delete entry')} onClick={() => del(l, label)} />}
             </SwipeRow>
           );
         })}

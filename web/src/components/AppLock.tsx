@@ -4,16 +4,16 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { t } from '../i18n';
 import { clearKit } from '../offline';
-import { clearFailures, markActive, pinMatches, readFailures, readLock, recordFailure, removeLock, shouldLock } from '../pin';
-import { useApp } from '../state';
+import { clearFailures, markActive, pauseLockForPicker, pinMatches, readFailures, readLock, recordFailure, removeLock, shouldLock } from '../pin';
 import { COLORS } from './ui';
 
 /**
  * Covers the app with a PIN pad when it comes back after the chosen time in the background
  * (or is opened again). While locked, the app itself isn't rendered at all.
+ * Also wraps the offline app, so no connection doesn't mean no lock.
  */
-export function AppLock({ children }: { children: ReactNode }) {
-  const { user } = useApp();
+export function AppLock({ userId, children }: { userId: number; children: ReactNode }) {
+  const user = { id: userId };
   const [locked, setLocked] = useState(() => shouldLock(user.id));
 
   useEffect(() => {
@@ -26,6 +26,11 @@ export function AppLock({ children }: { children: ReactNode }) {
       }
     };
     const onHide = () => !locked && markActive();
+    // Opening the camera / file picker leaves the app for a moment: don't lock when it comes back.
+    const onPick = (e: MouseEvent) => {
+      if ((e.target as HTMLElement | null)?.closest?.('input[type="file"]')) pauseLockForPicker();
+    };
+    document.addEventListener('click', onPick, true);
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pagehide', onHide);
     // Keep "last used" fresh while the app is open, so a quick reload doesn't lock it.
@@ -33,6 +38,7 @@ export function AppLock({ children }: { children: ReactNode }) {
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('click', onPick, true);
       clearInterval(timer);
     };
   }, [locked, user.id]);
@@ -40,6 +46,7 @@ export function AppLock({ children }: { children: ReactNode }) {
   if (locked) {
     return (
       <LockScreen
+        userId={userId}
         onUnlock={() => {
           markActive();
           setLocked(false);
@@ -50,8 +57,8 @@ export function AppLock({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-function LockScreen({ onUnlock }: { onUnlock: () => void }) {
-  const { user } = useApp();
+function LockScreen({ userId, onUnlock }: { userId: number; onUnlock: () => void }) {
+  const user = { id: userId };
   const qc = useQueryClient();
   const cfg = readLock(user.id);
   const length = cfg?.length ?? 4;
@@ -91,13 +98,12 @@ function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     (d: string) => {
       if (checking || waiting) return;
       setErr(null);
-      setPin((p) => {
-        const next = (p + d).slice(0, length);
-        if (next.length === length) void check(next);
-        return next;
-      });
+      // Check outside the state updater (StrictMode runs updaters twice: one wrong PIN would count twice).
+      const next = (pin + d).slice(0, length);
+      setPin(next);
+      if (next.length === length) void check(next);
     },
-    [check, checking, length, waiting],
+    [check, checking, length, pin, waiting],
   );
   const back = () => setPin((p) => p.slice(0, -1));
 

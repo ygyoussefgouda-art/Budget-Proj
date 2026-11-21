@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 /** Small dependency-free SVG charts. */
 import type { ReactNode } from 'react';
 
@@ -8,7 +9,7 @@ export function Donut({ values, colors, size = 150, thickness = 22, children }: 
   let offset = 0;
   return (
     <div className="donut" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Spending by category">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={t('Spending by category')}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" style={{ stroke: 'var(--card2)' }} strokeWidth={thickness} />
         {total > 0 &&
           values.map((v, i) => {
@@ -45,7 +46,7 @@ export function PairBars({ a, b, labels, colorA, colorB, height = 180 }: { a: nu
   const bw = Math.min(8, slot / 3);
   const chartH = height - 18;
   return (
-    <svg viewBox={`0 0 ${w} ${height}`} width="100%" height={height} role="img" aria-label="Monthly spending vs savings">
+    <svg viewBox={`0 0 ${w} ${height}`} width="100%" height={height} role="img" aria-label={t('Monthly spending vs savings')}>
       {labels.map((l, i) => {
         const x = i * slot + slot / 2;
         const ha = (Math.max(0, a[i]) / max) * (chartH - 4);
@@ -115,7 +116,7 @@ export function LineArea({ points, max, color, height = 160 }: { points: number[
   const line = xy.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
   const area = `${line} L${xy[xy.length - 1][0].toFixed(1)},${height - pad} L${xy[0][0].toFixed(1)},${height - pad} Z`;
   return (
-    <svg viewBox={`0 0 ${w} ${height}`} width="100%" height={height} role="img" aria-label="Savings balance over time">
+    <svg viewBox={`0 0 ${w} ${height}`} width="100%" height={height} role="img" aria-label={t('Savings balance over time')}>
       <path d={area} style={{ fill: color }} fillOpacity={0.12} />
       <path d={line} fill="none" style={{ stroke: color }} strokeWidth={2.5} strokeLinejoin="round" />
       {xy.map(([x, y], i) => (

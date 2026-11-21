@@ -1,11 +1,29 @@
 import express, { Router } from 'express';
-import type { Db } from './db.js';
+import type { Db, Queryable } from './db.js';
 import { ah, HttpError } from './http.js';
 import { id as idSchema } from './validation.js';
 
 export const RECEIPT_MAX_BYTES = 6 * 1024 * 1024;
 /** Total receipt storage per account. RECEIPT_QUOTA_MB (default 200). */
 const quotaBytes = () => (Number(process.env.RECEIPT_QUOTA_MB) > 0 ? Number(process.env.RECEIPT_QUOTA_MB) : 200) * 1024 * 1024;
+
+/**
+ * Storage quota per account: receipts kept now + receipts waiting in the Undo trash + the new one.
+ * Locks the account row first, so two uploads at once can't both squeeze in. Call inside a transaction.
+ */
+export async function checkReceiptRoom(q: Queryable, userId: number, adding: number, replacingExpenseId = 0) {
+  await q.query('SELECT 1 FROM users WHERE id = $1 FOR UPDATE', [userId]);
+  const used = (
+    await q.query(
+      `SELECT (SELECT COALESCE(SUM(size), 0) FROM receipts WHERE user_id = $1 AND expense_id <> $2)
+            + (SELECT COALESCE(SUM(octet_length(receipt_data)), 0) FROM trash WHERE user_id = $1) AS used`,
+      [userId, replacingExpenseId],
+    )
+  ).rows[0].used as number;
+  if (Number(used) + adding > quotaBytes()) {
+    throw new HttpError(413, 'Your receipt storage is full. Remove some old receipts first.', 'quota');
+  }
+}
 
 /** Detects the real file type from its first bytes (never trusts the client's Content-Type). */
 export function sniffReceipt(buf: Uint8Array): string | null {
@@ -44,18 +62,14 @@ export function receiptRoutes(db: Db): Router {
       if (!Buffer.isBuffer(body) || body.length === 0) throw new HttpError(400, 'The file is empty.');
       const mime = sniffReceipt(body);
       if (!mime) throw new HttpError(415, 'Receipts must be a photo (JPEG, PNG, WebP) or a PDF.', 'bad_file_type');
-      // Storage quota per account (other receipts + this one).
-      const used = (
-        await db.query('SELECT COALESCE(SUM(size), 0) AS used FROM receipts WHERE user_id = $1 AND expense_id <> $2', [u, expenseId])
-      ).rows[0].used as number;
-      if (used + body.length > quotaBytes()) {
-        throw new HttpError(413, 'Your receipt storage is full. Remove some old receipts first.', 'quota');
-      }
-      await db.query(
-        `INSERT INTO receipts(expense_id, user_id, mime, size, data) VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (expense_id) DO UPDATE SET mime = EXCLUDED.mime, size = EXCLUDED.size, data = EXCLUDED.data, created_at = now()`,
-        [expenseId, u, mime, body.length, body],
-      );
+      await db.tx(async (q) => {
+        await checkReceiptRoom(q, u, body.length, expenseId);
+        await q.query(
+          `INSERT INTO receipts(expense_id, user_id, mime, size, data) VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (expense_id) DO UPDATE SET mime = EXCLUDED.mime, size = EXCLUDED.size, data = EXCLUDED.data, created_at = now()`,
+          [expenseId, u, mime, body.length, body],
+        );
+      });
       res.json({ ok: true, mime, size: body.length });
     }),
   );

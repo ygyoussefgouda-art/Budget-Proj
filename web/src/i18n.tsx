@@ -65,7 +65,8 @@ export function tServer(msg: string): string {
   if (AR[msg]) return AR[msg];
   for (const [re, ar] of SERVER_PATTERNS) {
     const m = msg.match(re);
-    if (m) return ar.replace(/\$(\d)/g, (_, i) => m[Number(i)] ?? '');
+    // A captured part can itself be a known message ("Restore failed...: This is not a Budget me backup.").
+    if (m) return ar.replace(/\$(\d)/g, (_, i) => AR[m[Number(i)] ?? ''] ?? m[Number(i)] ?? '');
   }
   return msg;
 }
@@ -76,6 +77,8 @@ const SERVER_PATTERNS: [RegExp, string][] = [
   [/^This is more than the outstanding (.+) for (.+)\. Save anyway\?$/, 'ده أكتر من الـ $1 اللي فاضلين لـ $2. تحفظ برضه؟'],
   [/^Restore failed, nothing was changed: (.+)$/, 'الاسترجاع فشل ومفيش حاجة اتغيرت: $1'],
   [/^This category is used by (\d+) recurring expense\(s\)\. Change or delete them first\.$/, 'الفئة دي مستخدمة في $1 مصروف متكرر. غيّرهم أو امسحهم الأول.'],
+  // Field checks ("amount: Too small...") come in English from the validator: say it plainly instead.
+  [/^[\w.]+: .+$/, 'في قيمة مش مظبوطة. راجع اللي كتبته وجرّب تاني.'],
 ];
 
 function apply(lang: Lang) {

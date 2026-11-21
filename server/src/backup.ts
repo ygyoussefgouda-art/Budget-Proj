@@ -9,13 +9,16 @@ import { CURRENCIES, isoDate, monthStr, tag } from './validation.js';
  * Ids are only used to link rows inside the file; they are remapped on restore.
  */
 export async function exportBackup(db: Db, userId: number) {
-  const q = (sql: string) => db.query(sql, [userId]).then((r) => r.rows);
+  // One snapshot: an edit made while the file is written can't leave an entry without its goal.
+  return db.tx(async (t) => {
+  await t.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  const q = (sql: string) => t.query(sql, [userId]).then((r) => r.rows);
   return {
     app: 'student_budget',
     version: 2,
     exportedAt: new Date().toISOString(),
     settings: (
-      await db.query('SELECT currency, month_start_day AS "monthStartDay" FROM users WHERE id = $1', [userId])
+      await t.query('SELECT currency, month_start_day AS "monthStartDay" FROM users WHERE id = $1', [userId])
     ).rows[0],
     tables: {
       categories: await q('SELECT id, name, is_uni, sort FROM categories WHERE user_id = $1 ORDER BY sort, id'),
@@ -43,6 +46,7 @@ export async function exportBackup(db: Db, userId: number) {
       recurring_done: await q('SELECT rule_id, due_date, status FROM recurring_occurrences WHERE user_id = $1 ORDER BY rule_id, due_date'),
     },
   };
+  });
 }
 
 // Same limits as the normal API, so a backup can never hold values the app itself would refuse.

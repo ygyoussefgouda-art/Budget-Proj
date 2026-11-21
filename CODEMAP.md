@@ -1,6 +1,6 @@
 # CODEMAP.md: where things live
 
-Snapshot of alpha 0.6.0 (2026-11-21). Update when files are added, moved or change purpose.
+Snapshot of alpha 0.6.1 (2026-11-21). Update when files are added, moved or change purpose.
 Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 
 ## Top level
@@ -20,6 +20,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `.github/workflows/ci.yml` | CI: server typecheck+tests, web tests+build, npm audit, E2E, Docker build |
 | `.github/dependabot.yml` | Weekly dependency PRs |
 | `docs/ANDROID_SELF_UPDATE.md` | Spec: APK hosting, download link, self-update (Phase 3) |
+| `docs/REVIEW-2026-11-21.md` | Whole-repo review: open gaps by priority (section A fixed in 0.6.1) |
 | `CLAUDE.md` / `PROGRESS.md` / `MEMORY.md` / `HANDOFF.md` / `CODEMAP.md` | Working notes: rules, status, decisions, phase plan, this map |
 
 ## Server (`server/src/`)
@@ -30,18 +31,18 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `log.ts` | pino logger (`log`), `APP_VERSION` (from package.json), `requestLogger` (request id + access line), `requestId(res)` |
 | `auth.ts` | Login, signup, logout, logout-all, change password, delete account, `requireAuth`, sessions, owner account, admin usernames |
 | `admin.ts` | Admin page API: users, sign-up settings, delete user, one-time reset codes, audit log; `/auth/reset` handler |
-| `routes.ts` | Main data API: `/state`, `/settings`, `/categories`, `/budget/:month` (+ copy-previous, clear-plans), `/expenses` (+ suggestions), `/tags`, `/goals`, `/goal-entries`, `/loans`, `/loan-people`, `/reports/*` (year, compare, tags, weekdays), `/reset` |
+| `routes.ts` | Main data API: `/state`, `/settings`, `/categories`, `/budget/:month` (+ copy-previous, clear-plans), `/expenses` (+ suggestions), `/tags`, `/goals`, `/goal-entries`, `/loans`, `/loan-people`, `/reports/*` (year, compare, weekdays), `/backup` + `/backup/restore`, `/reset` |
 | `recurring.ts` | Monthly recurring rules, due occurrences, add/skip, auto-add |
 | `receipts.ts` | `/expenses/:id/receipt` upload/view/delete; file-type sniffing (JPEG/PNG/WebP/PDF); per-account quota |
 | `undo.ts` | Deletes move rows to `trash`; `/undo/:id`; `purgeTrash()` |
-| `backup.ts` | `/backup` download (JSON v2) and `/backup/restore` (id remapping) |
-| `export.ts` | `/export` CSV/XLSX for expenses, loans, savings by date range (Arabic headers) |
+| `backup.ts` | `exportBackup` (one snapshot, JSON v2) and `restoreBackup` (id remapping); the routes are in `routes.ts` |
+| `export.ts` | `/export` CSV/XLSX for expenses, loans, savings by date range (Arabic headers); `/reports/tags` |
 | `xlsx.ts` | Tiny dependency-free .xlsx writer |
 | `validation.ts` | Zod schemas (money, names, passwords ≥10, signup, etc.) |
 | `http.ts` | `HttpError`, `ah()` async wrapper, `errorHandler` (Zod/HttpError/PG codes → JSON; logs unexpected errors, 500 body has `requestId`) |
 | `db.ts` | `Db` interface; `createPgDb()` (pg pool) and `createPgliteDb()`; transactions; type parsing |
 | `migrate.ts` | Runs `server/migrations/*.sql` in order under a database lock (safe with several app containers) |
-| `repo.ts` | Row → API shape mappers (camelCase) |
+| `repo.ts` | Row → API shape mappers (camelCase) plus shared queries: `ensureMonth`, `loadBudget`, `expenseWhere`, `goalsWithBalance`, `recentActivity` |
 | `dates.ts` | UTC calendar-date helpers |
 | `limits.ts` | Per-account caps |
 | `seed.ts` | Example data from `Student_Budget.xlsx` (`SEED_EXAMPLE_DATA=true`) |
@@ -53,7 +54,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets)
 
 ### Server tests (`server/test/`)
-`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape): vitest + supertest against PGlite.
+`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans): vitest + supertest against PGlite.
 
 ## Web (`web/`)
 | Path | Purpose |
@@ -73,7 +74,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `errors.ts` | `reportClientError()` → `POST /api/client-errors`; `watchGlobalErrors()` |
 | `App.tsx` | Auth gate, app lock, offline fallback, bottom tabs, routes (`/`, `/budget`, `/expenses`, `/loans`, `/savings`, `/savings/:id`, `/reports`, `/settings`, `/admin`) |
 | `api.ts` | `fetch` wrapper: `/api` prefix, CSRF header, `X-Local-Date`, `ApiError` (adds "ref. xxxxxxxx" on server crashes); receipt upload |
-| `state.tsx` | Shared queries/hooks (current month state, "same as last month", due recurring) |
+| `state.tsx` | The month `/state` query, app context (`useApp`), month/date helpers |
 | `offline.ts` | IndexedDB queue for offline expenses, `clientId`, sync, offline kit |
 | `pin.ts` | App-lock PIN: PBKDF2 hash in localStorage, lockout backoff |
 | `receipt.ts` | Shrinks photos before upload |
@@ -97,7 +98,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `gestures.ts` (swipe thresholds) + `phone.test.ts`.
 
 ## E2E (`e2e/`)
-`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability` specs, `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
+`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety` specs, `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
 
 ## Mobile (`mobile/`) **(planned)**
 | Path | Purpose |

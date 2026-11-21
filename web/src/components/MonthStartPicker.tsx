@@ -28,7 +28,8 @@ export default function MonthStartPicker({ compact = false }: { compact?: boolea
       await Promise.all([
         qc.invalidateQueries({ queryKey: ['state'] }),
         qc.invalidateQueries({ queryKey: ['expenses'] }),
-        qc.invalidateQueries({ queryKey: ['reports'] }),
+        // Every report (year, compare, weekdays, tags) depends on where months start.
+        qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith('reports') }),
       ]);
     } catch (e) {
       setErr(tServer((e as Error).message));

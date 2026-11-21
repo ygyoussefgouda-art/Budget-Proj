@@ -7,7 +7,11 @@ cd "$(dirname "$0")/.."
 [ -f .env ] || { echo "No .env file. Run: cp .env.example .env && nano .env"; exit 1; }
 
 echo "==> Backing up the database first"
-sh deploy/backup-now.sh || echo "   (backup skipped: database not running yet)"
+if [ -n "$(docker compose ps -q --status running db 2>/dev/null)" ]; then
+  sh deploy/backup-now.sh || { echo "Stopping: the backup failed, so nothing was updated."; exit 1; }
+else
+  echo "   (backup skipped: database not running yet)"
+fi
 
 echo "==> Getting the latest code"
 git pull --ff-only

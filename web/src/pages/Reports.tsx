@@ -15,7 +15,7 @@ interface MonthTotals { month: string; hasBudget: boolean; income: number; spent
 const shortMonths = () => Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleDateString(locale(), { month: 'short' }));
 
 export default function Reports() {
-  const { fmt } = useApp();
+  const { fmt, startDay } = useApp();
   const nav = useNavigate();
   const [year, setYear] = useState(new Date().getFullYear());
   const q = useQuery({
@@ -35,11 +35,21 @@ export default function Reports() {
   return (
     <div className="page">
       <PageHeader title={t('Reports')} left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/')} flip />} />
-      <MonthCompare />
+      {/* A new month start day starts the comparison again from this month. */}
+      <MonthCompare key={startDay} />
       <WeekdaySpending year={year} />
       <TagSpending year={year} />
 
       <SectionTitle>{t('Year overview')}</SectionTitle>
+      {q.isLoading && <p className="tiny mute">{t('Loading')}…</p>}
+      {q.isError && (
+        <p className="form-error">
+          {(q.error as Error).message}{' '}
+          <button type="button" className="btn text small" onClick={() => q.refetch()}>
+            {t('Try again')}
+          </button>
+        </p>
+      )}
       <div className="month-bar">
         <button className="icon-btn" aria-label={t('Previous year')} onClick={() => setYear(year - 1)}>
           <ChevronLeft size={22} className="flip-rtl" />

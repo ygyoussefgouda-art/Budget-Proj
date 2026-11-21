@@ -10,6 +10,13 @@ import type { Db, Queryable } from './db.js';
 import { ah, HttpError } from './http.js';
 import { id as idSchema, schemas } from './validation.js';
 
+/** Admins can't take over or remove each other; only the built-in owner can act on another admin. */
+function protectAdmins(req: Request, target: string) {
+  if (isAdminName(target) && req.user!.username !== OWNER) {
+    throw new HttpError(403, 'Only the owner account can do this to another admin.');
+  }
+}
+
 export interface SignupDefaults {
   allowSignup: boolean;
   inviteCode: string;
@@ -118,10 +125,15 @@ export function adminRoutes(db: Db, defaults: SignupDefaults): Router {
     '/admin/users/:id/reset-code',
     ah(async (req, res) => {
       const userId = pid(req.params.id);
+      const b = schemas.adminResetCode.parse(req.body);
+      // A reset code takes over an account, so it needs the admin's own password (like removing one).
+      await checkPassword(db, req.user!.id, b.password);
       const out = await db.tx(async (q) => {
         const u = (await q.query('SELECT id, username FROM users WHERE id = $1', [userId])).rows[0];
         if (!u) throw new HttpError(404, 'User not found.');
         if (u.id === req.user!.id) throw new HttpError(400, 'Change your own password in Settings instead.');
+        if (u.username === OWNER) throw new HttpError(400, 'The owner password is set with APP_PASSWORD on the server.');
+        protectAdmins(req, u.username);
         // Only the newest code works.
         await q.query('DELETE FROM password_resets WHERE user_id = $1 AND used_at IS NULL', [u.id]);
         const code = newResetCode();
@@ -149,6 +161,7 @@ export function adminRoutes(db: Db, defaults: SignupDefaults): Router {
         if (!u) throw new HttpError(404, 'User not found.');
         if (u.id === req.user!.id) throw new HttpError(400, 'Use "Delete my account" in Settings to delete your own account.');
         if (u.username === OWNER) throw new HttpError(400, 'The built-in owner account cannot be removed here.');
+        protectAdmins(req, u.username);
         // …and their username typed exactly.
         if (b.confirmUsername.trim().toLowerCase() !== u.username) throw new HttpError(400, 'Type the username exactly to confirm.');
         await q.query('DELETE FROM users WHERE id = $1', [u.id]); // all their data, sessions and receipts go with it

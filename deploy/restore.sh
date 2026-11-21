@@ -5,6 +5,8 @@ set -eu
 cd "$(dirname "$0")/.."
 file="${1:-}"
 [ -f "$file" ] || { echo "Usage: sh deploy/restore.sh <backup.sql.gz>"; exit 1; }
+# Refuse a damaged or incomplete backup before touching anything.
+gunzip -c "$file" 2>/dev/null | tail -n 5 | grep -q 'PostgreSQL database dump complete' || { echo "$file is not a complete backup. Nothing was changed."; exit 1; }
 
 printf 'This replaces ALL data in Budget me with %s. Type RESTORE to continue: ' "$file"
 read -r answer

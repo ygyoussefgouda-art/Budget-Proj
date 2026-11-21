@@ -1,12 +1,15 @@
 // Minimal service worker: makes the app installable and opens instantly.
 // API calls always go to the network (your data is never cached here).
-const CACHE = 'sb-shell-v4';
+// The build (web/vite.config.ts) replaces the cache name with one per build and fills in the
+// built files, so a new version starts a fresh cache and old files are deleted when it takes over.
+const CACHE = 'sb-shell-dev';
+const PRECACHE_ASSETS = [];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches
       .open(CACHE)
-      .then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg', '/theme-init.js'])),
+      .then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg', '/theme-init.js', ...PRECACHE_ASSETS])),
   );
 });
 

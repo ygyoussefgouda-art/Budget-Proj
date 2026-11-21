@@ -22,6 +22,9 @@ test.describe('phase 5: admin page and password reset', () => {
     await openAdminAsOwner(page);
     await page.getByRole('button', { name: `Password reset code for ${name}` }).click();
     const codeSheet = sheet(page, 'Password reset code');
+    // A reset code lets someone into that account, so the admin confirms with their own password (0.6.1).
+    await codeSheet.getByLabel('Your password').fill(OWNER_PASSWORD);
+    await codeSheet.getByRole('button', { name: 'Make code' }).click();
     const code = (await codeSheet.locator('.reset-code').innerText()).trim();
     expect(code).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/);
     await page.keyboard.press('Escape');

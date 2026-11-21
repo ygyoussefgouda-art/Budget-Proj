@@ -40,7 +40,12 @@ export default function App() {
   if (me.isError) {
     // Opened with no connection: still let the user log expenses (they sync later).
     const kit = isNetworkError(me.error) ? readKit() : null;
-    if (kit) return <OfflineApp kit={kit} retry={() => void me.refetch()} />;
+    if (kit)
+      return (
+        <AppLock userId={kit.user.id}>
+          <OfflineApp kit={kit} retry={() => void me.refetch()} />
+        </AppLock>
+      );
     return <Splash text={(me.error as Error).message} retry={() => me.refetch()} />;
   }
   if (!me.data) return <Login />;
@@ -48,7 +53,7 @@ export default function App() {
   return (
     <AppStateProvider user={me.data.user}>
       <OfflineLayer>
-        <AppLock>
+        <AppLock userId={me.data.user.id}>
           <Shell />
         </AppLock>
       </OfflineLayer>
@@ -80,12 +85,12 @@ function ScrollToTop() {
 }
 
 function Shell() {
-  const { data, error, loading, summary } = useApp();
+  const { data, error, loading, summary, refresh } = useApp();
   // Badge on the Budget tab: categories at 80%+ of their budget (red when one is at 100% or over).
   const alerts = summary ? budgetAlerts(summary.rows) : [];
   const alertBadge = alerts.length ? { n: alerts.length, red: alerts.some((a) => a.level !== 'warn') } : undefined;
   if (loading && !data) return <Splash />;
-  if (error && !data) return <Splash text={error.message} />;
+  if (error && !data) return <Splash text={error.message} retry={() => void refresh()} />;
   return (
     <div className="shell">
       <ScrollToTop />

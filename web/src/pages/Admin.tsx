@@ -16,7 +16,7 @@ const when = (iso: string) =>
   new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 const day = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
 const size = (bytes: number) =>
-  bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  bytes < 1024 * 1024 ? t('{n} KB', { n: Math.round(bytes / 1024) }) : t('{n} MB', { n: (bytes / (1024 * 1024)).toFixed(1) });
 
 /** A random invite code that's easy to share (no 0/O or 1/I). */
 const randomInvite = () => {
@@ -91,6 +91,10 @@ function SignupCard() {
   return (
     <Card>
       <SectionTitle>{t('Sign-ups')}</SectionTitle>
+      {/* No form until the real settings are loaded: saving the defaults would open sign-ups and drop the code. */}
+      {q.isLoading && <p className="tiny mute">{t('Loading')}…</p>}
+      {q.isError && <FormError text={(q.error as Error).message} />}
+      {q.data && (
       <form onSubmit={save} className="form">
         <Segmented
           value={open}
@@ -112,6 +116,7 @@ function SignupCard() {
         <FormError text={err} />
         <SaveButton label={t('Save')} busy={busy} />
       </form>
+      )}
     </Card>
   );
 }
@@ -121,22 +126,21 @@ function UsersCard() {
   const { toast } = useOverlay();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['admin-users'], queryFn: () => api<AdminUser[]>('/admin/users') });
+  const [asking, setAsking] = useState<AdminUser | null>(null);
   const [reset, setReset] = useState<ResetCode | null>(null);
   const [removing, setRemoving] = useState<AdminUser | null>(null);
-
-  const makeCode = async (u: AdminUser) => {
-    try {
-      setReset(await api<ResetCode>(`/admin/users/${u.id}/reset-code`, 'POST'));
-      await qc.invalidateQueries({ queryKey: ['admin-audit'] });
-    } catch (x) {
-      toast((x as Error).message);
-    }
+  const closeReset = () => {
+    setAsking(null);
+    setReset(null);
   };
 
   const users = q.data ?? [];
+  // Only the built-in owner may act on another admin; nobody resets the owner (its password is APP_PASSWORD).
+  const canTouch = (u: AdminUser) => u.id !== user.id && (!u.isAdmin || user.username === 'owner');
   return (
     <Card>
       <SectionTitle trailing={<Pill color={COLORS.blue}>{users.length}</Pill>}>{t('Users')}</SectionTitle>
+      {q.isLoading && <p className="tiny mute">{t('Loading')}…</p>}
       {q.isError && <p className="form-error">{(q.error as Error).message}</p>}
       {users.map((u) => (
         <div key={u.id} className="admin-user">
@@ -151,17 +155,31 @@ function UsersCard() {
             </div>
             <div className="tiny mute">{t('{n} items · receipts {size}', { n: u.items.toLocaleString(locale()), size: size(u.receiptBytes) })}</div>
           </div>
-          {u.id !== user.id && (
+          {canTouch(u) && (
             <div className="admin-actions">
-              <IconButton icon={KeyRound} label={t('Password reset code for {name}', { name: u.username })} onClick={() => makeCode(u)} />
+              {u.username !== 'owner' && (
+                <IconButton icon={KeyRound} label={t('Password reset code for {name}', { name: u.username })} onClick={() => setAsking(u)} />
+              )}
               {u.username !== 'owner' && <DeleteButton label={t('Remove {name}', { name: u.username })} onClick={() => setRemoving(u)} />}
             </div>
           )}
         </div>
       ))}
 
-      <Sheet open={!!reset} onClose={() => setReset(null)} title={t('Password reset code')}>
-        {reset && <ResetCodeView r={reset} />}
+      <Sheet open={!!asking} onClose={closeReset} title={t('Password reset code')}>
+        {reset ? (
+          <ResetCodeView r={reset} />
+        ) : (
+          asking && (
+            <ResetCodeForm
+              u={asking}
+              onDone={async (r) => {
+                setReset(r);
+                await qc.invalidateQueries({ queryKey: ['admin-audit'] });
+              }}
+            />
+          )
+        )}
       </Sheet>
       <Sheet open={!!removing} onClose={() => setRemoving(null)} title={t('Remove an account')}>
         {removing && (
@@ -177,6 +195,35 @@ function UsersCard() {
         )}
       </Sheet>
     </Card>
+  );
+}
+
+/** A reset code lets someone into that account, so the admin confirms with their own password first. */
+function ResetCodeForm({ u, onDone }: { u: AdminUser; onDone: (r: ResetCode) => void }) {
+  const [password, setPassword] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!password) return setErr(t('Enter your password.'));
+    setBusy(true);
+    setErr(null);
+    try {
+      onDone(await api<ResetCode>(`/admin/users/${u.id}/reset-code`, 'POST', { password }));
+    } catch (x) {
+      setErr((x as Error).message);
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={submit} className="form">
+      <p className="small">{t('Make a one-time code so "{name}" can choose a new password.', { name: u.username })}</p>
+      <Field label={t('Your password')}>
+        <input className="input" dir="ltr" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </Field>
+      <FormError text={err} />
+      <SaveButton label={t('Make code')} busy={busy} />
+    </form>
   );
 }
 
@@ -252,6 +299,8 @@ function AuditCard() {
   return (
     <Card>
       <SectionTitle>{t('Activity log')}</SectionTitle>
+      {q.isLoading && <p className="tiny mute">{t('Loading')}…</p>}
+      {q.isError && <p className="form-error">{(q.error as Error).message}</p>}
       {q.data && rows.length === 0 && <Empty text={t('No admin actions yet.')} />}
       {rows.map((e) => (
         <div key={e.id} className="audit-row">

@@ -1,4 +1,4 @@
-# Budget me · Version alpha 0.6.0
+# Budget me · Version alpha 0.6.2
 
 > **Alpha:** this is an early test version. Features and screens may change between updates, so download a backup now and then (Settings → Download backup).
 
@@ -38,10 +38,10 @@ Everyone creates their own account on the sign-in screen with **Create account**
 
 - Once everyone who should use the app has an account, set `ALLOW_SIGNUP=false` in `.env` and run `docker compose up -d`. The sign-in screen then shows only "Sign in".
 - `APP_PASSWORD` (optional) creates a built-in account with the username `owner`. Changing it and restarting signs that account out everywhere.
-- **Admin page** (Settings → Admin) for `owner` and the accounts in `ADMIN_USERNAMES`: list accounts (joined, last active, storage used), open/close sign-ups and set the invite code while the app runs, remove an account (type its username + your password), and make **one-time password reset codes** (valid 1 hour, stored hashed). Every admin action is kept in an activity log. Create your account first, then list it in `ADMIN_USERNAMES` (see [DEPLOY.md](DEPLOY.md#admin-page)).
+- **Admin page** (Settings → Admin) for `owner` and the accounts in `ADMIN_USERNAMES`: list accounts (joined, last active, storage used), open/close sign-ups and set the invite code while the app runs, remove an account (type its username + your password), and make **one-time password reset codes** (valid 1 hour, stored hashed, needs your own password). Only the built-in `owner` can reset or remove another admin. Every admin action is kept in an activity log. Create your account first, then list it in `ADMIN_USERNAMES` (see [DEPLOY.md](DEPLOY.md#admin-page)).
 - **Forgot password?** on the sign-in screen: enter the reset code from an admin and a new password; every session of that account is signed out.
 
-The app is built to grow into several users. Every table has a `user_id` and sessions are stored in Postgres, so adding real accounts later needs no data migration. You can also run several app containers behind the proxy, because migrations take a database lock.
+Every table has a `user_id` and sessions are stored in Postgres. Run **one** app container: rate limits and a few guards are kept in memory per container (migrations do take a database lock, so a second container won't break the schema, but its limits would be separate).
 
 ## Develop locally
 
@@ -82,12 +82,12 @@ GitHub Actions (`.github/workflows/ci.yml`) runs the API, web and E2E tests, a d
 | Screen | What it does |
 |---|---|
 | Home | Money left this month and how much you can spend per day until the month ends, income and expenses, savings and debt rings, expense donut, budget usage per category, recent activity. Recurring expenses that are due (Add / Skip). A "+ Expense" button for quick adding (remembers your last category, suggests your usual descriptions). A banner when a category reaches 80% (amber) or 100% (red) of its budget |
-| Budget | Per-month income and uni settings (days × weeks × cost), category budgets, savings and loan plans, totals and unallocated income. A new month copies the previous one; an empty month offers "Same as last month". Categories turn amber at 80% and red at 100% of their budget, with a count badge on the Budget tab |
+| Budget | Per-month income, a "Budget per day" category (days × weeks × cost), category budgets, savings and loan plans, totals and unallocated income. A new month copies the previous one; an empty month offers "Same as last month". Categories turn amber at 80% and red at 100% of their budget, with a count badge on the Budget tab |
 | Expenses | Add, edit and delete expenses (with an optional receipt photo/PDF); search; filter by this month, all time, a date range or a category. Recurring expenses: "every month on day N", with an optional end date, pause, and Add/Skip or add automatically (never added twice). Optional #tags (up to 5; search and filter by tag), "Split with someone" (you record your share, their share becomes an "Owed to me" entry that follows the expense), and "Paid in another currency" (original amount + your rate). Export the current filter to CSV or Excel |
 | Loans | "I owe" and "Owed to me", balance per person, history. Warns when you repay more than you owe |
 | Savings | Several goals with balance, progress, estimated months to reach each goal and a balance chart. A forecast ("at this pace you'll reach it in March 2027", from the average of the last 3 months) and a "behind plan" hint. You can't withdraw more than a goal holds |
 | Reports | Spending per #tag; this month against last month per category ("Food +20%") with the biggest changes; average spending per weekday (Sat–Fri) for this month, the last 3 months or a year; yearly totals, spending vs savings chart, month-by-month table |
-| Settings | Contact us (report a bug or suggest a feature by email to youssefgoudawork@gmail.com), app lock (optional 4–6 digit PIN kept only on this phone), currency label, export to CSV / Excel (expenses, loans or savings, any date range; Arabic headers when the app is in Arabic), backup download and restore, sign out, erase all data |
+| Settings | Language (English / Arabic), light or dark theme, month start day, currency label, app lock (optional 4–6 digit PIN kept only on this phone), change password, sign out everywhere, delete account, replay the tutorial, Admin page (admins only), Contact us (report a bug or suggest a feature by email to youssefgoudawork@gmail.com), export to CSV / Excel (expenses, loans or savings, any date range; Arabic headers when the app is in Arabic), backup download and restore, sign out, erase all data |
 
 **On the phone:** swipe a row left to delete it (with Undo) or right to edit it, with a light vibration where supported; the buttons stay for keyboard and screen-reader users. With no connection, new expenses are saved on the phone ("Waiting to sync") and sent automatically when you are back online, never twice; the app can even be opened offline to log them. After installing, long-press the app icon for an **Add expense** shortcut.
 

@@ -5,7 +5,7 @@ import { configureAuth, ensureOwner } from './auth.js';
 import { createPgDb, createPgliteDb, type Db } from './db.js';
 import { migrate } from './migrate.js';
 import { APP_VERSION, log } from './log.js';
-import { purgeTrash } from './undo.js';
+import { housekeeping } from './undo.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..'); // server/ (dev) or /app (Docker)
@@ -87,8 +87,9 @@ async function main() {
   });
   const port = Number(process.env.PORT ?? 3000);
   const server = app.listen(port, () => log.info({ port, version: APP_VERSION }, 'Budget me listening'));
-  // Deleted items are kept briefly for "Undo"; clear the expired ones every few minutes.
-  setInterval(() => purgeTrash(db).catch((err) => log.error({ err }, 'trash purge failed')), 5 * 60_000).unref();
+  // Deleted items are kept briefly for "Undo"; expired items, sessions and codes are cleared every few minutes.
+  const auditKeepDays = positiveInt(process.env.AUDIT_KEEP_DAYS) ?? 365;
+  setInterval(() => housekeeping(db, auditKeepDays).catch((err) => log.error({ err }, 'housekeeping failed')), 5 * 60_000).unref();
 
   const stop = (sig: string) => {
     log.info({ signal: sig }, 'shutting down');

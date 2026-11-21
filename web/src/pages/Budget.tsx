@@ -1,13 +1,48 @@
 import { CopyPlus, MoreVertical, Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { CategoryForm, SettingsForm, useRemoveCategory } from '../components/BudgetForms';
 import { useOverlay, Sheet } from '../components/Overlays';
 import { BudgetAlerts, BudgetRowTile, MonthBar } from '../components/rows';
-import { AddButton, Card, COLORS, DeleteButton, Empty, IconButton, KV, PageHeader, SectionTitle } from '../components/ui';
+import { AddButton, Card, COLORS, DeleteButton, Empty, KV, PageHeader, SectionTitle } from '../components/ui';
 import type { Category } from '../domain/calc';
 import { t } from '../i18n';
 import { monthLabel, useApp } from '../state';
+
+/** The "more" menu: opens on tap, closes on a tap outside, on Escape, or after choosing. */
+function MoreMenu({ open, setOpen, children }: { open: boolean; setOpen: (v: boolean) => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open, setOpen]);
+  return (
+    <div className="menu-anchor" ref={ref}>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label={t('More actions')}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <MoreVertical size={22} />
+      </button>
+      {open && (
+        <div className="menu" role="menu">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Budget() {
   const { data, summary: s, fmt, month, refresh } = useApp();
@@ -68,19 +103,14 @@ export default function Budget() {
       <PageHeader
         title={t('Budget')}
         right={
-          <div className="menu-anchor">
-            <IconButton icon={MoreVertical} label={t('More actions')} onClick={() => setMenu((m) => !m)} />
-            {menu && (
-              <div className="menu" role="menu" onMouseLeave={() => setMenu(false)}>
-                <button role="menuitem" onClick={copyPrev}>
-                  {t('Copy from previous month')}
-                </button>
-                <button role="menuitem" onClick={clearPlans}>
-                  {t('Set category budgets to 0')}
-                </button>
-              </div>
-            )}
-          </div>
+          <MoreMenu open={menu} setOpen={setMenu}>
+            <button role="menuitem" onClick={copyPrev}>
+              {t('Copy from previous month')}
+            </button>
+            <button role="menuitem" onClick={clearPlans}>
+              {t('Set category budgets to 0')}
+            </button>
+          </MoreMenu>
         }
       />
       <MonthBar />

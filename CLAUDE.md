@@ -48,7 +48,7 @@ On the owner's PC the `scripts\*.cmd` helpers use a portable Node in `D:\devtool
 - **Per-account limits** live in `server/src/limits.ts`; add a cap for any new user-generated collection.
 - **Native code paths** go through `web/src/native.ts` (`isNative()`), so the same web build works in a browser and in the APK.
 - Keep the browser PWA working. The APK is an addition.
-- No biometric / passkey / fingerprint features (owner's decision).
+- Fingerprint/face only as **app-lock unlock inside the Android app** (native BiometricPrompt, PIN fallback, HANDOFF Phase 5). No browser WebAuthn/passkeys, and never for signing in (owner's decision).
 - Small, focused components; follow the existing style (function components, React Query, no new state library).
 - No new dependency without a reason written in `MEMORY.md`. Prefer small, well-known packages.
 
@@ -56,7 +56,7 @@ On the owner's PC the `scripts\*.cmd` helpers use a portable Node in `D:\devtool
 - Never commit secrets: `.env`, `*.jks`, `*.keystore`, `keystore.properties`, deploy keys, backup encryption keys.
 - Never log request bodies, passwords, cookies, reset codes or tokens. Use `log` from `server/src/log.ts` (pino), not `console.*`.
 - Keep `Cache-Control: no-store` on `/api`. Keep the Helmet CSP strict; document any change in `MEMORY.md`.
-- Public endpoints go **before** `requireAuth` in `server/src/app.ts` and need a rate limit.
+- Public endpoints go **before** `requireAuth` in `server/src/app.ts`. Anything that writes, checks a password or is costly needs its own rate limit; cheap reads (`/health`, `/version`, `/auth/config`) rely on the global per-network limit.
 
 ## Workflow
 - **Don't commit or push until the owner says so** (owner's rule, see `MEMORY.md`). When asked: one branch + PR per phase (`phase-N-short-name`), small commits with clear messages.

@@ -60,6 +60,7 @@ services:
       RECEIPT_QUOTA_MB: ${RECEIPT_QUOTA_MB:-200}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MIN_NATIVE_VERSION_CODE: ${MIN_NATIVE_VERSION_CODE:-0}
+      AUDIT_KEEP_DAYS: ${AUDIT_KEEP_DAYS:-365}
     ports:
       # Localhost only: your existing reverse proxy (nginx/Caddy) forwards HTTPS traffic here.
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8090}:3000"
@@ -95,10 +96,12 @@ services:
         echo "backup: daily pg_dump to /backups, keeping $${KEEP_DAYS} days"
         while true; do
           f="/backups/budget-me-$$(date +%Y-%m-%d_%H%M).sql.gz"
-          if pg_dump --no-owner --no-privileges | gzip -9 > "$$f.part"; then
+          # Check the dump is complete (a failed pg_dump would still leave gzip happy).
+          pg_dump --no-owner --no-privileges | gzip -9 > "$$f.part" || true
+          if gunzip -c "$$f.part" 2>/dev/null | tail -n 5 | grep -q 'PostgreSQL database dump complete'; then
             mv "$$f.part" "$$f"; echo "backup: wrote $$f"
           else
-            rm -f "$$f.part"; echo "backup: FAILED" >&2
+            rm -f "$$f.part"; echo "backup: FAILED (incomplete dump, nothing kept)" >&2
           fi
           find /backups -name 'budget-me-*.sql.gz' -mtime +"$${KEEP_DAYS}" -delete
           sleep 86400

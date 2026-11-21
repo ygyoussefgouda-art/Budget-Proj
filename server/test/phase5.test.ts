@@ -115,7 +115,7 @@ describe('password reset codes', () => {
   it('one code, used once, within the hour; it signs the user out everywhere', async () => {
     const o = await owner();
     const { a: phone, name, id } = await newUser();
-    const r = await o.post(`/api/admin/users/${id}/reset-code`).expect(201);
+    const r = await o.post(`/api/admin/users/${id}/reset-code`).send({ password: OWNER_PASS }).expect(201);
     expect(r.body.code).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/);
     expect(r.body.username).toBe(name);
     const stored = (await db.query('SELECT code_hash FROM password_resets WHERE user_id = $1', [id])).rows[0].code_hash;
@@ -136,15 +136,15 @@ describe('password reset codes', () => {
     const o = await owner();
     const { name, id } = await newUser();
     const other = await newUser();
-    const first = (await o.post(`/api/admin/users/${id}/reset-code`).expect(201)).body.code;
-    const second = (await o.post(`/api/admin/users/${id}/reset-code`).expect(201)).body.code;
+    const first = (await o.post(`/api/admin/users/${id}/reset-code`).send({ password: OWNER_PASS }).expect(201)).body.code;
+    const second = (await o.post(`/api/admin/users/${id}/reset-code`).send({ password: OWNER_PASS }).expect(201)).body.code;
     const reset = request(mkApp());
     expect((await reset.post('/api/auth/reset').send({ username: name, code: first, password: 'brand-new-pass-1' })).status).toBe(400); // replaced
     expect((await reset.post('/api/auth/reset').send({ username: other.name, code: second, password: 'brand-new-pass-1' })).status).toBe(400); // someone else's code
     await db.query("UPDATE password_resets SET expires_at = now() - interval '1 minute' WHERE user_id = $1", [id]);
     expect((await reset.post('/api/auth/reset').send({ username: name, code: second, password: 'brand-new-pass-1' })).status).toBe(400); // expired
     const ownerId = (await db.query("SELECT id FROM users WHERE username = 'owner'")).rows[0].id;
-    expect((await o.post(`/api/admin/users/${ownerId}/reset-code`)).status).toBe(400);
+    expect((await o.post(`/api/admin/users/${ownerId}/reset-code`).send({ password: OWNER_PASS })).status).toBe(400);
     expect((await reset.post('/api/auth/reset').send({ username: name, code: second, password: name })).status).toBe(400); // password = username
   });
 });

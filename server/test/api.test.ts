@@ -365,10 +365,10 @@ describe('backup', () => {
     const before = (await agent.get('/api/state?month=2026-11')).body;
     const backup = (await agent.get('/api/backup')).body;
     expect(backup.app).toBe('student_budget');
-    await agent.post('/api/reset').expect(200);
+    await agent.post('/api/reset').send({ password: PASSWORD }).expect(200);
     const empty = (await agent.get('/api/state?month=2026-11')).body;
     expect(empty.goals).toHaveLength(0);
-    await agent.post('/api/backup/restore').send(backup).expect(200);
+    await agent.post('/api/backup/restore').send({ password: PASSWORD, backup }).expect(200);
     const after = (await agent.get('/api/state?month=2026-11')).body;
     expect(after.goals[0].balance).toBe(before.goals[0].balance);
     expect(after.loans).toHaveLength(before.loans.length);
@@ -384,13 +384,21 @@ describe('backup', () => {
 
   it('erase all starts blank (no template categories)', async () => {
     const backup = (await agent.get('/api/backup')).body;
-    await agent.post('/api/reset').expect(200);
+    await agent.post('/api/reset').send({ password: PASSWORD }).expect(200);
     expect((await agent.get('/api/state?month=2026-11')).body.categories).toHaveLength(0);
-    await agent.post('/api/backup/restore').send(backup).expect(200);
+    await agent.post('/api/backup/restore').send({ password: PASSWORD, backup }).expect(200);
+  });
+
+  it('erase all and restore need the account password', async () => {
+    const backup = (await agent.get('/api/backup')).body;
+    expect((await agent.post('/api/reset').send({})).status).toBe(400);
+    expect((await agent.post('/api/reset').send({ password: 'not-my-password' })).status).toBe(403);
+    expect((await agent.post('/api/backup/restore').send({ password: 'not-my-password', backup })).status).toBe(403);
+    expect((await agent.get('/api/state?month=2026-11')).body.goals).toHaveLength(1); // nothing changed
   });
 
   it('rejects an invalid file and changes nothing', async () => {
-    const r = await agent.post('/api/backup/restore').send({ app: 'other', tables: {} });
+    const r = await agent.post('/api/backup/restore').send({ password: PASSWORD, backup: { app: 'other', tables: {} } });
     expect(r.status).toBe(400);
     const s = (await agent.get('/api/state?month=2026-11')).body;
     expect(s.goals).toHaveLength(1);
@@ -441,13 +449,25 @@ describe('security hardening', () => {
     ).toBe(201);
   });
 
-  it('locks one account after 10 failed sign-ins, even from different addresses', async () => {
+  it('10 failed sign-ins from one network block that network only; the real owner still gets in', async () => {
     const a = request(mkApp({ loginLimit: 1000 }));
     await a.post('/api/auth/signup').send({ username: 'target.user', password: 'right-password-1' }).expect(201);
     for (let i = 0; i < 10; i++) {
-      await a.post('/api/auth/login').set('X-Forwarded-For', `10.0.0.${i}`).send({ username: 'target.user', password: `nope-${i}` }).expect(401);
+      await a.post('/api/auth/login').set('X-Forwarded-For', '10.0.0.7').send({ username: 'target.user', password: `nope-${i}` }).expect(401);
     }
-    const r = await a.post('/api/auth/login').set('X-Forwarded-For', '10.0.9.9').send({ username: 'target.user', password: 'right-password-1' });
+    const blocked = await a.post('/api/auth/login').set('X-Forwarded-For', '10.0.0.7').send({ username: 'target.user', password: 'right-password-1' });
+    expect(blocked.status).toBe(429);
+    // Someone else's guessing doesn't lock the account for its owner elsewhere.
+    await a.post('/api/auth/login').set('X-Forwarded-For', '10.0.9.9').send({ username: 'target.user', password: 'right-password-1' }).expect(200);
+  });
+
+  it('guessing spread over many networks still hits a per-account limit', async () => {
+    const a = request(mkApp({ loginLimit: 1000, accountFailLimit: 12 }));
+    await a.post('/api/auth/signup').send({ username: 'spread.user', password: 'right-password-1' }).expect(201);
+    for (let i = 0; i < 12; i++) {
+      await a.post('/api/auth/login').set('X-Forwarded-For', `10.1.${i}.1`).send({ username: 'spread.user', password: `nope-${i}` }).expect(401);
+    }
+    const r = await a.post('/api/auth/login').set('X-Forwarded-For', '10.2.0.1').send({ username: 'spread.user', password: 'right-password-1' });
     expect(r.status).toBe(429);
   });
 
@@ -533,10 +553,10 @@ describe('security hardening', () => {
     const backup = (await agent.get('/api/backup')).body;
     const bad = structuredClone(backup);
     bad.tables.expenses.push({ date: '2026-11-01', category_id: bad.tables.categories[0].id, description: 'x'.repeat(500), amount: 5 });
-    expect((await agent.post('/api/backup/restore').send(bad)).status).toBe(400);
+    expect((await agent.post('/api/backup/restore').send({ password: PASSWORD, backup: bad })).status).toBe(400);
     const bad2 = structuredClone(backup);
     bad2.settings = { currency: '<script>' };
-    expect((await agent.post('/api/backup/restore').send(bad2)).status).toBe(400);
-    await agent.post('/api/backup/restore').send(backup).expect(200);
+    expect((await agent.post('/api/backup/restore').send({ password: PASSWORD, backup: bad2 })).status).toBe(400);
+    await agent.post('/api/backup/restore').send({ password: PASSWORD, backup }).expect(200);
   });
 });

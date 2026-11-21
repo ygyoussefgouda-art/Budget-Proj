@@ -96,6 +96,8 @@ export function CategoryForm({ edit, onDone }: { edit?: Category; onDone: () => 
   const [cost, setCost] = useState(plainOrEmpty(b.uniCost));
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Set once the category exists: if the next step fails, Save again updates it instead of adding a copy.
+  const [createdId, setCreatedId] = useState<number | null>(null);
 
   const d = parseNumOrZero(days), w = parseNumOrZero(weeks), c = parseMoneyOrZero(cost);
   const preview = d !== null && w !== null && c !== null ? uniMonthly({ ...b, uniDays: d, uniWeeks: w, uniCost: c }) : null;
@@ -116,8 +118,9 @@ export function CategoryForm({ edit, onDone }: { edit?: Category; onDone: () => 
     setBusy(true);
     try {
       const body = { name: n, month, perDay, ...(perDay ? {} : { planned }) };
-      if (edit) await api(`/categories/${edit.id}`, 'PUT', body);
-      else await api('/categories', 'POST', body);
+      const id = edit?.id ?? createdId;
+      if (id) await api(`/categories/${id}`, 'PUT', body);
+      else setCreatedId((await api<{ id: number }>('/categories', 'POST', body)).id);
       if (perDay) await saveBudget(month, b, { uniDays: d!, uniWeeks: w!, uniCost: c! });
       await refresh();
       onDone();

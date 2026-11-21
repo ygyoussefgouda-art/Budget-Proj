@@ -1,6 +1,6 @@
 {
   "name": "budget-me-web",
-  "version": "0.6.0-alpha",
+  "version": "0.6.2-alpha",
   "private": true,
   "type": "module",
   "scripts": {

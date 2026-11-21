@@ -16,7 +16,7 @@ import {
   recentActivity,
   SPLIT_JOIN,
 } from './repo.js';
-import { publicUser } from './auth.js';
+import { checkPassword, publicUser } from './auth.js';
 import { exportBackup, restoreBackup } from './backup.js';
 import { localToday } from './dates.js';
 import { underLimit } from './limits.js';
@@ -299,6 +299,17 @@ export function apiRoutes(db: Db): Router {
       const fx = e.foreign ? [e.foreign.amount, e.foreign.currency, e.foreign.rate] : [null, null, null];
       let alreadySaved = false;
       const savedId = await db.tx(async (q) => {
+        // An offline retry of something already saved: answer with that expense before any check or cap.
+        if (mode === 'create' && e.clientId) {
+          const known = await q.query('SELECT id FROM expenses WHERE user_id = $1 AND client_id = $2', [u, e.clientId]);
+          if (known.rows.length) {
+            alreadySaved = true;
+            return known.rows[0].id as number;
+          }
+          // Saved, then deleted (still in the Undo window): don't bring it back.
+          const gone = await q.query(`SELECT 1 FROM trash WHERE user_id = $1 AND kind = 'expense' AND item->>'client_id' = $2`, [u, e.clientId]);
+          if (gone.rows.length) throw new HttpError(409, 'This expense was saved and then deleted.', 'deleted');
+        }
         const cat = await q.query('SELECT name FROM categories WHERE id = $1 AND user_id = $2', [e.categoryId, u]);
         if (!cat.rows.length) throw new HttpError(400, 'Pick a valid category.');
         if (!forced(req)) {
@@ -564,6 +575,7 @@ export function apiRoutes(db: Db): Router {
       const direction = l.borrowed ? 'borrowed' : 'lent';
       const kind = l.repayment ? 'repayment' : 'principal';
       const row = await db.tx(async (q) => {
+        if (mode === 'update') await notFromSplit(q, id, u);
         if (!forced(req)) {
           if (l.repayment) {
             const o = await q.query(
@@ -604,6 +616,12 @@ export function apiRoutes(db: Db): Router {
       res.status(mode === 'create' ? 201 : 200).json(mapLoan(row));
     });
 
+  /** An "Owed to me" entry made by splitting an expense belongs to that expense: change it there. */
+  const SPLIT_LOCKED = 'This entry comes from a split expense. Edit or delete the expense instead.';
+  async function notFromSplit(q: Queryable, id: number, u: number) {
+    const r = await q.query('SELECT expense_id FROM loan_entries WHERE id = $1 AND user_id = $2 FOR UPDATE', [id, u]);
+    if (r.rows[0] && r.rows[0].expense_id !== null) throw new HttpError(400, SPLIT_LOCKED);
+  }
   r.post('/loans', saveLoan('create'));
   r.put('/loans/:id', saveLoan('update'));
   r.delete(
@@ -613,6 +631,7 @@ export function apiRoutes(db: Db): Router {
       const undo = await db.tx(async (q) => {
         const row = (await q.query('SELECT * FROM loan_entries WHERE id = $1 AND user_id = $2 FOR UPDATE', [pid(req.params.id), u])).rows[0];
         if (!row) throw new HttpError(404, 'Entry not found.');
+        if (row.expense_id !== null) throw new HttpError(400, SPLIT_LOCKED);
         return moveToTrash(q, u, 'loan_entry', row);
       });
       res.json({ undo });
@@ -638,10 +657,18 @@ export function apiRoutes(db: Db): Router {
     '/loan-people',
     ah(async (req, res) => {
       const p = schemas.loanPersonDelete.parse(req.query);
-      const d = await db.query(
-        `DELETE FROM loan_entries WHERE user_id = $1 AND direction = $2 AND lower(trim(person)) = lower(trim($3))`,
-        [uid(req), p.borrowed ? 'borrowed' : 'lent', p.name],
-      );
+      const args = [uid(req), p.borrowed ? 'borrowed' : 'lent', p.name];
+      const d = await db.tx(async (q) => {
+        const split = await q.query(
+          `SELECT 1 FROM loan_entries WHERE user_id = $1 AND direction = $2 AND lower(trim(person)) = lower(trim($3))
+           AND expense_id IS NOT NULL LIMIT 1`,
+          args,
+        );
+        if (split.rows.length) {
+          throw new HttpError(400, 'This person has entries from split expenses. Change or delete those expenses first.');
+        }
+        return q.query(`DELETE FROM loan_entries WHERE user_id = $1 AND direction = $2 AND lower(trim(person)) = lower(trim($3))`, args);
+      });
       if (!d.rowCount) throw new HttpError(404, 'Person not found.');
       res.status(204).end();
     }),
@@ -760,10 +787,13 @@ export function apiRoutes(db: Db): Router {
     express.json({ limit: '5mb' }), // the only route that accepts a big body, and only when signed in
     ah(async (req, res) => {
       const u = uid(req);
+      // Replaces everything, so it needs the password (sent next to the backup: { password, backup }).
+      const b = schemas.withPassword.parse(req.body);
+      await checkPassword(db, u, b.password);
       if (restoring.has(u)) throw new HttpError(429, 'A restore is already running. Wait for it to finish.', 'busy');
       restoring.add(u);
       try {
-        await restoreBackup(db, u, req.body);
+        await restoreBackup(db, u, (req.body as { backup?: unknown }).backup);
       } finally {
         restoring.delete(u);
       }
@@ -775,6 +805,8 @@ export function apiRoutes(db: Db): Router {
     '/reset',
     ah(async (req, res) => {
       const u = uid(req);
+      // Erases everything: confirm with the password (like deleting the account).
+      await checkPassword(db, u, schemas.withPassword.parse(req.body).password);
       await db.tx(async (q) => {
         for (const t of ['trash', 'recurring_rules', 'expenses', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
           await q.query(`DELETE FROM ${t} WHERE user_id = $1`, [u]);

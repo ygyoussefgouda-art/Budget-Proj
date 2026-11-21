@@ -7,11 +7,18 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-21: Budget me is a **personal app** for the owner and a few invited people. Not on Google Play, ever (for now). Why: personal use. (No store assets, no Play policies, no public privacy policy needed.)
 - 2026-11-21: Languages: English + Egyptian Arabic, RTL supported. Default theme dark ("Emerald night"). Default currency label EGP.
 - 2026-11-21: Budget maths mirror the original `Student_Budget.xlsx` workbook (`web/src/domain/calc.ts`). Don't change formulas without the owner.
-- 2026-11-21: **No biometric / passkey / fingerprint sign-in or unlock.** The owner tried it and decided against it. (Overrides HANDOFF Phase 5 "Biometric unlock": keep the PIN lock only; don't add `USE_BIOMETRIC`.)
+- 2026-11-21: Biometrics: the owner removed a browser (WebAuthn) fingerprint unlock earlier, then chose **fingerprint unlock of the app lock in the Android app only** (native BiometricPrompt, HANDOFF Phase 5, PIN as fallback). Why: bank-app feel, reliable on Android. (No WebAuthn/passkeys in the browser; never for sign-in; only offered when a PIN is set.)
 - 2026-11-21: Versions: one patch number per small phase (0.5.2…0.5.6), 0.6.0 = HANDOFF Phase 0+1. Show it as "Version alpha X.Y.Z" under the logo. A short plain summary for the owner after every phase.
 
+## Security decisions (0.6.1)
+- 2026-11-21: Admin powers: reset codes and removals need the acting admin's password; admins from `ADMIN_USERNAMES` can't act on other admins, only `owner` can; nobody makes a code for `owner`. Why: one stolen admin session must not take over everyone.
+- 2026-11-21: Failed sign-ins: 10 per account+network, 200 per account overall (`accountFailLimit`) per 15 min. Why: a per-account-only limit let anyone lock out any user (incl. owner).
+- 2026-11-21: Loan entries with `expense_id` (from a split) are read-only outside their expense: PUT/DELETE `/loans/:id` → 400, deleting that person → 400.
+- 2026-11-21: Money input: with no dot, `d,dd` / `d,d` at the end is a decimal comma; any other comma is a thousands separator. Exchange rates: a comma is always decimal (`parseRate`).
+- 2026-11-21: Backups are only kept if the plain dump ends with `PostgreSQL database dump complete` (no `pipefail` in `sh`).
+
 ## Workflow (owner's rules)
-- 2026-11-21: **Never commit or push until the owner says so.** Why: the owner reviews first. (This overrides "one branch + PR per phase" in `CLAUDE.md` until the owner asks for branches/PRs. Commit as `ygyoussefgouda-art@users.noreply.github.com`; never put the owner's private email in commits or requests.)
+- 2026-11-21 (later): the owner asked to **commit and push to GitHub after each finished phase** (tests green first). Before that: never commit or push until the owner says so. Why: the owner reviews first. (This overrides "one branch + PR per phase" in `CLAUDE.md` until the owner asks for branches/PRs. Commit as `ygyoussefgouda-art@users.noreply.github.com`; never put the owner's private email in commits or requests.)
 - 2026-11-21: Standalone project: don't touch anything outside this repo.
 
 ## Architecture
@@ -33,12 +40,17 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - **Self-update**: VPS-hosted `latest.json` + signed APK, checked in-app, SHA-256 verified, installed via the system installer. Spec: `docs/ANDROID_SELF_UPDATE.md`.
 - **Permissions**: Android can't grant runtime permissions at install time → first-run "Set up permissions" screen with "Allow all". Prefer the Photo Picker (no media permission). No `MANAGE_EXTERNAL_STORAGE`, no battery-optimisation exemption.
 - **Notifications**: local notifications only, no Firebase/FCM.
-- **APK download**: manifest public, APK behind sign-in, plus optional secret-token link for first install (pending owner confirmation).
+- **APK download**: open link (owner's answer 2026-11-21).
+
+## Owner answers (2026-11-21)
+- Android `appId` = **`com.budgetme.app`** (never change it: it is the update identity).
+- APK download = **open link** (no sign-in needed). Manifest and APK are public; integrity comes from SHA-256 + Android signature checks.
+- APK is built in **GitHub Actions** (the owner's PC has no Android SDK). Release signing needs the owner to add the keystore as repo secrets; without them CI builds a debug APK.
+- Off-site backups: **target decided later**; `deploy/backup-offsite.sh` works with any rclone remote.
 
 ## Open questions (move to a section above once answered)
-- Production domain: ?
-- Android `appId` (proposed `me.budget.app`; can never change after first install): ?
-- Offsite backup target + alert channel: ?
+- Production domain: ? (only needed at APK build time as `BUDGET_ME_URL`)
+- Alert channel (email / Telegram): ?
 - Where the signing keystore is kept: ?
 - Signing certificate SHA-256 fingerprint (not secret): ?
 - GitHub Actions allowed to SSH-deploy to the VPS: ?

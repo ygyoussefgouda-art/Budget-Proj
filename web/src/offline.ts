@@ -76,6 +76,11 @@ export async function listQueued(userId: number): Promise<Queued[]> {
 
 export const removeQueued = (clientId: string) => withStore('readwrite', (s) => s.delete(clientId));
 
+/** Forget every expense waiting on this phone for that account (account deleted). */
+export async function clearQueue(userId: number) {
+  for (const q of await listQueued(userId)) await removeQueued(q.clientId);
+}
+
 /** A request that never reached the server (no connection), as opposed to the server saying no. */
 export const isNetworkError = (e: unknown) => e instanceof ApiError && e.status === 0;
 
@@ -95,6 +100,10 @@ export async function syncQueued(userId: number): Promise<{ synced: number; offl
     } catch (e) {
       if (isNetworkError(e) || (e instanceof ApiError && (e.status >= 500 || e.status === 429))) return { synced, offline: isNetworkError(e) };
       if (e instanceof ApiError && e.status === 401) return { synced, offline: false }; // signed out: try after sign-in
+      if (e instanceof ApiError && e.code === 'deleted') {
+        await removeQueued(item.clientId); // it was saved earlier and the user deleted it since: nothing to send
+        continue;
+      }
       await withStore('readwrite', (s) => s.put({ ...item, error: (e as Error).message }));
     }
   }

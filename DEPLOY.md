@@ -64,6 +64,7 @@ Checklist for `.env`:
 | `TRUST_PROXY` | default works when nginx/Caddy runs on the host; use `1` if exactly one proxy sits in front |
 | `LOG_LEVEL` | `info` (default); `debug` only while chasing a problem |
 | `MIN_NATIVE_VERSION_CODE` | `0` until the Android app exists |
+| `AUDIT_KEEP_DAYS` | `365`: how long the Admin activity log is kept |
 
 **Important:** never change `POSTGRES_PASSWORD` after the first start without also changing
 it inside Postgres (the database keeps the original password in its volume).
@@ -110,7 +111,7 @@ You can also run the site through <https://securityheaders.com> and <https://www
 
 - The `backup` container writes a compressed dump of the whole database (all accounts and
   receipts) to `/opt/budget-me/backups` once a day and keeps `BACKUP_KEEP_DAYS` days.
-- Make one any time: `sh deploy/backup-now.sh`
+- Make one any time: `sh deploy/backup-now.sh`. Every backup is checked for completeness; an incomplete dump is deleted and reported as `backup: FAILED` (daily, in `docker compose logs backup`) or stops `update.sh` / `restore.sh` before they change anything.
 - **Copy backups off the server** (a backup on the same disk doesn't survive losing the VPS),
   e.g. a nightly `rsync`/`rclone` of the `backups/` folder to another machine or cloud storage.
 - Restore (replaces everything; asks for confirmation and makes a safety backup first):
@@ -142,9 +143,11 @@ Every admin action is written to an activity log on that page.
    A listed name that has no account yet is blocked from sign-up, so nobody else can register it.
    The built-in `owner` account (when `APP_PASSWORD` is set) is always an admin.
 
-**Someone forgot their password:** on the Admin page tap the key next to their name. Give them the
+**Someone forgot their password:** on the Admin page tap the key next to their name and confirm with your own password. Give them the
 code (it works once, for 1 hour; only a hash is stored). On the sign-in screen they tap **Forgot password?**,
-enter the code and a new password; all their sessions are signed out.
+enter the code and a new password; all their sessions are signed out. If they change their password themselves first, the code stops working.
+
+Admins listed in `ADMIN_USERNAMES` can't make reset codes for, or remove, other admins; only the built-in `owner` can. Nobody can make a code for `owner` (its password is `APP_PASSWORD`).
 
 ## 9. Day-to-day
 

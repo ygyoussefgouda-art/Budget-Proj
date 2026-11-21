@@ -28,7 +28,7 @@ import {
   tint,
 } from '../components/ui';
 import { convert, parseTags, periodRange, splitShares, type Expense } from '../domain/calc';
-import { fmtMoney, parseMoney, plain } from '../domain/money';
+import { fmtMoney, parseMoney, parseRate, plain } from '../domain/money';
 import { t } from '../i18n';
 import { isNetworkError } from '../offline';
 import { prepareReceipt, RECEIPT_ACCEPT } from '../receipt';
@@ -163,6 +163,7 @@ export default function Expenses() {
       <SectionTitle trailing={<AddButton label={t('Add')} onClick={() => setForm({})} title={t('Add an expense')} />}>
         {t('Expenses')}
       </SectionTitle>
+      {list.isLoading && <div className="spinner small" role="status" aria-label={t('Loading')} />}
       {list.isError && <p className="form-error">{(list.error as Error).message}</p>}
       {!list.isLoading && items.length === 0 && <Empty text={t('No expenses match. Tap "+ Add" to log one.')} />}
       <div className="list">
@@ -356,7 +357,7 @@ export function ExpenseForm({ edit, onDone, quick = false }: { edit?: Expense; o
   };
 
   // The bill in my currency: typed in, or converted from the foreign amount at the given rate.
-  const rate = Math.round(Number(fxRate.replace(/[,،]/g, '.')) * 1e6) / 1e6;
+  const rate = parseRate(fxRate) ?? 0;
   const fxMinor = parseMoney(fxAmount);
   const total = fxOn ? (fxMinor && rate > 0 ? convert(fxMinor, rate) : null) : parseMoney(amount);
   const shares = splitOn && total ? splitShares(total, splitMode, parseMoney(theirShare) ?? 0) : null;

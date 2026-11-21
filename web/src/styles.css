@@ -501,7 +501,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .chart-ltr { direction: ltr; }
 /* Numbers, amounts and dates stay in one direction inside Arabic text. */
 [dir='rtl'] .hero-value, [dir='rtl'] .stat-value, [dir='rtl'] .mini-value, [dir='rtl'] .txn-amount,
-[dir='rtl'] .big-value, [dir='rtl'] .donut-total { unicode-bidi: plaintext; }
+[dir='rtl'] .big-value, [dir='rtl'] .donut-total, [dir='rtl'] .kv > span:last-child { unicode-bidi: plaintext; }
 [dir='rtl'] input[type='date'], [dir='rtl'] .input[inputmode='decimal'] { text-align: right; }
 .lang-switch {
   display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 6px 0 12px; border-radius: 99px;
@@ -523,3 +523,4 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   font-size: 14px; font-weight: 700;
 }
 .update-bar svg { color: var(--accent); flex: none; }
+.spinner.small { width: 24px; height: 24px; border-width: 2px; margin: 16px auto; }

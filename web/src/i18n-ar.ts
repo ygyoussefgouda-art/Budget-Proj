@@ -742,4 +742,30 @@ export const AR: Record<string, string> = {
   Later: 'بعدين',
   'ref.': 'مرجع',
   'Too many reports. Try again later.': 'بلاغات كتير. جرّب تاني بعدين.',
+
+  // 0.6.2: polish
+  'Spending by category': 'المصروف حسب الفئة',
+  'Monthly spending vs savings': 'المصروف والتوفير كل شهر',
+  'Savings balance over time': 'رصيد التوفير مع الوقت',
+  Unknown: 'غير معروف',
+  '{n} KB': '{n} ك.ب',
+  '{n} MB': '{n} م.ب',
+  'This is not a Budget me backup.': 'الملف ده مش نسخة احتياطية من Budget me.',
+  'This expense was saved and then deleted.': 'المصروف ده اتحفظ وبعدين اتمسح.',
+  'The Export button saves the expenses you are looking at as Excel or CSV.': 'زرار التصدير بيحفظ المصاريف اللي قدامك كملف Excel أو CSV.',
+  'Under Account you can change your password, sign out on every device, or delete your account.':
+    'من "الحساب" تقدر تغيّر الباسورد، تخرج من كل الأجهزة، أو تمسح حسابك.',
+  'Added the app to your home screen? Long-press its icon for an "Add expense" shortcut.':
+    'ضفت الأبلكيشن على الشاشة الرئيسية؟ دوس دوسة طويلة على الأيقونة هتلاقي اختصار "ضيف مصروف".',
+  'Running the app for others? Admins see an Admin page in Settings for accounts, sign-ups and reset codes.':
+    'بتشغّل الأبلكيشن لناس تانية؟ الأدمن بيلاقي صفحة إدارة في الإعدادات للحسابات والتسجيل وأكواد الباسورد.',
+
+  // 0.6.1: safety fixes
+  'Make a one-time code so "{name}" can choose a new password.': 'اعمل كود لمرة واحدة عشان "{name}" يختار باسورد جديد.',
+  'Make code': 'اعمل الكود',
+  'The owner password is set with APP_PASSWORD on the server.': 'باسورد حساب المالك بيتظبط من APP_PASSWORD على السيرفر.',
+  'Only the owner account can do this to another admin.': 'حساب المالك بس هو اللي يقدر يعمل كده لأدمن تاني.',
+  'This entry comes from a split expense. Edit or delete the expense instead.': 'الحركة دي جاية من مصروف متقسّم. عدّل أو امسح المصروف نفسه.',
+  'This person has entries from split expenses. Change or delete those expenses first.':
+    'الشخص ده عنده حركات من مصاريف متقسّمة. غيّر أو امسح المصاريف دي الأول.',
 };

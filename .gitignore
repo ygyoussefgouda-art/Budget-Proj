@@ -13,3 +13,14 @@ e2e/report/
 e2e/results/
 # database backups made on the server
 backups/
+# Android signing: never commit the release key or its passwords
+*.jks
+*.keystore
+keystore.properties
+# Android build output and local SDK path
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/.gradle/
+mobile/android/local.properties
+# Downloads served from the VPS (APKs)
+downloads/

@@ -182,7 +182,7 @@ describe('recurring expenses', () => {
     const before = (await state(a)).recurringDue.map((d: any) => d.date);
     const backup = (await a.get('/api/backup').expect(200)).body;
     expect(backup.tables.recurring_rules).toHaveLength(1);
-    await a.post('/api/backup/restore').send(backup).expect(200);
+    await a.post('/api/backup/restore').send({ password: 'phase-one-pass', backup }).expect(200);
     const after = await state(a);
     expect(after.recurringDue.map((d: any) => d.date)).toEqual(before);
     expect((await a.get('/api/recurring')).body.rules[0]).toMatchObject({ description: 'Water', amount: 2_000, day: 1 });

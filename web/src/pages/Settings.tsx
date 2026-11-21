@@ -9,7 +9,7 @@ import { Sheet, useOverlay } from '../components/Overlays';
 import { restartTutorial } from '../components/Tutorial';
 import { Card, Field, FormError, IconButton, PageHeader, SaveButton, SectionTitle, Segmented } from '../components/ui';
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
-import { clearKit } from '../offline';
+import { clearKit, clearQueue } from '../offline';
 import { removeLock } from '../pin';
 import AppLockSettings from '../components/AppLockSettings';
 import ContactCard from '../components/ContactCard';
@@ -21,7 +21,7 @@ export default function Settings() {
   const { user, refresh } = useApp();
   const { pref: langPref, setPref: setLangPref } = useI18n();
   const [themePref, setThemePrefState] = useState<ThemePref>(getThemePref);
-  const { confirm, toast } = useOverlay();
+  const { confirm, confirmPassword, toast } = useOverlay();
   const qc = useQueryClient();
   const nav = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -62,8 +62,9 @@ export default function Settings() {
         toast(t('This file is not a valid backup.'));
         return;
       }
-      if (!(await confirm(t('Restore backup?'), t('This replaces ALL current data with the backup, and removes all receipt photos. This cannot be undone.'), t('Restore')))) return;
-      await api('/backup/restore', 'POST', json);
+      const password = await confirmPassword(t('Restore backup?'), t('This replaces ALL current data with the backup, and removes all receipt photos. This cannot be undone.'), t('Restore'));
+      if (password === null) return;
+      await api('/backup/restore', 'POST', { password, backup: json });
       await refresh();
       toast(t('Backup restored.'));
     } catch (e) {
@@ -74,9 +75,10 @@ export default function Settings() {
   };
 
   const erase = async () => {
-    if (!(await confirm(t('Erase everything?'), t('All expenses, receipts, loans, savings and budgets are deleted. Export a backup first if unsure.'), t('Erase')))) return;
+    const password = await confirmPassword(t('Erase everything?'), t('All expenses, receipts, loans, savings and budgets are deleted. Export a backup first if unsure.'), t('Erase'));
+    if (password === null) return;
     try {
-      await api('/reset', 'POST');
+      await api('/reset', 'POST', { password });
       await refresh();
       toast(t('All data erased.'));
     } catch (e) {
@@ -311,6 +313,7 @@ function DeleteAccountForm({ onDeleted }: { onDeleted: () => void }) {
     setBusy(true);
     try {
       await api('/auth/delete-account', 'POST', { password });
+      await clearQueue(user.id).catch(() => undefined); // expenses waiting offline go too
       onDeleted();
     } catch (x) {
       setErr((x as Error).message);

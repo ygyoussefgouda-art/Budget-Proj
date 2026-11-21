@@ -47,6 +47,8 @@ export interface AppOptions {
   adminUsernames?: string[];
   /** Installed Android apps below this versionCode must update first (GET /api/version). Default 0. */
   minNativeVersionCode?: number;
+  /** Failed sign-ins per account from all networks together per 15 minutes (default 200). */
+  accountFailLimit?: number;
   /** Crash reports per IP per 15 minutes (default 30). */
   clientErrorLimit?: number;
 }
@@ -180,11 +182,19 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   );
 
   const loginIpLimiter = limiter(15, opts.loginLimit ?? 20, 'Too many sign-in attempts. Try again in 15 minutes.');
-  // Per-account limit on *failed* sign-ins: stops password guessing spread over many IPs.
-  const loginAccountLimiter = limiter(15, 10, 'Too many sign-in attempts. Try again in 15 minutes.', {
+  // Failed sign-ins per account. Two layers so a stranger can't lock someone out:
+  // - 10 failures per account *from one network* (stops guessing from one place, only blocks that network);
+  // - 200 failures per account from everywhere together (stops guessing spread over many networks).
+  const accountName = (req: Request) => String((req.body as { username?: unknown })?.username ?? 'owner').trim().toLowerCase().slice(0, 60);
+  const loginAccountNetLimiter = limiter(15, 10, 'Too many sign-in attempts. Try again in 15 minutes.', {
     skipSuccessfulRequests: true,
-    keyGenerator: (req: Request) => `u:${String((req.body as { username?: unknown })?.username ?? 'owner').trim().toLowerCase().slice(0, 60)}`,
+    keyGenerator: (req: Request) => `u:${accountName(req)}|${ipKey(req)}`,
   });
+  const loginAccountAllLimiter = limiter(15, opts.accountFailLimit ?? 200, 'Too many sign-in attempts. Try again in 15 minutes.', {
+    skipSuccessfulRequests: true,
+    keyGenerator: (req: Request) => `ua:${accountName(req)}`,
+  });
+  const loginAccountLimiter = [loginAccountNetLimiter, loginAccountAllLimiter];
   api.post('/auth/login', loginIpLimiter, loginAccountLimiter, loginHandler(db, (b) => schemas.login.parse(b)));
   const signupLimiter = limiter(60, opts.signupLimit ?? 10, 'Too many new accounts from this network. Try again in an hour.');
   api.post(
@@ -217,6 +227,8 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   api.use(recurringRoutes(db));
   api.use(exportRoutes(db));
   api.use(undoRoutes(db));
+  // Admin actions that check the admin's password get the same guessing limit as other password checks.
+  api.post(['/admin/users/:id/reset-code', '/admin/users/:id/delete'], passwordLimiter);
   api.use(adminRoutes(db, signupDefaults));
   api.use((_req, res) => {
     res.status(404).json({ error: 'Not found.' });

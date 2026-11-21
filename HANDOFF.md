@@ -53,7 +53,7 @@ offline expense queue with idempotent `clientId`, undo, PIN lock, CSV/XLSX expor
 | 7 | ~~Service worker: `skipWaiting()` with no "new version, reload" prompt; no client/API version check~~ done in 0.6.0 | P1 |
 | 8 | Offline mode can only *add* expenses; nothing can be *viewed* offline | P1 |
 | 9 | No notifications (budget alerts, recurring due) | P1 |
-| 10 | ~~No biometric unlock (PIN only)~~ dropped: the owner decided against biometrics; PIN only | - |
+| 10 | No biometric unlock (PIN only): **native Android only** (Phase 5), PIN stays as fallback; no browser/WebAuthn version | P1 |
 | 11 | Receipts: web file picker only, no native camera flow | P1 |
 | 12 | No uptime/backup-failure alerts | P1 |
 | 13 | Manual deploy (`git pull` + rebuild on VPS), no CI-built APK, no rollback | P1 |
@@ -114,7 +114,7 @@ Implement the screen described in section 5. Show it once after install (and aga
 
 ### Phase 5: Native features that use those permissions
 - Receipts: native camera / gallery via `@capacitor/camera` in `web/src/receipt.ts` (keep the web picker path).
-- ~~Biometric unlock~~: **dropped by the owner** (no biometric/passkey features). Keep the PIN lock.
+- Biometric unlock in `AppLock` (fingerprint / face) via Android **BiometricPrompt** (a small Capacitor plugin), only inside the APK and only when a PIN is set; the PIN stays the fallback (and the only option in the browser). It unlocks the app lock only; it never signs in or replaces the password. Owner's choice 2026-11-21: native only, no WebAuthn/passkeys.
 - Local notifications: budget category at 80% / 100%, recurring expense due, optional daily "log today's
   expenses" reminder. Computed from data the app already loads; scheduled on the phone.
 - Exports/backups: save to Downloads or share sheet (`@capacitor/filesystem` + `@capacitor/share`).
@@ -156,7 +156,7 @@ A primary button **"Allow all"** requests them one after another; each row can a
 |---|---|---|---|
 | `INTERNET`, `ACCESS_NETWORK_STATE` | install-time (normal) | talk to the VPS, detect offline | automatic at install |
 | `VIBRATE` | install-time | haptic feedback on swipe/delete | automatic |
-| ~~`USE_BIOMETRIC`~~ | - | not used (biometrics dropped by the owner) | do not add |
+| `USE_BIOMETRIC` | install-time | fingerprint/face unlock of the app lock | automatic (the user enrols biometrics in system settings) |
 | `RECEIVE_BOOT_COMPLETED` | install-time | re-schedule local notifications after reboot | automatic |
 | `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM` | special (Android 12+) | reminders at an exact time (optional; inexact is fine) | prefer inexact alarms and skip this |
 | `POST_NOTIFICATIONS` | runtime (Android 13+) | budget alerts, recurring due, update available | system dialog |
@@ -175,7 +175,7 @@ system settings page instead.
 - [ ] Settings shows app version + "Check for updates"; publishing a new APK on the VPS makes the installed app offer and install it, keeping data and sign-in.
 - [ ] Web deploys update the app's UI without a new APK; the "new version, reload" prompt works.
 - [ ] Permissions screen works for allow / deny / permanently denied, in English and Arabic (RTL).
-- [ ] Camera receipts, local notifications and offline viewing work on device.
+- [ ] Camera receipts, fingerprint unlock (with PIN fallback), local notifications and offline viewing work on device.
 - [ ] Encrypted offsite backup runs nightly and a restore test has passed.
 - [ ] Uptime + backup alerts reach the owner.
 - [ ] CI: tests + Docker image + signed APK on tag; one-command deploy and rollback.

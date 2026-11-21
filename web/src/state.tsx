@@ -18,7 +18,7 @@ import {
   type Txn,
 } from './domain/calc';
 import { fmtMoney } from './domain/money';
-import { isRtl, locale } from './i18n';
+import { isRtl, locale, t } from './i18n';
 
 export interface User { id: number; username: string; currency: string; monthStartDay: number; isAdmin?: boolean }
 
@@ -140,7 +140,7 @@ export function AppStateProvider({ user, children }: { user: User; children: Rea
   );
   const fmt = useCallback((minor: number) => fmtMoney(minor, user.currency), [user.currency]);
   const catName = useCallback(
-    (id: number) => data?.categories.find((c) => c.id === id)?.name ?? 'Unknown',
+    (id: number) => data?.categories.find((c) => c.id === id)?.name ?? t('Unknown'),
     [data],
   );
   const refresh = useCallback(async () => {

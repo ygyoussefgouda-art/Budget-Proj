@@ -163,7 +163,7 @@ describe('backup keeps tags, currency and splits', () => {
       foreign: { amount: 1_000, currency: 'USD', rate: 49.5 }, split: { person: 'Ali', share: 20_000 },
     }).expect(201);
     const backup = (await a.get('/api/backup').expect(200)).body;
-    await a.post('/api/backup/restore').send(backup).expect(200);
+    await a.post('/api/backup/restore').send({ password: 'phase-three-pass', backup }).expect(200);
     const s = (await a.get('/api/state?month=2026-11')).body;
     expect(s.expenses[0]).toMatchObject({ amount: 29_500, tags: ['trip'], foreign: { amount: 1_000, currency: 'USD', rate: 49.5 }, split: { person: 'Ali', share: 20_000 } });
     expect(s.loans[0].expenseId).toBe(s.expenses[0].id);

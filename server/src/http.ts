@@ -65,7 +65,10 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return;
   }
   const reqId = requestId(res);
-  log.error({ reqId, err, method: req.method, path: req.originalUrl.split('?')[0] }, 'unexpected error');
+  // Only name, message, code and stack: database errors also carry "detail"/"where" with row values.
+  const e = err as { name?: string; message?: string; code?: string; stack?: string };
+  const safe = { type: e?.name, message: e?.message?.slice(0, 500), code: e?.code, stack: e?.stack };
+  log.error({ reqId, err: safe, method: req.method, path: req.originalUrl.split('?')[0] }, 'unexpected error');
   // The id lets the owner find this exact error in the server log.
   res.status(500).json({ error: 'Something went wrong on the server.', requestId: reqId });
 }

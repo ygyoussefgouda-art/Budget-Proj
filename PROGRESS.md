@@ -3,7 +3,7 @@
 Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (say why).
 Update at the end of every session. Phases come from `HANDOFF.md` §4.
 
-**Current version:** alpha 0.6.0 · **Current phase:** 1 done, next 2 · **Last updated:** 2026-11-21
+**Current version:** alpha 0.6.2 · **Current phase:** 1 done + review fixes + polish; next: email sign-up/reset (0.6.3), then 6, 2-5, 7, 8 · **Last updated:** 2026-11-21
 
 ## Phase 0: Hand-off setup
 - [-] Clone repo, branch `phase-0-handoff`: worked on `main` in the existing checkout; the owner commits/pushes only when they say so (see `MEMORY.md`)
@@ -24,6 +24,18 @@ Baseline test results (alpha 0.5.6, commit `66a3169`, GitHub CI run 44931074592)
 - [ ] Committed / PR merged (waiting for the owner's go-ahead)
 
 Phase 1 test results: see the Log below.
+
+## Review fixes (alpha 0.6.1), from `docs/REVIEW-2026-11-21.md` section A
+- [x] Backups refuse incomplete dumps (`backup-now.sh`, daily backup service); `update.sh` stops if the backup fails; `restore.sh` refuses an incomplete file
+- [x] Reset codes need the admin's password; listed admins can't reset or remove other admins (only `owner`); no codes for `owner`; admin password checks rate-limited
+- [x] Sign-in failures limited per account **and network** (10) plus per account overall (200): strangers can't lock someone out
+- [x] Split-made "Owed to me" entries can only change through their expense (server + Loans screen)
+- [x] 401 clears cached data and the offline kit; signing in starts with an empty cache
+- [x] PIN lock also covers the offline app
+- [x] Decimal comma: "12,50" = 12.50; FX rate accepts Arabic digits
+- [x] Admin sign-up form waits for the real settings; loading/error states on Admin cards
+- [x] Also: reset codes die when the user changes their password; PIN check no longer counts twice in dev
+- [x] Sections B-D of the review → alpha 0.6.2 (see Log)
 
 ## Phase 2: Android shell (Capacitor)
 - [ ] `mobile/` project, `appId` confirmed, remote URL mode, `allowNavigation` restricted
@@ -55,7 +67,7 @@ Blocked on: production domain, final `appId`, keystore location (open questions 
 
 ## Phase 5: Native features
 - [ ] Camera receipts (`@capacitor/camera`), web picker kept
-- [-] Biometric unlock with PIN fallback: dropped, the owner decided against biometric/passkey sign-in (2026-11-21). The PIN lock stays
+- [ ] Fingerprint/face unlock of the app lock (Android BiometricPrompt, PIN fallback). Native only, owner's choice 2026-11-21; no browser version
 - [ ] Local notifications: 80%/100% budget, recurring due, optional daily reminder
 - [ ] Save/share exports and backups
 - [ ] Native haptics, Android back button, "Add expense" shortcut · PR merged
@@ -79,4 +91,6 @@ Blocked on: production domain, final `appId`, keystore location (open questions 
 
 ## Log
 - 2026-11-21: Review of alpha 0.5.6 done; hand-off files written; gaps re-prioritised for a personal sideloaded Android app.
-- 2026-11-21: Phase 0 + Phase 1 done → alpha 0.6.0 (not committed yet). Added pino (server). New env vars `LOG_LEVEL`, `MIN_NATIVE_VERSION_CODE`. No migration.
+- 2026-11-21: Phase 0 + Phase 1 done → alpha 0.6.0 (committed `e83525e`, CI green).
+- 2026-11-21: alpha 0.6.2 polish: erase/restore need the password; offline retries answered before caps (and "deleted" items not revived); receipt quota counts the Undo trash and locks; undo checks the quota; backup download is one snapshot; error logs drop DB row details; housekeeping clears expired sessions/codes and old audit entries (`AUDIT_KEEP_DAYS`); overpaid people don't lower loan totals; no duplicate category on retry; month-start change refreshes every report; no lock after camera/file picker; account deletion clears the offline queue; service worker precaches the build (opens offline after first visit) with a per-build cache; "new version" only for a newer server; focus handling in sheets/dialogs; Budget menu closes on tap outside; loading/error states; missing translations; RTL minus in KV rows; tutorial tips; `.gitignore` keystores; README/CODEMAP/CLAUDE fixes. New `server/test/security.test.ts` (10: cross-account, untested routes, offline, quota, housekeeping, headers, CSRF).
+- 2026-11-21: Full review written to `docs/REVIEW-2026-11-21.md`; its 8 "fix first" items fixed → alpha 0.6.1. No migration, no new env vars. Added pino (server). New env vars `LOG_LEVEL`, `MIN_NATIVE_VERSION_CODE`. No migration.
