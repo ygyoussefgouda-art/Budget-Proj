@@ -1,0 +1,51 @@
+# Budget me runs as its own Compose project, separate from any other
+# app on the VPS: its own network, its own Postgres and its own data volume.
+# Postgres is never published to the host.
+name: budget-me
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-budget_me}
+      POSTGRES_USER: ${POSTGRES_USER:-budget_me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  app:
+    build: .
+    image: budget-me:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # People create their own accounts on the sign-in screen. Set ALLOW_SIGNUP=false to stop that.
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
+      # Optional built-in account: username "owner" with this password.
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      PGHOST: db
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-budget_me}
+      PGUSER: ${POSTGRES_USER:-budget_me}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TRUST_PROXY: ${TRUST_PROXY:-loopback, linklocal, uniquelocal}
+    # Bound to localhost by default: put your existing reverse proxy
+    # (nginx / Caddy / Traefik) in front. Set APP_BIND=0.0.0.0 to expose directly.
+    ports:
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8090}:3000"
+    networks: [internal]
+
+volumes:
+  pgdata:
+
+networks:
+  internal:

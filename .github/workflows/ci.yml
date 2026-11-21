@@ -1,0 +1,29 @@
+name: CI
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Server - install, typecheck, test
+        working-directory: server
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm test
+      - name: Web - install, test, build
+        working-directory: web
+        run: |
+          npm install --no-audit --no-fund
+          npm test
+          npm run build
+      - name: Docker image builds
+        run: docker build -t budget-me:ci .

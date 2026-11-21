@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vite/
+.env
+*.log
+.pglite/
+# local tool settings (Claude preview config)
+.claude/
+# the old Flutter version is kept on disk only, not in the repository
+legacy-flutter/
