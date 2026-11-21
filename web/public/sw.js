@@ -1,6 +1,6 @@
 // Minimal service worker: makes the app installable and opens instantly.
 // API calls always go to the network (your data is never cached here).
-const CACHE = 'sb-shell-v2';
+const CACHE = 'sb-shell-v3';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -47,8 +47,10 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(e.request)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put('/', copy));
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put('/', copy));
+          }
           return res;
         })
         .catch(async () => (await caches.match('/')) ?? Response.error()),

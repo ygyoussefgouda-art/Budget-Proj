@@ -14,15 +14,17 @@ export default function Login() {
   const { pref: langPref, setPref: setLangPref } = useI18n();
   const config = useQuery({
     queryKey: ['auth-config'],
-    queryFn: () => api<{ signupEnabled: boolean }>('/auth/config'),
+    queryFn: () => api<{ signupEnabled: boolean; inviteRequired?: boolean }>('/auth/config'),
     staleTime: Infinity,
   });
   const signupEnabled = config.data?.signupEnabled ?? true;
+  const inviteRequired = config.data?.inviteRequired ?? false;
 
   const [mode, setMode] = useState<Mode>('signin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [invite, setInvite] = useState('');
   const [show, setShow] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -43,13 +45,16 @@ export default function Login() {
       if (!USERNAME_RE.test(name)) {
         return setErr(t('Usernames are 3–30 characters: letters, numbers, dots, dashes or underscores.'));
       }
-      if (password.length < 8) return setErr(t('Use a password of at least 8 characters.'));
+      if (password.length < 10) return setErr(t('Use a password of at least 10 characters.'));
+      if (password.toLowerCase() === name) return setErr(t('Your password must not be the same as your username.'));
       if (password !== confirm) return setErr(t('The two passwords do not match.'));
+      if (inviteRequired && !invite.trim()) return setErr(t('Enter the invite code.'));
     }
     setBusy(true);
     setErr(null);
     try {
-      const r = await api(signup ? '/auth/signup' : '/auth/login', 'POST', { username: name, password });
+      const body = signup && inviteRequired ? { username: name, password, inviteCode: invite.trim() } : { username: name, password };
+      const r = await api(signup ? '/auth/signup' : '/auth/login', 'POST', body);
       qc.setQueryData(['me'], r);
     } catch (x) {
       setErr((x as Error).message);
@@ -132,7 +137,7 @@ export default function Login() {
               {show ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           </div>
-          {signup && <span className="field-hint">{t('At least 8 characters.')}</span>}
+          {signup && <span className="field-hint">{t('At least 10 characters.')}</span>}
         </label>
 
         {signup && (
@@ -146,6 +151,14 @@ export default function Login() {
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
             />
+          </label>
+        )}
+
+        {signup && inviteRequired && (
+          <label className="field">
+            <span className="field-label">{t('Invite code')}</span>
+            <input className="input" dir="ltr" autoComplete="off" value={invite} onChange={(e) => setInvite(e.target.value)} />
+            <span className="field-hint">{t('Ask the person who runs this app for the code.')}</span>
           </label>
         )}
 

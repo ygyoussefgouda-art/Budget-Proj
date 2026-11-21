@@ -1,7 +1,14 @@
-# Budget me runs as its own Compose project, separate from any other
-# app on the VPS: its own network, its own Postgres and its own data volume.
-# Postgres is never published to the host.
+# Budget me: production stack for a VPS.
+# Its own Compose project ("budget-me"): own network, own Postgres, own volume.
+# Nothing here touches other apps on the server; Postgres is never published.
+#
+#   cp .env.example .env && nano .env      # set the secrets (see DEPLOY.md)
+#   docker compose up -d --build
 name: budget-me
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" } # logs can't fill the disk
 
 services:
   db:
@@ -18,30 +25,83 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    security_opt: ["no-new-privileges:true"]
+    shm_size: 128mb
+    mem_limit: 512m
+    logging: *logging
     networks: [internal]
 
   app:
     build: .
     image: budget-me:latest
     restart: unless-stopped
+    init: true
     depends_on:
       db:
         condition: service_healthy
     environment:
-      # People create their own accounts on the sign-in screen. Set ALLOW_SIGNUP=false to stop that.
-      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
-      # Optional built-in account: username "owner" with this password.
-      APP_PASSWORD: ${APP_PASSWORD:-}
+      NODE_ENV: production
       PGHOST: db
       PGPORT: "5432"
       PGDATABASE: ${POSTGRES_DB:-budget_me}
       PGUSER: ${POSTGRES_USER:-budget_me}
       PGPASSWORD: ${POSTGRES_PASSWORD}
+      # Accounts: sign-up on/off, optional invite code, optional built-in "owner" account
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
+      SIGNUP_INVITE_CODE: ${SIGNUP_INVITE_CODE:-}
+      APP_PASSWORD: ${APP_PASSWORD:-}
+      # HTTPS: the session cookie is only sent over HTTPS (set false only for a plain-HTTP test)
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      HSTS: ${HSTS:-false}
+      # Only trust X-Forwarded-For from the reverse proxy (see DEPLOY.md)
       TRUST_PROXY: ${TRUST_PROXY:-loopback, linklocal, uniquelocal}
-    # Bound to localhost by default: put your existing reverse proxy
-    # (nginx / Caddy / Traefik) in front. Set APP_BIND=0.0.0.0 to expose directly.
+      RECEIPT_QUOTA_MB: ${RECEIPT_QUOTA_MB:-200}
     ports:
+      # Localhost only: your existing reverse proxy (nginx/Caddy) forwards HTTPS traffic here.
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8090}:3000"
+    # Hardening: read-only filesystem, no Linux capabilities, no privilege escalation.
+    read_only: true
+    tmpfs: ["/tmp:size=64m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    pids_limit: 200
+    logging: *logging
+    networks: [internal]
+
+  # Daily database backup (includes receipts) into ./backups, kept for BACKUP_KEEP_DAYS days.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGDATABASE: ${POSTGRES_DB:-budget_me}
+      PGUSER: ${POSTGRES_USER:-budget_me}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        echo "backup: daily pg_dump to /backups, keeping $${KEEP_DAYS} days"
+        while true; do
+          f="/backups/budget-me-$$(date +%Y-%m-%d_%H%M).sql.gz"
+          if pg_dump --no-owner --no-privileges | gzip -9 > "$$f.part"; then
+            mv "$$f.part" "$$f"; echo "backup: wrote $$f"
+          else
+            rm -f "$$f.part"; echo "backup: FAILED" >&2
+          fi
+          find /backups -name 'budget-me-*.sql.gz' -mtime +"$${KEEP_DAYS}" -delete
+          sleep 86400
+        done
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    logging: *logging
     networks: [internal]
 
 volumes:

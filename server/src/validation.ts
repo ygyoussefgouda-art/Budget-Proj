@@ -11,16 +11,25 @@ export const isoDate = z
   .refine((s) => {
     const d = new Date(`${s}T00:00:00Z`);
     return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
-  }, 'is not a real date');
+  }, 'is not a real date')
+  .refine((s) => s >= '2000-01-01' && s <= '2100-12-31', 'must be between 2000 and 2100');
 
-export const monthStr = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'must be YYYY-MM');
+/** Budget month; limited to 2000–2100 so opening months cannot create unbounded rows. */
+export const monthStr = z
+  .string()
+  .regex(/^(20\d\d|2100)-(0[1-9]|1[0-2])$/, 'must be YYYY-MM between 2000 and 2100');
 
-export const id = z.coerce.number().int().positive();
+export const id = z.coerce.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
 const text = (max: number) => z.string().trim().max(max);
 const name = (max: number) => z.string().trim().min(1, 'is required').max(max);
 
 export const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'KWD', 'QAR', 'JOD'] as const;
+
+/** Names nobody can sign up with (the built-in account and look-alikes). */
+export const RESERVED_USERNAMES = new Set(['owner', 'admin', 'administrator', 'root', 'system', 'support']);
+
+const newPassword = z.string().min(10, 'must be at least 10 characters').max(200);
 
 export const schemas = {
   login: z.object({ username: z.string().trim().max(60).optional(), password: z.string().min(1).max(200) }),
@@ -31,9 +40,14 @@ export const schemas = {
       .toLowerCase()
       .min(3, 'must be at least 3 characters')
       .max(30, 'must be at most 30 characters')
-      .regex(/^[a-z0-9._-]+$/, 'can only use letters, numbers, dots, dashes and underscores'),
-    password: z.string().min(8, 'must be at least 8 characters').max(200),
-  }),
+      .regex(/^[a-z0-9._-]+$/, 'can only use letters, numbers, dots, dashes and underscores')
+      .refine((u) => !RESERVED_USERNAMES.has(u), 'is reserved, please choose another one'),
+    password: newPassword,
+    inviteCode: z.string().max(200).optional(),
+  })
+    .refine((s) => s.password.toLowerCase() !== s.username, { message: 'must not be the same as the username', path: ['password'] }),
+  changePassword: z.object({ current: z.string().min(1).max(200), next: newPassword }),
+  deleteAccount: z.object({ password: z.string().min(1).max(200) }),
   settings: z
     .object({ currency: z.enum(CURRENCIES).optional(), monthStartDay: z.number().int().min(1).max(28).optional() })
     .refine((s) => s.currency !== undefined || s.monthStartDay !== undefined, 'Nothing to change.'),
@@ -67,6 +81,6 @@ export const schemas = {
     q: z.string().trim().max(100).optional(),
     categoryId: id.optional(),
     limit: z.coerce.number().int().min(1).max(500).default(100),
-    offset: z.coerce.number().int().min(0).default(0),
+    offset: z.coerce.number().int().min(0).max(1_000_000).default(0),
   }),
 };

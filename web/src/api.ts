@@ -12,13 +12,19 @@ export class ApiError extends Error {
 
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
+const CSRF = { 'X-Requested-With': 'budget-me' };
+
 export async function api<T = unknown>(path: string, method: Method = 'GET', body?: unknown): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`/api${path}`, {
       method,
       credentials: 'same-origin',
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      headers: {
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        // Proves the request comes from this app (the server refuses writes without it: CSRF defence).
+        ...(method !== 'GET' ? CSRF : {}),
+      },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
@@ -62,7 +68,7 @@ export async function uploadReceipt(expenseId: number, file: Blob): Promise<void
     res = await fetch(`/api/expenses/${expenseId}/receipt`, {
       method: 'PUT',
       credentials: 'same-origin',
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      headers: { 'Content-Type': file.type || 'application/octet-stream', ...CSRF },
       body: file,
     });
   } catch {

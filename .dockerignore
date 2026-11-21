@@ -8,3 +8,8 @@ legacy-flutter
 *.jpeg
 *.jpg
 *.md
+backups
+e2e
+.pglite
+**/.pglite
+deploy

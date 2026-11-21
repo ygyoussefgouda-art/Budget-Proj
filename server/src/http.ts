@@ -51,7 +51,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     res.status(409).json({ error: 'This item is still in use.', code: 'in_use' });
     return;
   }
-  if (pgCode === '23514' || pgCode === '22P02' || pgCode === '22007' || pgCode === '22008') {
+  if (['23514', '22P02', '22007', '22008', '22003', '22001'].includes(pgCode ?? '')) {
     res.status(400).json({ error: 'Invalid value.' });
     return;
   }

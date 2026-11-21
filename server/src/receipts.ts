@@ -4,6 +4,8 @@ import { ah, HttpError } from './http.js';
 import { id as idSchema } from './validation.js';
 
 export const RECEIPT_MAX_BYTES = 6 * 1024 * 1024;
+/** Total receipt storage per account. RECEIPT_QUOTA_MB (default 200). */
+const quotaBytes = () => (Number(process.env.RECEIPT_QUOTA_MB) > 0 ? Number(process.env.RECEIPT_QUOTA_MB) : 200) * 1024 * 1024;
 
 /** Detects the real file type from its first bytes (never trusts the client's Content-Type). */
 export function sniffReceipt(buf: Uint8Array): string | null {
@@ -42,10 +44,17 @@ export function receiptRoutes(db: Db): Router {
       if (!Buffer.isBuffer(body) || body.length === 0) throw new HttpError(400, 'The file is empty.');
       const mime = sniffReceipt(body);
       if (!mime) throw new HttpError(415, 'Receipts must be a photo (JPEG, PNG, WebP) or a PDF.', 'bad_file_type');
+      // Storage quota per account (other receipts + this one).
+      const used = (
+        await db.query('SELECT COALESCE(SUM(size), 0) AS used FROM receipts WHERE user_id = $1 AND expense_id <> $2', [u, expenseId])
+      ).rows[0].used as number;
+      if (used + body.length > quotaBytes()) {
+        throw new HttpError(413, 'Your receipt storage is full. Remove some old receipts first.', 'quota');
+      }
       await db.query(
         `INSERT INTO receipts(expense_id, user_id, mime, size, data) VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (expense_id) DO UPDATE SET mime = EXCLUDED.mime, size = EXCLUDED.size, data = EXCLUDED.data, created_at = now()`,
-        [expenseId, u, mime, body.length, new Uint8Array(body)],
+        [expenseId, u, mime, body.length, body],
       );
       res.json({ ok: true, mime, size: body.length });
     }),
@@ -60,11 +69,15 @@ export function receiptRoutes(db: Db): Router {
       ).rows[0];
       if (!row) throw new HttpError(404, 'This expense has no receipt.');
       const data = Buffer.from(row.data as Uint8Array);
+      const pdf = row.mime === 'application/pdf';
       res.setHeader('Content-Type', row.mime);
       res.setHeader('Content-Length', String(data.length));
-      res.setHeader('Cache-Control', 'private, max-age=300');
-      const ext = row.mime === 'application/pdf' ? 'pdf' : row.mime.split('/')[1];
-      res.setHeader('Content-Disposition', `inline; filename="receipt-${expenseId}.${ext}"`);
+      res.setHeader('Cache-Control', 'no-store'); // not left behind on shared devices after sign-out
+      // Opened on its own, a receipt can never run scripts or reach the app (sandboxed, no sub-resources).
+      res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
+      const ext = pdf ? 'pdf' : row.mime.split('/')[1];
+      // Photos show in the app; PDFs are downloaded and opened by the phone's own viewer.
+      res.setHeader('Content-Disposition', `${pdf ? 'attachment' : 'inline'}; filename="receipt-${expenseId}.${ext}"`);
       res.end(data);
     }),
   );

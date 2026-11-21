@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Db } from './db.js';
 import { HttpError } from './http.js';
-import { isoDate, monthStr } from './validation.js';
+import { CURRENCIES, isoDate, monthStr } from './validation.js';
 
 /**
  * Backup format (version 2). Same table/column names as the original phone
@@ -38,49 +38,57 @@ export async function exportBackup(db: Db, userId: number) {
   };
 }
 
-const int = z.coerce.number().int();
-const amount = z.coerce.number().int().min(0);
+// Same limits as the normal API, so a backup can never hold values the app itself would refuse.
+const int = z.coerce.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER);
+const amount = z.coerce.number().int().min(0).max(1e13);
 const bool = z.union([z.boolean(), z.literal(0), z.literal(1)]).transform((v) => v === true || v === 1);
-const str = z.string().nullish().transform((v) => v ?? '');
+const str = (max: number) => z.string().max(max).nullish().transform((v) => (v ?? '').trim());
+const name = (max: number) => z.string().trim().min(1).max(max);
 
 const backupSchema = z.object({
   app: z.literal('student_budget', { errorMap: () => ({ message: 'This is not a Budget me backup.' }) }),
   version: z.number().int().min(1).max(2).optional(),
   settings: z
-    .object({ currency: z.string().max(10).optional(), monthStartDay: z.number().int().min(1).max(28).optional() })
+    .object({ currency: z.enum(CURRENCIES).optional(), monthStartDay: z.number().int().min(1).max(28).optional() })
     .optional(),
   tables: z.object({
-    categories: z.array(z.object({ id: int, name: z.string().trim().min(1), is_uni: bool, sort: int.default(0) })),
-    month_budgets: z.array(
-      z.object({
-        month: monthStr,
-        income: amount,
-        uni_days: z.coerce.number().min(0),
-        uni_weeks: z.coerce.number().min(0),
-        uni_cost: amount,
-        save_plan: amount,
-        loan_plan: amount,
-      }),
-    ),
-    category_plans: z.array(z.object({ month: monthStr, category_id: int, planned: amount })),
-    goals: z.array(
-      z.object({ id: int, name: z.string().trim().min(1), target: amount, start_balance: amount, monthly: amount, sort: int.default(0) }),
-    ),
-    goal_entries: z.array(
-      z.object({ id: int.optional(), goal_id: int, date: isoDate, type: z.enum(['deposit', 'withdrawal']), amount, note: str }),
-    ),
-    expenses: z.array(z.object({ id: int.optional(), date: isoDate, category_id: int, description: str, amount })),
-    loan_entries: z.array(
-      z.object({
-        id: int.optional(),
-        date: isoDate,
-        person: z.string().trim().min(1),
-        direction: z.enum(['borrowed', 'lent']),
-        kind: z.enum(['principal', 'repayment']),
-        amount,
-        note: str,
-      }),
-    ),
+    categories: z.array(z.object({ id: int, name: name(60), is_uni: bool, sort: int.default(0) })).max(200),
+    month_budgets: z
+      .array(
+        z.object({
+          month: monthStr,
+          income: amount,
+          uni_days: z.coerce.number().min(0).max(7),
+          uni_weeks: z.coerce.number().min(0).max(6),
+          uni_cost: amount,
+          save_plan: amount,
+          loan_plan: amount,
+        }),
+      )
+      .max(1300),
+    category_plans: z.array(z.object({ month: monthStr, category_id: int, planned: amount })).max(50_000),
+    goals: z
+      .array(z.object({ id: int, name: name(60), target: amount, start_balance: amount, monthly: amount, sort: int.default(0) }))
+      .max(200),
+    goal_entries: z
+      .array(z.object({ id: int.optional(), goal_id: int, date: isoDate, type: z.enum(['deposit', 'withdrawal']), amount, note: str(200) }))
+      .max(50_000),
+    expenses: z
+      .array(z.object({ id: int.optional(), date: isoDate, category_id: int, description: str(200), amount: amount.refine((v) => v > 0) }))
+      .max(50_000),
+    loan_entries: z
+      .array(
+        z.object({
+          id: int.optional(),
+          date: isoDate,
+          person: name(60),
+          direction: z.enum(['borrowed', 'lent']),
+          kind: z.enum(['principal', 'repayment']),
+          amount: amount.refine((v) => v > 0),
+          note: str(200),
+        }),
+      )
+      .max(20_000),
   }),
 });
 

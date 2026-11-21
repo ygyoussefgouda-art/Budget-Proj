@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { z } from 'zod';
 import type { Db, Queryable } from './db.js';
 import { ah, ConfirmNeeded, forced, HttpError } from './http.js';
@@ -29,6 +29,16 @@ export function apiRoutes(db: Db): Router {
   const r = Router();
   const uid = (req: { user?: { id: number } }) => req.user!.id;
   const pid = (v: unknown) => idSchema.parse(v);
+
+  /** Accounts with a backup restore in progress (one at a time per account). */
+  const restoring = new Set<number>();
+
+  /** Generous per-account caps so one account cannot grow the database without bound. */
+  const LIMITS = { categories: 200, goals: 200, expenses: 50_000, goal_entries: 50_000, loan_entries: 20_000 } as const;
+  const underLimit = async (q: Queryable, table: keyof typeof LIMITS, u: number) => {
+    const n = (await q.query(`SELECT COUNT(*)::int AS n FROM ${table} WHERE user_id = $1`, [u])).rows[0].n as number;
+    if (n >= LIMITS[table]) throw new HttpError(409, 'You have reached the limit for this kind of item.', 'limit');
+  };
 
   // ---------- profile / settings ----------
   r.get('/auth/me', (req, res) => {
@@ -150,6 +160,7 @@ export function apiRoutes(db: Db): Router {
       const u = uid(req);
       const out = await db.tx(async (q) => {
         if (await nameTaken(q, u, c.name)) throw new HttpError(409, 'That category already exists.', 'conflict');
+        await underLimit(q, 'categories', u);
         await ensureMonth(q, u, c.month);
         // Only one category can use the per-day formula (days x weeks x cost per day).
         if (c.perDay) await q.query('UPDATE categories SET is_uni = false WHERE user_id = $1', [u]);
@@ -254,6 +265,7 @@ export function apiRoutes(db: Db): Router {
           if (dup.rows.length) throw new ConfirmNeeded('An identical expense already exists. Save it anyway?');
         }
         if (mode === 'create') {
+          await underLimit(q, 'expenses', u);
           return (
             await q.query(
               `INSERT INTO expenses(user_id, date, category_id, description, amount) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
@@ -289,6 +301,7 @@ export function apiRoutes(db: Db): Router {
     ah(async (req, res) => {
       const g = schemas.goal.parse(req.body);
       const u = uid(req);
+      await underLimit(db, 'goals', u);
       const row = (
         await db.query(
           `INSERT INTO goals(user_id, name, target, start_balance, monthly, sort)
@@ -304,11 +317,24 @@ export function apiRoutes(db: Db): Router {
     '/goals/:id',
     ah(async (req, res) => {
       const g = schemas.goal.parse(req.body);
-      const up = await db.query(
-        'UPDATE goals SET name = $3, target = $4, start_balance = $5, monthly = $6 WHERE id = $1 AND user_id = $2',
-        [pid(req.params.id), uid(req), g.name, g.target, g.start, g.monthly],
-      );
-      if (!up.rowCount) throw new HttpError(404, 'Goal not found.');
+      const goalId = pid(req.params.id);
+      const u = uid(req);
+      await db.tx(async (q) => {
+        // Lowering the starting amount must not push the balance below zero.
+        const bal = await goalBalanceExcept(q, u, goalId, 0);
+        const cur = (await q.query('SELECT start_balance FROM goals WHERE id = $1', [goalId])).rows[0];
+        if (bal - (cur.start_balance as number) + g.start < 0) {
+          throw new HttpError(400, 'This change would make the balance negative. Remove later withdrawals first.');
+        }
+        await q.query('UPDATE goals SET name = $3, target = $4, start_balance = $5, monthly = $6 WHERE id = $1 AND user_id = $2', [
+          goalId,
+          u,
+          g.name,
+          g.target,
+          g.start,
+          g.monthly,
+        ]);
+      });
       res.json({ ok: true });
     }),
   );
@@ -368,6 +394,7 @@ export function apiRoutes(db: Db): Router {
           if (dup.rows.length) throw new ConfirmNeeded('An identical entry already exists. Save it anyway?');
         }
         if (mode === 'create') {
+          await underLimit(q, 'goal_entries', u);
           return (
             await q.query(
               `INSERT INTO goal_entries(user_id, goal_id, date, type, amount, note) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
@@ -439,6 +466,7 @@ export function apiRoutes(db: Db): Router {
           if (dup.rows.length) throw new ConfirmNeeded('An identical entry already exists. Save it anyway?');
         }
         if (mode === 'create') {
+          await underLimit(q, 'loan_entries', u);
           return (
             await q.query(
               `INSERT INTO loan_entries(user_id, date, person, direction, kind, amount, note)
@@ -544,8 +572,16 @@ export function apiRoutes(db: Db): Router {
 
   r.post(
     '/backup/restore',
+    express.json({ limit: '5mb' }), // the only route that accepts a big body, and only when signed in
     ah(async (req, res) => {
-      await restoreBackup(db, uid(req), req.body);
+      const u = uid(req);
+      if (restoring.has(u)) throw new HttpError(429, 'A restore is already running. Wait for it to finish.', 'busy');
+      restoring.add(u);
+      try {
+        await restoreBackup(db, u, req.body);
+      } finally {
+        restoring.delete(u);
+      }
       res.json({ ok: true });
     }),
   );

@@ -1,15 +1,18 @@
-import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
-import { promisify } from 'node:util';
+import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual, type ScryptOptions } from 'node:crypto';
 import type { CookieOptions, Request, RequestHandler, Response } from 'express';
 import type { Db, Queryable } from './db.js';
 import { ah, HttpError } from './http.js';
 import { seedStartingData } from './seed.js';
 
-const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, keylen: number) => Promise<Buffer>;
+const scrypt = (pw: string, salt: Buffer, keylen: number, opts: ScryptOptions) =>
+  new Promise<Buffer>((res, rej) => scryptCb(pw, salt, keylen, opts, (e, k) => (e ? rej(e) : res(k))));
 
 export const OWNER = 'owner';
 export const COOKIE = 'sb_session';
-const SESSION_DAYS = 30;
+/** A session ends after this many days without use… */
+const IDLE_DAYS = 14;
+/** …and at the latest this many days after sign-in. */
+const MAX_DAYS = 30;
 
 export interface AuthUser {
   id: number;
@@ -30,27 +33,66 @@ declare global {
   }
 }
 
+// ---------- password hashing ----------
+// scrypt, cost stored in the hash ("scrypt2$N$r$p$salt$key") so it can be raised later.
+// N=2^14, r=8, p=5 is one of OWASP's equivalent minimum settings (same work as N=2^17,p=1)
+// but needs only 16 MiB per hash, so a small VPS can't be exhausted by parallel sign-ins
+// (Node runs at most 4 scrypt jobs at once on its thread pool).
+const PARAMS = { N: 2 ** 14, r: 8, p: 5 };
+const LEGACY = { N: 2 ** 14, r: 8, p: 1 }; // hashes written before 0.1.0-alpha hardening: "scrypt$salt$key"
+const maxmem = (n: number, r: number) => 256 * n * r + 1024 * 1024;
+
 export async function hashPassword(pw: string): Promise<string> {
   const salt = randomBytes(16);
-  const key = await scrypt(pw, salt, 64);
-  return `scrypt$${salt.toString('base64')}$${key.toString('base64')}`;
+  const { N, r, p } = PARAMS;
+  const key = await scrypt(pw, salt, 64, { N, r, p, maxmem: maxmem(N, r) });
+  return `scrypt2$${N}$${r}$${p}$${salt.toString('base64')}$${key.toString('base64')}`;
+}
+
+function parseHash(stored: string) {
+  const parts = stored.split('$');
+  if (parts[0] === 'scrypt2' && parts.length === 6) {
+    const [, n, r, p, salt, key] = parts;
+    return { N: Number(n), r: Number(r), p: Number(p), salt, key };
+  }
+  if (parts[0] === 'scrypt' && parts.length === 3) return { ...LEGACY, salt: parts[1], key: parts[2] };
+  return null;
 }
 
 export async function verifyPassword(pw: string, stored: string): Promise<boolean> {
-  const [algo, s, k] = stored.split('$');
-  if (algo !== 'scrypt' || !s || !k) return false;
-  const expected = Buffer.from(k, 'base64');
-  const got = await scrypt(pw, Buffer.from(s, 'base64'), expected.length);
+  const h = parseHash(stored);
+  if (!h || !h.salt || !h.key || h.N > 2 ** 20 || h.r > 32 || h.p > 16) return false;
+  const expected = Buffer.from(h.key, 'base64');
+  const got = await scrypt(pw, Buffer.from(h.salt, 'base64'), expected.length, {
+    N: h.N,
+    r: h.r,
+    p: h.p,
+    maxmem: maxmem(h.N, h.r),
+  });
   return got.length === expected.length && timingSafeEqual(got, expected);
+}
+
+/** True when a stored hash uses weaker settings than today's: re-hash at the next sign-in. */
+export function needsRehash(stored: string) {
+  const h = parseHash(stored);
+  return !h || h.N < PARAMS.N || h.r < PARAMS.r || h.p < PARAMS.p;
 }
 
 const sha256 = (t: string) => createHash('sha256').update(t).digest('hex');
 
+// ---------- settings ----------
+let cookieSecureMode: 'auto' | 'always' | 'never' = 'auto';
+/** COOKIE_SECURE: 'true' (always, production behind HTTPS), 'false' (never), anything else = auto. */
+export function configureAuth(opts: { cookieSecure?: string }) {
+  const v = (opts.cookieSecure ?? '').toLowerCase();
+  cookieSecureMode = v === 'true' ? 'always' : v === 'false' ? 'never' : 'auto';
+}
+
 /**
- * Single-password mode: make sure the "owner" account exists and its
- * password matches APP_PASSWORD. Changing APP_PASSWORD signs everyone out.
- * A brand-new owner starts completely empty, unless `seed` is true
- * (example data from Student_Budget.xlsx, used by the tests or SEED_EXAMPLE_DATA=true).
+ * Optional built-in account: make sure "owner" exists and its password matches
+ * APP_PASSWORD. Changing APP_PASSWORD signs that account out everywhere. Sign-up
+ * cannot take the name "owner", so this never adopts someone else's account.
+ * A brand-new owner starts empty, unless `seed` is true (example data, used by tests).
  */
 export async function ensureOwner(db: Db, password: string, seed = false): Promise<number> {
   const r = await db.query('SELECT id, password_hash FROM users WHERE username = $1', [OWNER]);
@@ -72,12 +114,13 @@ export async function ensureOwner(db: Db, password: string, seed = false): Promi
     });
   }
   const { id, password_hash } = r.rows[0];
-  if (!(await verifyPassword(password, password_hash))) {
+  if (!(await verifyPassword(password, password_hash)) || needsRehash(password_hash)) {
+    const changed = !(await verifyPassword(password, password_hash));
     await db.tx(async (q) => {
       await q.query('UPDATE users SET password_hash = $1 WHERE id = $2', [await hashPassword(password), id]);
-      await q.query('DELETE FROM sessions WHERE user_id = $1', [id]);
+      if (changed) await q.query('DELETE FROM sessions WHERE user_id = $1', [id]);
     });
-    console.log('[auth] APP_PASSWORD changed: password updated and old sessions signed out.');
+    if (changed) console.log('[auth] APP_PASSWORD changed: password updated and old sessions signed out.');
   }
   return id as number;
 }
@@ -86,9 +129,10 @@ function cookieOptions(req: Request): CookieOptions {
   return {
     httpOnly: true,
     sameSite: 'lax',
-    secure: req.secure, // true behind an HTTPS reverse proxy (trust proxy is set)
+    // 'auto': Secure when the request came over HTTPS (via a trusted reverse proxy).
+    secure: cookieSecureMode === 'always' ? true : cookieSecureMode === 'never' ? false : req.secure,
     path: '/',
-    maxAge: SESSION_DAYS * 24 * 3600 * 1000,
+    maxAge: MAX_DAYS * 24 * 3600 * 1000,
   };
 }
 
@@ -97,7 +141,7 @@ export async function createSession(q: Queryable, userId: number): Promise<strin
   await q.query(
     `INSERT INTO sessions(token_hash, user_id, expires_at)
      VALUES ($1, $2, now() + make_interval(days => $3))`,
-    [sha256(token), userId, SESSION_DAYS],
+    [sha256(token), userId, IDLE_DAYS],
   );
   return token;
 }
@@ -106,14 +150,27 @@ export const requireAuth =
   (db: Db): RequestHandler =>
   ah(async (req, _res, next) => {
     const token = req.cookies?.[COOKIE];
-    if (!token || typeof token !== 'string') throw new HttpError(401, 'Please sign in.', 'unauthenticated');
+    if (!token || typeof token !== 'string' || token.length > 100) {
+      throw new HttpError(401, 'Please sign in.', 'unauthenticated');
+    }
+    const hash = sha256(token);
     const r = await db.query(
-      `SELECT ${USER_COLUMNS} FROM sessions s JOIN users u ON u.id = s.user_id
+      `SELECT ${USER_COLUMNS}, s.expires_at < now() + make_interval(days => $2) AS refresh
+       FROM sessions s JOIN users u ON u.id = s.user_id
        WHERE s.token_hash = $1 AND s.expires_at > now()`,
-      [sha256(token)],
+      [hash, IDLE_DAYS - 1],
     );
     if (r.rows.length === 0) throw new HttpError(401, 'Your session expired. Please sign in again.', 'unauthenticated');
-    req.user = r.rows[0] as AuthUser;
+    const { refresh, ...user } = r.rows[0];
+    // Sliding expiry (at most once a day): idle timeout, capped at MAX_DAYS after sign-in.
+    if (refresh) {
+      await db.query(
+        `UPDATE sessions SET expires_at = LEAST(created_at + make_interval(days => $2), now() + make_interval(days => $3))
+         WHERE token_hash = $1`,
+        [hash, MAX_DAYS, IDLE_DAYS],
+      );
+    }
+    req.user = user as AuthUser;
     next();
   });
 
@@ -133,6 +190,9 @@ export function loginHandler(db: Db, parse: (b: unknown) => { username?: string;
     const user = r.rows[0];
     const ok = await verifyPassword(password, user?.password_hash ?? (await getDummyHash()));
     if (!user || !ok) throw new HttpError(401, 'Wrong username or password.', 'bad_credentials');
+    if (needsRehash(user.password_hash)) {
+      await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [await hashPassword(password), user.id]);
+    }
     await db.query('DELETE FROM sessions WHERE expires_at < now()');
     const token = await createSession(db, user.id);
     res.cookie(COOKIE, token, cookieOptions(req));
@@ -140,15 +200,21 @@ export function loginHandler(db: Db, parse: (b: unknown) => { username?: string;
   });
 }
 
-/** Create a new account (starts empty) and sign it in. Can be turned off with ALLOW_SIGNUP=false. */
+/** Create a new account (starts empty) and sign it in. Can be turned off or put behind an invite code. */
 export function signupHandler(
   db: Db,
-  parse: (b: unknown) => { username: string; password: string },
-  allowed: () => boolean,
+  parse: (b: unknown) => { username: string; password: string; inviteCode?: string },
+  opts: () => { allowed: boolean; inviteCode: string },
 ) {
   return ah(async (req: Request, res: Response) => {
-    if (!allowed()) throw new HttpError(403, 'Creating new accounts is turned off on this server.', 'signup_disabled');
-    const { username, password } = parse(req.body);
+    const o = opts();
+    if (!o.allowed) throw new HttpError(403, 'Creating new accounts is turned off on this server.', 'signup_disabled');
+    const { username, password, inviteCode } = parse(req.body);
+    if (o.inviteCode) {
+      const a = Buffer.from(sha256(inviteCode ?? ''));
+      const b = Buffer.from(sha256(o.inviteCode));
+      if (!timingSafeEqual(a, b)) throw new HttpError(403, 'That invite code is not right.', 'bad_invite');
+    }
     const hash = await hashPassword(password);
     const ins = await db.query(
       `INSERT INTO users(username, password_hash) VALUES ($1, $2)
@@ -168,6 +234,51 @@ export function logoutHandler(db: Db) {
   return ah(async (req, res) => {
     const token = req.cookies?.[COOKIE];
     if (typeof token === 'string') await db.query('DELETE FROM sessions WHERE token_hash = $1', [sha256(token)]);
+    res.clearCookie(COOKIE, { path: '/' });
+    res.status(204).end();
+  });
+}
+
+// ---------- account controls (signed in) ----------
+
+async function checkPassword(db: Db, userId: number, password: string) {
+  const r = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+  if (!r.rows.length || !(await verifyPassword(password, r.rows[0].password_hash))) {
+    throw new HttpError(403, 'Your current password is not right.', 'bad_password');
+  }
+}
+
+/** Change password: keeps this device signed in, signs out every other one. */
+export function changePasswordHandler(db: Db, parse: (b: unknown) => { current: string; next: string }) {
+  return ah(async (req, res) => {
+    const { current, next } = parse(req.body);
+    const u = req.user!;
+    await checkPassword(db, u.id, current);
+    const token = String(req.cookies?.[COOKIE] ?? '');
+    await db.tx(async (q) => {
+      await q.query('UPDATE users SET password_hash = $1 WHERE id = $2', [await hashPassword(next), u.id]);
+      await q.query('DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2', [u.id, sha256(token)]);
+    });
+    res.json({ ok: true });
+  });
+}
+
+/** Sign out on every device (including this one). */
+export function logoutAllHandler(db: Db) {
+  return ah(async (req, res) => {
+    await db.query('DELETE FROM sessions WHERE user_id = $1', [req.user!.id]);
+    res.clearCookie(COOKIE, { path: '/' });
+    res.status(204).end();
+  });
+}
+
+/** Delete the account and everything in it (expenses, receipts, goals, loans...). */
+export function deleteAccountHandler(db: Db, parse: (b: unknown) => { password: string }) {
+  return ah(async (req, res) => {
+    const { password } = parse(req.body);
+    const u = req.user!;
+    await checkPassword(db, u.id, password);
+    await db.query('DELETE FROM users WHERE id = $1', [u.id]); // cascades to all data and sessions
     res.clearCookie(COOKIE, { path: '/' });
     res.status(204).end();
   });

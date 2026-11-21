@@ -8,3 +8,8 @@ dist/
 .claude/
 # the old Flutter version is kept on disk only, not in the repository
 legacy-flutter/
+# Playwright output
+e2e/report/
+e2e/results/
+# database backups made on the server
+backups/

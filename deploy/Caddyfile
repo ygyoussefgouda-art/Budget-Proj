@@ -1,0 +1,17 @@
+# Caddy site for Budget me (Caddy gets and renews the HTTPS certificate by itself).
+# Add this block to /etc/caddy/Caddyfile, replace the domain, then: sudo systemctl reload caddy
+
+budget.example.com {
+	encode zstd gzip
+	request_body {
+		max_size 10MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy 127.0.0.1:8090 {
+		# Overwrite so clients cannot forge their IP for the rate limits.
+		header_up X-Forwarded-For {remote_host}
+	}
+}

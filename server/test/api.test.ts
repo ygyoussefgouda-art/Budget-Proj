@@ -11,13 +11,15 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const PASSWORD = 'correct horse battery';
 
 let db: Db;
+/** App for the functional tests: same as production but without the CSRF header check (tested separately). */
+const mkApp = (opts: Parameters<typeof createApp>[1] = {}) => createApp(db, { csrfHeader: false, ...opts });
 let agent: ReturnType<typeof request.agent>;
 
 beforeAll(async () => {
   db = await createPgliteDb();
   await migrate(db, path.join(here, '..', 'migrations'));
   await ensureOwner(db, PASSWORD, true); // tests use the workbook example data as a fixture
-  agent = request.agent(createApp(db));
+  agent = request.agent(mkApp());
 }, 60_000);
 
 afterAll(async () => {
@@ -30,7 +32,7 @@ describe('fresh install', () => {
     try {
       await migrate(fresh, path.join(here, '..', 'migrations'));
       await ensureOwner(fresh, PASSWORD);
-      const a = request.agent(createApp(fresh));
+      const a = request.agent(createApp(fresh, { csrfHeader: false }));
       await a.post('/api/auth/login').send({ password: PASSWORD }).expect(200);
       const s = (await a.get('/api/state?month=2026-11')).body;
       expect(s.categories).toEqual([]);
@@ -47,7 +49,7 @@ describe('fresh install', () => {
 
 describe('sign up', () => {
   it('creates an account, signs it in, and it starts empty', async () => {
-    const a = request.agent(createApp(db));
+    const a = request.agent(mkApp());
     const r = await a.post('/api/auth/signup').send({ username: 'Mona.K', password: 'secret-pass-1' });
     expect(r.status).toBe(201);
     expect(r.body.user.username).toBe('mona.k'); // usernames are lower-cased
@@ -57,10 +59,10 @@ describe('sign up', () => {
   });
 
   it('keeps every account\'s data separate', async () => {
-    const a = request.agent(createApp(db));
+    const a = request.agent(mkApp());
     await a.post('/api/auth/login').send({ username: 'mona.k', password: 'secret-pass-1' }).expect(200);
     const mine = await a.post('/api/categories').send({ name: 'Mona only', month: '2026-11' }).expect(201);
-    const owner = request.agent(createApp(db));
+    const owner = request.agent(mkApp());
     await owner.post('/api/auth/login').send({ username: 'owner', password: PASSWORD }).expect(200);
     // the owner does not see it...
     const owners = (await owner.get('/api/state?month=2026-11')).body.categories;
@@ -72,20 +74,20 @@ describe('sign up', () => {
   });
 
   it('rejects a taken username, a short password and odd characters', async () => {
-    const a = request(createApp(db));
+    const a = request(mkApp());
     expect((await a.post('/api/auth/signup').send({ username: 'MONA.K', password: 'another-pass' })).status).toBe(409);
     expect((await a.post('/api/auth/signup').send({ username: 'newuser', password: 'short' })).status).toBe(400);
     expect((await a.post('/api/auth/signup').send({ username: 'no spaces!', password: 'long-enough' })).status).toBe(400);
   });
 
   it('can be turned off', async () => {
-    const closed = request(createApp(db, { allowSignup: false }));
-    expect((await closed.get('/api/auth/config')).body).toEqual({ signupEnabled: false });
+    const closed = request(mkApp({ allowSignup: false }));
+    expect((await closed.get('/api/auth/config')).body).toEqual({ signupEnabled: false, inviteRequired: false });
     expect((await closed.post('/api/auth/signup').send({ username: 'blocked', password: 'long-enough' })).status).toBe(403);
   });
 
   it('wrong username or password gives the same message', async () => {
-    const a = request(createApp(db));
+    const a = request(mkApp());
     const r1 = await a.post('/api/auth/login').send({ username: 'nobody', password: 'whatever-123' });
     const r2 = await a.post('/api/auth/login').send({ username: 'mona.k', password: 'wrong-password' });
     expect(r1.status).toBe(401);
@@ -95,12 +97,12 @@ describe('sign up', () => {
 
 describe('auth', () => {
   it('rejects anonymous requests', async () => {
-    const r = await request(createApp(db)).get('/api/state?month=2026-11');
+    const r = await request(mkApp()).get('/api/state?month=2026-11');
     expect(r.status).toBe(401);
   });
 
   it('rejects a wrong password', async () => {
-    const r = await request(createApp(db)).post('/api/auth/login').send({ password: 'nope' });
+    const r = await request(mkApp()).post('/api/auth/login').send({ password: 'nope' });
     expect(r.status).toBe(401);
   });
 
@@ -112,7 +114,7 @@ describe('auth', () => {
   });
 
   it('health is public', async () => {
-    const r = await request(createApp(db)).get('/api/health');
+    const r = await request(mkApp()).get('/api/health');
     expect(r.body).toEqual({ ok: true });
   });
 });
@@ -307,7 +309,7 @@ describe('receipts', () => {
   });
 
   it('other accounts cannot see or change it', async () => {
-    const other = request.agent(createApp(db));
+    const other = request.agent(mkApp());
     await other.post('/api/auth/signup').send({ username: 'receipt.peeker', password: 'long-enough-1' }).expect(201);
     expect((await other.get(`/api/expenses/${expenseId}/receipt`)).status).toBe(404);
     expect((await other.put(`/api/expenses/${expenseId}/receipt`).set('Content-Type', 'image/png').send(PNG)).status).toBe(404);
@@ -392,5 +394,149 @@ describe('backup', () => {
     expect(r.status).toBe(400);
     const s = (await agent.get('/api/state?month=2026-11')).body;
     expect(s.goals).toHaveLength(1);
+  });
+});
+
+describe('security hardening', () => {
+  const CSRF = { 'X-Requested-With': 'budget-me' };
+  const prod = () => createApp(db); // real defaults: CSRF header required
+
+  it('blocks writes without the app header or from another site', async () => {
+    const a = request.agent(prod());
+    await a.post('/api/auth/login').set(CSRF).send({ username: 'owner', password: PASSWORD }).expect(200);
+    // a plain cross-site form post cannot add the header
+    expect((await a.post('/api/reset')).status).toBe(403);
+    // another site's page, even with the header (browsers would need CORS, which we never allow)
+    expect((await a.post('/api/reset').set(CSRF).set('Origin', 'https://evil.example')).status).toBe(403);
+    // our own page: same origin + header -> passes the check (409 here: nothing to do with CSRF)
+    const ok = await a.post('/api/categories').set(CSRF).set('Origin', 'http://127.0.0.1').set('Host', '127.0.0.1')
+      .send({ name: 'Transportation', month: '2026-11' });
+    expect(ok.status).toBe(409);
+    // reading is never blocked
+    expect((await a.get('/api/state?month=2026-11')).status).toBe(200);
+  });
+
+  it('API responses are never cached', async () => {
+    const r = await agent.get('/api/state?month=2026-11');
+    expect(r.headers['cache-control']).toBe('no-store');
+  });
+
+  it('reserves built-in usernames and rejects password = username', async () => {
+    const a = request(mkApp());
+    expect((await a.post('/api/auth/signup').send({ username: 'owner', password: 'long-enough-1' })).status).toBe(400);
+    expect((await a.post('/api/auth/signup').send({ username: 'Admin', password: 'long-enough-1' })).status).toBe(400);
+    expect((await a.post('/api/auth/signup').send({ username: 'samesame.1', password: 'samesame.1' })).status).toBe(400);
+    expect((await a.post('/api/auth/signup').send({ username: 'ninechars', password: '123456789' })).status).toBe(400);
+  });
+
+  it('invite code, when set, is required to sign up', async () => {
+    const a = request(mkApp({ inviteCode: 'family-2026' }));
+    expect((await a.get('/api/auth/config')).body).toEqual({ signupEnabled: true, inviteRequired: true });
+    expect((await a.post('/api/auth/signup').send({ username: 'invited.no', password: 'long-enough-1' })).status).toBe(403);
+    expect(
+      (await a.post('/api/auth/signup').send({ username: 'invited.no', password: 'long-enough-1', inviteCode: 'wrong' })).status,
+    ).toBe(403);
+    expect(
+      (await a.post('/api/auth/signup').send({ username: 'invited.yes', password: 'long-enough-1', inviteCode: 'family-2026' })).status,
+    ).toBe(201);
+  });
+
+  it('locks one account after 10 failed sign-ins, even from different addresses', async () => {
+    const a = request(mkApp({ loginLimit: 1000 }));
+    await a.post('/api/auth/signup').send({ username: 'target.user', password: 'right-password-1' }).expect(201);
+    for (let i = 0; i < 10; i++) {
+      await a.post('/api/auth/login').set('X-Forwarded-For', `10.0.0.${i}`).send({ username: 'target.user', password: `nope-${i}` }).expect(401);
+    }
+    const r = await a.post('/api/auth/login').set('X-Forwarded-For', '10.0.9.9').send({ username: 'target.user', password: 'right-password-1' });
+    expect(r.status).toBe(429);
+  });
+
+  it('upgrades old password hashes at sign-in', async () => {
+    const { scryptSync, randomBytes } = await import('node:crypto');
+    const salt = randomBytes(16);
+    const legacy = `scrypt$${salt.toString('base64')}$${scryptSync('legacy-pass-1', salt, 64).toString('base64')}`;
+    await db.query("INSERT INTO users(username, password_hash) VALUES ('legacy.user', $1)", [legacy]);
+    await request(mkApp()).post('/api/auth/login').send({ username: 'legacy.user', password: 'legacy-pass-1' }).expect(200);
+    const h = (await db.query("SELECT password_hash FROM users WHERE username = 'legacy.user'")).rows[0].password_hash as string;
+    expect(h.startsWith('scrypt2$16384$8$5$')).toBe(true);
+    await request(mkApp()).post('/api/auth/login').send({ username: 'legacy.user', password: 'legacy-pass-1' }).expect(200);
+  });
+
+  it('change password signs out other devices; sign out everywhere; delete account', async () => {
+    const app = mkApp();
+    const phone = request.agent(app);
+    const laptop = request.agent(app);
+    await phone.post('/api/auth/signup').send({ username: 'mover.1', password: 'first-pass-1' }).expect(201);
+    await laptop.post('/api/auth/login').send({ username: 'mover.1', password: 'first-pass-1' }).expect(200);
+
+    expect((await phone.post('/api/auth/password').send({ current: 'wrong-pass-1', next: 'second-pass-2' })).status).toBe(403);
+    await phone.post('/api/auth/password').send({ current: 'first-pass-1', next: 'second-pass-2' }).expect(200);
+    expect((await phone.get('/api/auth/me')).status).toBe(200); // this device stays signed in
+    expect((await laptop.get('/api/auth/me')).status).toBe(401); // other devices are signed out
+
+    await laptop.post('/api/auth/login').send({ username: 'mover.1', password: 'second-pass-2' }).expect(200);
+    await phone.post('/api/auth/logout-all').expect(204);
+    expect((await phone.get('/api/auth/me')).status).toBe(401);
+    expect((await laptop.get('/api/auth/me')).status).toBe(401);
+
+    await phone.post('/api/auth/login').send({ username: 'mover.1', password: 'second-pass-2' }).expect(200);
+    await phone.post('/api/categories').send({ name: 'Temp', month: '2026-11' }).expect(201);
+    expect((await phone.post('/api/auth/delete-account').send({ password: 'nope-nope-1' })).status).toBe(403);
+    await phone.post('/api/auth/delete-account').send({ password: 'second-pass-2' }).expect(204);
+    expect((await db.query("SELECT COUNT(*)::int AS n FROM users WHERE username = 'mover.1'")).rows[0].n).toBe(0);
+    expect((await phone.post('/api/auth/login').send({ username: 'mover.1', password: 'second-pass-2' })).status).toBe(401);
+  });
+
+  it('rejects oversized bodies and out-of-range values cleanly', async () => {
+    const big = { name: 'x'.repeat(150_000), month: '2026-11' };
+    expect((await agent.post('/api/categories').send(big)).status).toBe(413);
+    expect((await agent.get('/api/state?month=9999-12')).status).toBe(400);
+    expect((await agent.get('/api/expenses?offset=1e300')).status).toBe(400);
+    expect((await agent.delete('/api/expenses/99999999999999999999')).status).toBe(400);
+  });
+
+  it('a goal start amount cannot be lowered below what was withdrawn', async () => {
+    const g = await agent.post('/api/goals').send({ name: 'Bike', target: 100000, start: 50000 }).expect(201);
+    await agent.post(`/api/goals/${g.body.id}/entries`).send({ date: '2026-11-10', deposit: false, amount: 40000 }).expect(201);
+    expect((await agent.put(`/api/goals/${g.body.id}`).send({ name: 'Bike', target: 100000, start: 10000 })).status).toBe(400);
+    await agent.put(`/api/goals/${g.body.id}`).send({ name: 'Bike', target: 100000, start: 40000 }).expect(200);
+    await agent.delete(`/api/goals/${g.body.id}`).expect(204);
+  });
+
+  it('receipts: stored privately, never cached, PDFs download, per-account quota', async () => {
+    const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(600, 1)]);
+    const PDF = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(600, 2)]);
+    const cat = (await agent.get('/api/state?month=2026-11')).body.categories[1].id;
+    const mk = async () => (await agent.post('/api/expenses?force=1').send({ date: '2026-11-12', categoryId: cat, amount: 100 })).body.id;
+    const e1 = await mk();
+    await agent.put(`/api/expenses/${e1}/receipt`).set('Content-Type', 'image/png').send(PNG).expect(200);
+    const img = await agent.get(`/api/expenses/${e1}/receipt`);
+    expect(img.headers['cache-control']).toBe('no-store');
+    expect(img.headers['content-security-policy']).toContain('sandbox');
+    expect(img.headers['content-disposition']).toMatch(/^inline/);
+    await agent.put(`/api/expenses/${e1}/receipt`).set('Content-Type', 'application/pdf').send(PDF).expect(200);
+    expect((await agent.get(`/api/expenses/${e1}/receipt`)).headers['content-disposition']).toMatch(/^attachment/);
+
+    process.env.RECEIPT_QUOTA_MB = String(1000 / (1024 * 1024)); // ~1000 bytes
+    try {
+      const e2 = await mk();
+      const r = await agent.put(`/api/expenses/${e2}/receipt`).set('Content-Type', 'image/png').send(PNG);
+      expect(r.status).toBe(413);
+      await agent.delete(`/api/expenses/${e2}`).expect(204);
+    } finally {
+      delete process.env.RECEIPT_QUOTA_MB;
+    }
+    await agent.delete(`/api/expenses/${e1}`).expect(204);
+  });
+
+  it('backup restore refuses values the app itself would refuse', async () => {
+    const backup = (await agent.get('/api/backup')).body;
+    const bad = structuredClone(backup);
+    bad.tables.expenses.push({ date: '2026-11-01', category_id: bad.tables.categories[0].id, description: 'x'.repeat(500), amount: 5 });
+    expect((await agent.post('/api/backup/restore').send(bad)).status).toBe(400);
+    const bad2 = structuredClone(backup);
+    bad2.settings = { currency: '<script>' };
+    expect((await agent.post('/api/backup/restore').send(bad2)).status).toBe(400);
+    await agent.post('/api/backup/restore').send(backup).expect(200);
   });
 });

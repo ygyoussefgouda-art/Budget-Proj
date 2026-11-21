@@ -17,68 +17,20 @@ legacy-flutter/     the previous Flutter version, kept for reference only (not b
 
 ## Deploy on the VPS (Docker)
 
-This is a standalone Compose project named `budget-me`. It has its own network, its own Postgres container and its own data volume. It shares nothing with the other app already on your VPS, and Postgres is not published to the host.
+**Full step-by-step guide: [DEPLOY.md](DEPLOY.md)** (firewall, secrets, HTTPS proxy, backups, updates).
+
+Short version:
 
 ```bash
-# 1. copy this folder to the VPS, e.g. /opt/budget-me, then:
-cd /opt/budget-me
-cp .env.example .env
-nano .env            # set POSTGRES_PASSWORD and APP_PORT (a free port)
-
-# 2. build and start
+git clone https://github.com/ygyoussefgouda-art/Budget-Proj.git /opt/budget-me && cd /opt/budget-me
+cp .env.example .env && chmod 600 .env && nano .env   # strong POSTGRES_PASSWORD, SIGNUP_INVITE_CODE
 docker compose up -d --build
-
-# 3. check
-docker compose ps
-curl http://127.0.0.1:8090/api/health     # -> {"ok":true}
+curl http://127.0.0.1:8090/api/health                 # -> {"ok":true}
 ```
 
-By default the app listens on `127.0.0.1:8090` (change it with `APP_PORT`), so only a reverse proxy on the VPS can reach it. Add a site for it to the proxy your other app already uses:
-
-**nginx**
-```nginx
-server {
-    server_name budget.example.com;
-    location / {
-        proxy_pass http://127.0.0.1:8090;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    # listen 443 ssl; ... (e.g. certbot --nginx -d budget.example.com)
-}
-```
-
-**Caddy** (HTTPS is automatic)
-```
-budget.example.com {
-    reverse_proxy 127.0.0.1:8090
-}
-```
-
-If your proxy runs inside Docker rather than on the host, either set `APP_BIND=0.0.0.0` and point it at `host.docker.internal:8090`, or join the proxy to this project's network (`budget-me_internal`) and proxy to `app:3000`. If you have no domain yet, set `APP_BIND=0.0.0.0` and open `http://<vps-ip>:8090`. Use HTTPS as soon as you can, because the sign-in cookie is only marked secure over HTTPS.
-
-### Update to a new version
-```bash
-cd /opt/budget-me
-# copy the new files in (or git pull), then:
-docker compose up -d --build
-```
-Database migrations run automatically at start-up.
-
-### Backups
-- In the app: **Settings → Download backup** saves a JSON file. **Restore from backup** also accepts backups made by the old phone app.
-- Full database dump on the VPS:
-  ```bash
-  docker compose exec -T db pg_dump -U budget_me budget_me > backup-$(date +%F).sql
-  ```
-  Restore it with:
-  ```bash
-  docker compose exec -T db psql -U budget_me budget_me < backup-YYYY-MM-DD.sql
-  ```
-
+It is a standalone Compose project (`budget-me`) with its own network, Postgres and volume, so it shares nothing with the other app on your VPS. The app listens only on `127.0.0.1:8090`; put your HTTPS reverse proxy in front of it (ready-made configs: [deploy/nginx-budget-me.conf](deploy/nginx-budget-me.conf), [deploy/Caddyfile](deploy/Caddyfile)). Daily database backups go to `backups/`; update with `sh deploy/update.sh`.
 ### Accounts
-Everyone creates their own account on the sign-in screen with **Create account** (username + password). Each account has its own budget, which starts empty, and nobody can see anyone else's data. Passwords are stored as scrypt hashes, sessions last 30 days, and sign-in and sign-up attempts are rate-limited.
+Everyone creates their own account on the sign-in screen with **Create account** (username + password). Each account has its own budget, which starts empty, and nobody can see anyone else's data. Passwords are stored as scrypt hashes, sessions expire after 14 idle days (30 at most), and sign-in and sign-up attempts are rate-limited. Set `SIGNUP_INVITE_CODE` so only people you give the code to can sign up. In Settings each user can change their password, sign out everywhere and delete their account.
 
 - Once everyone who should use the app has an account, set `ALLOW_SIGNUP=false` in `.env` and run `docker compose up -d`. The sign-in screen then shows only "Sign in".
 - `APP_PASSWORD` (optional) creates a built-in account with the username `owner`. Changing it and restarting signs that account out everywhere.
@@ -116,7 +68,9 @@ npm test      # API tests against a real (embedded) Postgres
 cd web
 npm test      # budget maths (the workbook formulas)
 ```
-GitHub Actions (`.github/workflows/ci.yml`) runs both test suites, builds the web app and builds the Docker image on every push.
+E2E (Playwright, phone-sized browser against the real app): build the web app, then `cd e2e`, `npm ci`, `npx playwright install chromium`, `npx playwright test`.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs the API, web and E2E tests, a dependency audit and the Docker build on every push. Dependabot opens weekly update PRs.
 
 ## What the app does
 | Screen | What it does |

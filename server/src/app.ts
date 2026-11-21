@@ -1,12 +1,21 @@
 import { existsSync } from 'node:fs';
+import { isIPv6 } from 'node:net';
 import path from 'node:path';
 import cookieParser from 'cookie-parser';
-import express from 'express';
+import express, { type Request } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
-import { loginHandler, logoutHandler, requireAuth, signupHandler } from './auth.js';
+import {
+  changePasswordHandler,
+  deleteAccountHandler,
+  loginHandler,
+  logoutAllHandler,
+  logoutHandler,
+  requireAuth,
+  signupHandler,
+} from './auth.js';
 import type { Db } from './db.js';
-import { errorHandler } from './http.js';
+import { errorHandler, HttpError } from './http.js';
 import { receiptRoutes } from './receipts.js';
 import { apiRoutes } from './routes.js';
 import { schemas } from './validation.js';
@@ -15,14 +24,53 @@ export interface AppOptions {
   /** Folder with the built React app (index.html). Optional in tests. */
   publicDir?: string;
   /** Express "trust proxy" setting; defaults to private networks (Docker / reverse proxy). */
-  trustProxy?: string;
+  trustProxy?: string | number | boolean;
   /** Whether new people may create accounts. Default true. */
   allowSignup?: boolean;
+  /** If set, sign-up needs this invite code. */
+  inviteCode?: string;
+  /** Sign-in attempts per IP per 15 minutes (default 20). */
+  loginLimit?: number;
+  /** New accounts per IP per hour (default 10). */
+  signupLimit?: number;
+  /** Send HSTS from the app (only when served over HTTPS and the proxy doesn't). */
+  hsts?: boolean;
+  /** Require the X-Requested-With header on writes (CSRF defence). Default true. */
+  csrfHeader?: boolean;
 }
+
+export const CSRF_HEADER = 'x-requested-with';
+export const CSRF_VALUE = 'budget-me';
+
+/** Rate-limit key: the client IP, with IPv6 grouped by /56 (one home/VPS gets a whole /56 or /64). */
+export function ipKey(req: Request) {
+  const ip = req.ip ?? 'unknown';
+  if (!isIPv6(ip) || ip.startsWith('::ffff:')) return ip;
+  const full = ip.split('::');
+  const head = full[0] ? full[0].split(':') : [];
+  const tail = full.length > 1 && full[1] ? full[1].split(':') : [];
+  const groups = [...head, ...Array(8 - head.length - tail.length).fill('0'), ...tail];
+  // first 56 bits = 3.5 groups
+  return `${groups.slice(0, 3).join(':')}:${(groups[3] ?? '0').padStart(4, '0').slice(0, 2)}::/56`;
+}
+
+const limiter = (windowMin: number, limit: number, error: string, extra: Partial<Parameters<typeof rateLimit>[0]> = {}) =>
+  rateLimit({
+    windowMs: windowMin * 60 * 1000,
+    limit,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    keyGenerator: ipKey,
+    validate: { trustProxy: false, xForwardedForHeader: false },
+    message: { error },
+    ...extra,
+  });
 
 export function createApp(db: Db, opts: AppOptions = {}) {
   const app = express();
   app.disable('x-powered-by');
+  // Only trust X-Forwarded-* from private addresses (the reverse proxy / Docker network).
+  // Behind a single known proxy, set TRUST_PROXY to its address or to 1.
   app.set('trust proxy', opts.trustProxy ?? 'loopback, linklocal, uniquelocal');
 
   app.use(
@@ -36,15 +84,49 @@ export function createApp(db: Db, opts: AppOptions = {}) {
           'connect-src': ["'self'"],
           'manifest-src': ["'self'"],
           'worker-src': ["'self'"],
+          'form-action': ["'self'"],
           'upgrade-insecure-requests': null,
         },
       },
-      // The app may be served over plain HTTP on a LAN; HSTS belongs on the TLS proxy.
-      strictTransportSecurity: false,
+      // Usually the HTTPS reverse proxy sends HSTS; HSTS=true makes the app send it too.
+      strictTransportSecurity: opts.hsts ? { maxAge: 31536000, includeSubDomains: true } : false,
+      referrerPolicy: { policy: 'same-origin' },
     }),
   );
   app.use(cookieParser());
-  app.use('/api', express.json({ limit: '5mb' }));
+
+  // ---------- /api ----------
+  app.use('/api', (_req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store'); // never keep personal data in browser/proxy caches
+    next();
+  });
+  // Coarse per-network limit for everything (protects against floods).
+  app.use('/api', limiter(5, 1500, 'Too many requests. Slow down and try again in a few minutes.'));
+
+  // CSRF: writes must come from our own pages. Forms and cross-site pages cannot set this header,
+  // and a cross-origin fetch with it needs a CORS preflight, which this app never allows.
+  app.use('/api', (req, _res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    const origin = req.get('origin');
+    if (origin) {
+      let ok = false;
+      try {
+        const host = req.get('x-forwarded-host') ?? req.get('host');
+        ok = new URL(origin).host === host;
+      } catch {
+        ok = false;
+      }
+      if (!ok) return next(new HttpError(403, 'Request blocked: it did not come from this app.', 'bad_origin'));
+    }
+    if ((opts.csrfHeader ?? true) && req.get(CSRF_HEADER) !== CSRF_VALUE) {
+      return next(new HttpError(403, 'Request blocked: it did not come from this app.', 'csrf'));
+    }
+    next();
+  });
+
+  // Small JSON bodies everywhere; the backup restore route has its own larger parser (after sign-in).
+  const smallJson = express.json({ limit: '100kb' });
+  app.use('/api', (req, res, next) => (req.path === '/backup/restore' ? next() : smallJson(req, res, next)));
 
   const api = express.Router();
   api.get('/health', async (_req, res) => {
@@ -56,29 +138,43 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     }
   });
 
-  const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    limit: 20,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    message: { error: 'Too many sign-in attempts. Try again in 15 minutes.' },
-  });
   const allowSignup = opts.allowSignup ?? true;
+  const inviteCode = opts.inviteCode ?? '';
   api.get('/auth/config', (_req, res) => {
-    res.json({ signupEnabled: allowSignup });
+    res.json({ signupEnabled: allowSignup, inviteRequired: allowSignup && !!inviteCode });
   });
-  api.post('/auth/login', loginLimiter, loginHandler(db, (b) => schemas.login.parse(b)));
-  const signupLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    limit: 10,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    message: { error: 'Too many new accounts from this network. Try again in an hour.' },
+
+  const loginIpLimiter = limiter(15, opts.loginLimit ?? 20, 'Too many sign-in attempts. Try again in 15 minutes.');
+  // Per-account limit on *failed* sign-ins: stops password guessing spread over many IPs.
+  const loginAccountLimiter = limiter(15, 10, 'Too many sign-in attempts. Try again in 15 minutes.', {
+    skipSuccessfulRequests: true,
+    keyGenerator: (req: Request) => `u:${String((req.body as { username?: unknown })?.username ?? 'owner').trim().toLowerCase().slice(0, 60)}`,
   });
-  api.post('/auth/signup', signupLimiter, signupHandler(db, (b) => schemas.signup.parse(b), () => allowSignup));
+  api.post('/auth/login', loginIpLimiter, loginAccountLimiter, loginHandler(db, (b) => schemas.login.parse(b)));
+  const signupLimiter = limiter(60, opts.signupLimit ?? 10, 'Too many new accounts from this network. Try again in an hour.');
+  api.post(
+    '/auth/signup',
+    signupLimiter,
+    signupHandler(db, (b) => schemas.signup.parse(b), () => ({ allowed: allowSignup, inviteCode })),
+  );
   api.post('/auth/logout', logoutHandler(db));
 
   api.use(requireAuth(db));
+
+  // Per-account limit on changes (uploads, restores, edits): stops one account from flooding the server.
+  api.use(
+    limiter(15, 600, 'You are making changes too quickly. Wait a few minutes and try again.', {
+      keyGenerator: (req: Request) => `w:${req.user!.id}`,
+      skip: (req: Request) => ['GET', 'HEAD', 'OPTIONS'].includes(req.method),
+    }),
+  );
+  const passwordLimiter = limiter(15, 10, 'Too many attempts. Try again in 15 minutes.', {
+    keyGenerator: (req: Request) => `p:${req.user!.id}`,
+  });
+  api.post('/auth/password', passwordLimiter, changePasswordHandler(db, (b) => schemas.changePassword.parse(b)));
+  api.post('/auth/logout-all', logoutAllHandler(db));
+  api.post('/auth/delete-account', passwordLimiter, deleteAccountHandler(db, (b) => schemas.deleteAccount.parse(b)));
+
   api.use(receiptRoutes(db));
   api.use(apiRoutes(db));
   api.use((_req, res) => {
@@ -97,7 +193,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
           const name = path.basename(file);
           if (file.includes(`${path.sep}assets${path.sep}`)) {
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-          } else if (name === 'sw.js' || name.endsWith('.webmanifest')) {
+          } else if (name === 'sw.js' || name.endsWith('.webmanifest') || name === 'theme-init.js') {
             res.setHeader('Cache-Control', 'no-cache');
           }
         },
