@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Camera, Download, FileText, Image as ImageIcon, Paperclip, Repeat, Search, X } from 'lucide-react';
+import { Camera, CopyPlus, Download, FileText, Image as ImageIcon, Paperclip, Repeat, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, receiptUrl, saveWithConfirm, uploadReceipt } from '../api';
@@ -25,10 +25,10 @@ import {
   SaveButton,
   SectionTitle,
   Segmented,
-  tint,
 } from '../components/ui';
 import { convert, parseTags, periodRange, splitShares, type Expense } from '../domain/calc';
-import { isNative, nativeReceiptPhoto } from '../native';
+import { haptic, isNative, nativeReceiptPhoto } from '../native';
+import { CategoryIcon } from '../components/CategoryIcon';
 import { fmtMoney, parseMoney, parseRate, plain } from '../domain/money';
 import { t } from '../i18n';
 import { isNetworkError } from '../offline';
@@ -37,21 +37,42 @@ import { CURRENCIES, defaultDate, monthLabel, shortDate, todayIso, useApp, type 
 
 type Scope = 'month' | 'all' | 'range';
 
+interface Filters { scope: Scope; from: string; to: string; search: string; catId: number | null; tag: string | null }
+/**
+ * Filters survive leaving the tab and coming back while the app stays open. Kept per account and in
+ * memory only: nothing is saved on the phone, and they are gone once the app is closed.
+ */
+const rememberedFilters = new Map<number, Filters>();
+
 export default function Expenses() {
   const { data, fmt, month, startDay, user } = useApp();
   const undoDelete = useUndoDelete();
+  const saved = rememberedFilters.get(user.id);
   const [recurringOpen, setRecurringOpen] = useState(false);
-  const [scope, setScope] = useState<Scope>('month');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [search, setSearch] = useState('');
-  const [q, setQ] = useState('');
-  const [catId, setCatId] = useState<number | null>(null);
-  const [tag, setTag] = useState<string | null>(null);
+  const [scope, setScope] = useState<Scope>(saved?.scope ?? 'month');
+  const [from, setFrom] = useState(saved?.from ?? '');
+  const [to, setTo] = useState(saved?.to ?? '');
+  const [search, setSearch] = useState(saved?.search ?? '');
+  const [q, setQ] = useState((saved?.search ?? '').trim());
+  const [catId, setCatId] = useState<number | null>(saved?.catId ?? null);
+  const [tag, setTag] = useState<string | null>(saved?.tag ?? null);
   const [exportOpen, setExportOpen] = useState(false);
   const tags = useQuery({ queryKey: ['tags'], queryFn: () => api<{ tag: string; count: number }[]>('/tags'), staleTime: 60_000 });
-  const [form, setForm] = useState<{ edit?: Expense } | null>(null);
+  const [form, setForm] = useState<{ edit?: Expense; copy?: Expense } | null>(null);
   const [viewing, setViewing] = useState<Expense | null>(null);
+
+  useEffect(() => {
+    rememberedFilters.set(user.id, { scope, from, to, search, catId, tag });
+  }, [user.id, scope, from, to, search, catId, tag]);
+  const filtered = scope !== 'month' || !!search || catId !== null || tag !== null;
+  const clearFilters = () => {
+    setScope('month');
+    setFrom('');
+    setTo('');
+    setSearch('');
+    setCatId(null);
+    setTag(null);
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => setQ(search.trim()), 250);
@@ -108,6 +129,11 @@ export default function Expenses() {
       </div>
 
       <div className="chips">
+        {filtered && (
+          <button type="button" className="chip clear-chip" onClick={clearFilters}>
+            <X size={13} /> {t('Clear filters')}
+          </button>
+        )}
         <Chip on={scope === 'month'} onClick={() => setScope('month')}>{t('This month')}</Chip>
         <Chip on={scope === 'all'} onClick={() => setScope('all')}>{t('All time')}</Chip>
         <Chip on={scope === 'range'} onClick={() => setScope('range')}>{t('Date range')}</Chip>
@@ -171,9 +197,7 @@ export default function Expenses() {
         {items.map((e) => (
           <SwipeRow key={e.id} className="list-item" onDelete={() => del(e)} onEdit={() => setForm({ edit: e })}>
             <button className="list-main" onClick={() => setForm({ edit: e })}>
-              <span className="avatar" style={{ color: COLORS.red, background: tint(COLORS.red, 14) }}>
-                {(e.categoryName ?? '?').slice(0, 1).toUpperCase()}
-              </span>
+              <CategoryIcon cat={data?.categories.find((c) => c.id === e.categoryId) ?? { name: e.categoryName }} fallbackColor={COLORS.red} />
               <span className="grow">
                 <span className="txn-title">{e.description || e.categoryName}</span>
                 <span className="tiny mute block">
@@ -207,7 +231,15 @@ export default function Expenses() {
       </div>
 
       <Sheet open={!!form} onClose={() => setForm(null)} title={form?.edit ? t('Edit expense') : t('Add expense')}>
-        {form && <ExpenseForm edit={form.edit} onDone={() => setForm(null)} />}
+        {form && (
+          <ExpenseForm
+            key={form.edit ? `e${form.edit.id}` : form.copy ? `c${form.copy.id}` : 'new'}
+            edit={form.edit}
+            copy={form.copy}
+            onDone={() => setForm(null)}
+            onLogAgain={(e) => setForm({ copy: e })}
+          />
+        )}
       </Sheet>
       <Sheet open={exportOpen} onClose={() => setExportOpen(false)} title={t('Export these expenses')}>
         {exportOpen && (
@@ -296,29 +328,44 @@ interface Suggestion { description: string; categoryId: number; count: number }
  * Add or edit an expense. `quick` is the short version opened from the "+" on Home:
  * dated today, no receipt field.
  */
-export function ExpenseForm({ edit, onDone, quick = false }: { edit?: Expense; onDone: () => void; quick?: boolean }) {
+export function ExpenseForm({
+  edit,
+  copy,
+  onDone,
+  onLogAgain,
+  quick = false,
+}: {
+  edit?: Expense;
+  /** "Log again": a new expense filled in from this one, dated today (no receipt). */
+  copy?: Expense;
+  onDone: () => void;
+  /** Shown on an existing expense: opens a copy of it, dated today. */
+  onLogAgain?: (e: Expense) => void;
+  quick?: boolean;
+}) {
   const { data, month, refresh, user, startDay } = useApp();
   const { confirm, toast } = useOverlay();
   const offline = useOffline();
   const qc = useQueryClient();
   const cats = data?.categories ?? [];
+  const src = edit ?? copy;
   // "Amount" is the whole bill; with a split, my share is what gets recorded.
-  const [amount, setAmount] = useState(edit ? plain(edit.amount + (edit.split?.share ?? 0)) : '');
-  const [tagText, setTagText] = useState((edit?.tags ?? []).map((x) => `#${x}`).join(' '));
-  const [splitOn, setSplitOn] = useState(!!edit?.split);
-  const [person, setPerson] = useState(edit?.split?.person ?? '');
-  const [splitMode, setSplitMode] = useState<'even' | 'share'>(edit?.split ? 'share' : 'even');
-  const [theirShare, setTheirShare] = useState(edit?.split ? plain(edit.split.share) : '');
-  const [fxOn, setFxOn] = useState(!!edit?.foreign);
-  const [fxAmount, setFxAmount] = useState(edit?.foreign ? plain(edit.foreign.amount) : '');
-  const [fxCurrency, setFxCurrency] = useState(edit?.foreign?.currency ?? CURRENCIES.find((c) => c !== user.currency) ?? 'USD');
-  const [fxRate, setFxRate] = useState(edit?.foreign ? String(edit.foreign.rate) : '');
+  const [amount, setAmount] = useState(src ? plain(src.amount + (src.split?.share ?? 0)) : '');
+  const [tagText, setTagText] = useState((src?.tags ?? []).map((x) => `#${x}`).join(' '));
+  const [splitOn, setSplitOn] = useState(!!src?.split);
+  const [person, setPerson] = useState(src?.split?.person ?? '');
+  const [splitMode, setSplitMode] = useState<'even' | 'share'>(src?.split ? 'share' : 'even');
+  const [theirShare, setTheirShare] = useState(src?.split ? plain(src.split.share) : '');
+  const [fxOn, setFxOn] = useState(!!src?.foreign);
+  const [fxAmount, setFxAmount] = useState(src?.foreign ? plain(src.foreign.amount) : '');
+  const [fxCurrency, setFxCurrency] = useState(src?.foreign?.currency ?? CURRENCIES.find((c) => c !== user.currency) ?? 'USD');
+  const [fxRate, setFxRate] = useState(src?.foreign ? String(src.foreign.rate) : '');
   const knownTags = useQuery({ queryKey: ['tags'], queryFn: () => api<{ tag: string; count: number }[]>('/tags'), enabled: !quick, staleTime: 60_000 });
   const [catId, setCatId] = useState<number>(
-    edit?.categoryId ?? lastCategory(user, cats.map((c) => c.id)) ?? cats[0]?.id ?? 0,
+    (src && cats.some((c) => c.id === src.categoryId) ? src.categoryId : undefined) ?? lastCategory(user, cats.map((c) => c.id)) ?? cats[0]?.id ?? 0,
   );
-  const [desc, setDesc] = useState(edit?.description ?? '');
-  const [date, setDate] = useState(edit?.date ?? (quick ? todayIso() : defaultDate(month, startDay)));
+  const [desc, setDesc] = useState(src?.description ?? '');
+  const [date, setDate] = useState(edit?.date ?? (quick || copy ? todayIso() : defaultDate(month, startDay)));
   // Most-used descriptions as tap-to-fill chips (new expenses only).
   const suggestions = useQuery({
     queryKey: ['suggestions'],
@@ -388,6 +435,8 @@ export function ExpenseForm({ edit, onDone, quick = false }: { edit?: Expense; o
       tags: tags.tags,
       split: shares ? { person: person.trim(), share: shares.their } : null,
       foreign: fxOn ? { amount: fxMinor, currency: fxCurrency, rate } : null,
+      // A receipt belongs to this one expense: never add it into the last one ("Add quick repeats together").
+      ...(file ? { noMerge: true } : {}),
     };
     // No connection: a new expense waits on this phone and is sent later (edits need a connection).
     const saveOffline = async () => {
@@ -397,13 +446,19 @@ export function ExpenseForm({ edit, onDone, quick = false }: { edit?: Expense; o
       }
       await offline!.queue(body);
       rememberCategory(user, catId);
+      haptic();
       toast(t('Saved on this phone. It will be sent when you are back online.'));
       onDone();
     };
     if (!edit && offline && !navigator.onLine) return saveOffline();
     try {
-      const saved = await saveWithConfirm<Expense>(edit ? `/expenses/${edit.id}` : '/expenses', edit ? 'PUT' : 'POST', body, confirm);
+      const saved = await saveWithConfirm<Expense & { merged?: boolean }>(edit ? `/expenses/${edit.id}` : '/expenses', edit ? 'PUT' : 'POST', body, confirm);
       if (saved === false) return setBusy(false);
+      haptic(); // a light buzz: it's saved
+      if (saved.merged) {
+        const name = saved.description || cats.find((c) => c.id === saved.categoryId)?.name || '';
+        toast(t('Added to your last {name} expense: now {amount}.', { name, amount: fmtMoney(saved.amount, user.currency) }));
+      }
       if (!edit) rememberCategory(user, catId);
       try {
         if (file) await uploadReceipt(saved.id, await prepareReceipt(file));
@@ -438,7 +493,7 @@ export function ExpenseForm({ edit, onDone, quick = false }: { edit?: Expense; o
         <div className="fx-box">
           <div className="grid2">
             <Field label={t('Amount in {currency}', { currency: fxCurrency })}>
-              <MoneyInput value={fxAmount} onChange={setFxAmount} suffix={fxCurrency} autoFocus={!edit} />
+              <MoneyInput value={fxAmount} onChange={setFxAmount} suffix={fxCurrency} autoFocus={!edit && !copy} calc />
             </Field>
             <Field label={t('Currency')}>
               <select className="input" value={fxCurrency} onChange={(e) => setFxCurrency(e.target.value)}>
@@ -457,7 +512,7 @@ export function ExpenseForm({ edit, onDone, quick = false }: { edit?: Expense; o
         </div>
       ) : (
         <Field label={splitOn ? t('Total paid') : t('Amount')}>
-          <MoneyInput value={amount} onChange={setAmount} suffix={user.currency} autoFocus={!edit} />
+          <MoneyInput value={amount} onChange={setAmount} suffix={user.currency} autoFocus={!edit && !copy} calc />
         </Field>
       )}
       {!quick && (
@@ -541,7 +596,7 @@ export function ExpenseForm({ edit, onDone, quick = false }: { edit?: Expense; o
               />
               {splitMode === 'share' && (
                 <Field label={t('Their share')}>
-                  <MoneyInput value={theirShare} onChange={setTheirShare} suffix={user.currency} />
+                  <MoneyInput value={theirShare} onChange={setTheirShare} suffix={user.currency} calc />
                 </Field>
               )}
               {shares && shares.their > 0 && shares.mine > 0 && (
@@ -617,6 +672,11 @@ export function ExpenseForm({ edit, onDone, quick = false }: { edit?: Expense; o
 
       <FormError text={err} />
       <SaveButton label={edit ? t('Save changes') : t('Add expense')} busy={busy} />
+      {edit && onLogAgain && (
+        <button type="button" className="btn ghost block log-again" onClick={() => onLogAgain(edit)}>
+          <CopyPlus size={17} /> {t('Log again today')}
+        </button>
+      )}
     </form>
   );
 }

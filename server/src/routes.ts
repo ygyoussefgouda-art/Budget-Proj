@@ -21,7 +21,8 @@ import { exportBackup, restoreBackup } from './backup.js';
 import { localToday } from './dates.js';
 import { underLimit } from './limits.js';
 import { applyAutoAdd, pendingDue } from './recurring.js';
-import { moveToTrash, purgeTrash } from './undo.js';
+import { carryover } from './rollover.js';
+import { moveToTrash, purgeTrash, trashGoal, trashLoanPerson } from './undo.js';
 import { convert, id as idSchema, monthStr, schemas } from './validation.js';
 
 /** SQL: month budget row `mb` has something in it (income, a plan, or a category budget). */
@@ -73,10 +74,18 @@ export function apiRoutes(db: Db): Router {
     '/settings',
     ah(async (req, res) => {
       const s = schemas.settings.parse(req.body);
-      const user = { ...req.user!, ...(s.currency ? { currency: s.currency } : {}), ...(s.monthStartDay ? { monthStartDay: s.monthStartDay } : {}) };
-      await db.query('UPDATE users SET currency = $1, month_start_day = $2 WHERE id = $3', [
+      const user = {
+        ...req.user!,
+        ...(s.currency ? { currency: s.currency } : {}),
+        ...(s.monthStartDay ? { monthStartDay: s.monthStartDay } : {}),
+        ...(s.rollover !== undefined ? { rollover: s.rollover } : {}),
+        ...(s.mergeRepeats !== undefined ? { mergeRepeats: s.mergeRepeats } : {}),
+      };
+      await db.query('UPDATE users SET currency = $1, month_start_day = $2, rollover = $3, merge_repeats = $4 WHERE id = $5', [
         user.currency,
         user.monthStartDay,
+        !!user.rollover,
+        !!user.mergeRepeats,
         uid(req),
       ]);
       res.json({ user: publicUser(user) });
@@ -108,6 +117,8 @@ export function apiRoutes(db: Db): Router {
         db.query(`SELECT 1 FROM month_budgets mb WHERE mb.user_id = $1 AND mb.month = $2 AND ${MONTH_HAS_DATA}`, [u, month]),
         copySource(db, u, month),
       ]);
+      // Rollover on: unspent budget per category carried in from earlier months.
+      const carry = req.user!.rollover ? await carryover(db, u, month, req.user!.monthStartDay) : {};
       res.json({
         month,
         budget,
@@ -122,6 +133,7 @@ export function apiRoutes(db: Db): Router {
         canCopyPrevious: thisHasData.rows.length === 0 && source !== null,
         copyFrom: source?.month ?? null,
         recurringDue: due,
+        carry,
       });
     }),
   );
@@ -209,9 +221,9 @@ export function apiRoutes(db: Db): Router {
         // Only one category can use the per-day formula (days x weeks x cost per day).
         if (c.perDay) await q.query('UPDATE categories SET is_uni = false WHERE user_id = $1', [u]);
         const ins = await q.query(
-          `INSERT INTO categories(user_id, name, is_uni, sort)
-           VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sort), -1) + 1 FROM categories WHERE user_id = $1)) RETURNING *`,
-          [u, c.name, c.perDay],
+          `INSERT INTO categories(user_id, name, is_uni, sort, icon, color)
+           VALUES ($1, $2, $3, (SELECT COALESCE(MAX(sort), -1) + 1 FROM categories WHERE user_id = $1), $4, $5) RETURNING *`,
+          [u, c.name, c.perDay, c.icon ?? null, c.color ?? null],
         );
         if (c.planned > 0 && !c.perDay) await setPlan(q, u, c.month, ins.rows[0].id, c.planned);
         return ins.rows[0];
@@ -231,6 +243,9 @@ export function apiRoutes(db: Db): Router {
         if (!cur) throw new HttpError(404, 'Category not found.');
         if (await nameTaken(q, u, c.name, id)) throw new HttpError(409, 'That name is already used.', 'conflict');
         await q.query('UPDATE categories SET name = $1 WHERE id = $2', [c.name, id]);
+        // Icon / colour: left alone when not sent, cleared with null.
+        if (c.icon !== undefined) await q.query('UPDATE categories SET icon = $1 WHERE id = $2', [c.icon, id]);
+        if (c.color !== undefined) await q.query('UPDATE categories SET color = $1 WHERE id = $2', [c.color, id]);
         let perDay: boolean = cur.is_uni;
         if (c.perDay !== undefined && c.perDay !== cur.is_uni) {
           if (c.perDay) await q.query('UPDATE categories SET is_uni = false WHERE user_id = $1', [u]);
@@ -298,6 +313,7 @@ export function apiRoutes(db: Db): Router {
       }
       const fx = e.foreign ? [e.foreign.amount, e.foreign.currency, e.foreign.rate] : [null, null, null];
       let alreadySaved = false;
+      let merged = false;
       const savedId = await db.tx(async (q) => {
         // An offline retry of something already saved: answer with that expense before any check or cap.
         if (mode === 'create' && e.clientId) {
@@ -312,6 +328,33 @@ export function apiRoutes(db: Db): Router {
         }
         const cat = await q.query('SELECT name FROM categories WHERE id = $1 AND user_id = $2', [e.categoryId, u]);
         if (!cat.rows.length) throw new HttpError(400, 'Pick a valid category.');
+        // Merge repeats (Settings, off by default): "Transport 10" right after "Transport 10" becomes one
+        // "Transport 20". Only into the very last expense added, within 5 minutes, same category, date and
+        // description, and never with splits, other currencies, offline syncs or a new receipt.
+        if (mode === 'create' && req.user!.mergeRepeats && !e.split && !e.foreign && !e.clientId && !e.noMerge) {
+          const last = (
+            await q.query(
+              `SELECT e.id FROM expenses e
+               WHERE e.id = (SELECT id FROM expenses WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1)
+                 AND e.created_at > now() - interval '5 minutes'
+                 AND e.date = $2 AND e.category_id = $3 AND lower(trim(e.description)) = lower(trim($4))
+                 AND e.orig_currency IS NULL AND e.amount + $5 <= 10000000000000
+                 AND NOT EXISTS (SELECT 1 FROM loan_entries l WHERE l.expense_id = e.id)
+               FOR UPDATE`,
+              [u, e.date, e.categoryId, e.description, e.amount],
+            )
+          ).rows[0];
+          if (last) {
+            await q.query(
+              `UPDATE expenses SET amount = amount + $2,
+                 tags = ARRAY(SELECT DISTINCT t FROM unnest(tags || $3::text[]) AS t ORDER BY t LIMIT 5)
+               WHERE id = $1`,
+              [last.id, e.amount, e.tags],
+            );
+            merged = true;
+            return last.id as number;
+          }
+        }
         if (!forced(req)) {
           const dup = await q.query(
             `SELECT 1 FROM expenses WHERE user_id = $1 AND id <> $2 AND date = $3 AND category_id = $4 AND amount = $5
@@ -374,6 +417,7 @@ export function apiRoutes(db: Db): Router {
       const row = (
         await db.query(`SELECT e.*, ${EXPENSE_EXTRAS} FROM expenses e ${SPLIT_JOIN} WHERE e.id = $1`, [savedId])
       ).rows[0];
+      if (merged) return void res.status(200).json({ ...mapExpense(row), merged: true });
       res.status(mode === 'create' && !alreadySaved ? 201 : 200).json(mapExpense(row));
     });
 
@@ -471,9 +515,13 @@ export function apiRoutes(db: Db): Router {
   r.delete(
     '/goals/:id',
     ah(async (req, res) => {
-      const d = await db.query('DELETE FROM goals WHERE id = $1 AND user_id = $2', [pid(req.params.id), uid(req)]);
-      if (!d.rowCount) throw new HttpError(404, 'Goal not found.');
-      res.status(204).end();
+      const u = uid(req);
+      const undo = await db.tx(async (q) => {
+        const g = (await q.query('SELECT * FROM goals WHERE id = $1 AND user_id = $2 FOR UPDATE', [pid(req.params.id), u])).rows[0];
+        if (!g) throw new HttpError(404, 'Goal not found.');
+        return trashGoal(q, u, g); // its entries go with it; Undo brings both back
+      });
+      res.json({ undo });
     }),
   );
 
@@ -658,19 +706,20 @@ export function apiRoutes(db: Db): Router {
     ah(async (req, res) => {
       const p = schemas.loanPersonDelete.parse(req.query);
       const args = [uid(req), p.borrowed ? 'borrowed' : 'lent', p.name];
-      const d = await db.tx(async (q) => {
-        const split = await q.query(
-          `SELECT 1 FROM loan_entries WHERE user_id = $1 AND direction = $2 AND lower(trim(person)) = lower(trim($3))
-           AND expense_id IS NOT NULL LIMIT 1`,
-          args,
-        );
-        if (split.rows.length) {
+      const undo = await db.tx(async (q) => {
+        const rows = (
+          await q.query(
+            `SELECT * FROM loan_entries WHERE user_id = $1 AND direction = $2 AND lower(trim(person)) = lower(trim($3)) FOR UPDATE`,
+            args,
+          )
+        ).rows;
+        if (!rows.length) throw new HttpError(404, 'Person not found.');
+        if (rows.some((r) => r.expense_id !== null)) {
           throw new HttpError(400, 'This person has entries from split expenses. Change or delete those expenses first.');
         }
-        return q.query(`DELETE FROM loan_entries WHERE user_id = $1 AND direction = $2 AND lower(trim(person)) = lower(trim($3))`, args);
+        return trashLoanPerson(q, uid(req), rows);
       });
-      if (!d.rowCount) throw new HttpError(404, 'Person not found.');
-      res.status(204).end();
+      res.json({ undo });
     }),
   );
 

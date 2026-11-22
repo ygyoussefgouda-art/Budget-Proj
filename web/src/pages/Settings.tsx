@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Download, FileSpreadsheet, GraduationCap, ShieldCheck, KeyRound, Languages, LogOut, Mail, MonitorSmartphone, Trash2, Upload, UserX } from 'lucide-react';
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { ExportCardBody } from '../components/ExportLinks';
@@ -32,14 +32,19 @@ export default function Settings() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [sheet, setSheet] = useState<'password' | 'email' | 'delete' | null>(null);
 
-  const setCurrency = async (currency: string) => {
+  /** Saves one setting; false when it failed (the message is shown). */
+  const saveSetting = async (change: { currency?: string; rollover?: boolean; mergeRepeats?: boolean }) => {
     try {
-      const r = await api<{ user: typeof user }>('/settings', 'PUT', { currency });
+      const r = await api<{ user: typeof user }>('/settings', 'PUT', change);
       qc.setQueryData(['me'], r);
+      if (change.rollover !== undefined) await refresh(); // the budget amounts change
+      return true;
     } catch (e) {
       toast((e as Error).message);
+      return false;
     }
   };
+  const setCurrency = (currency: string) => saveSetting({ currency });
 
   const exportBackup = async () => {
     try {
@@ -142,6 +147,22 @@ export default function Settings() {
       <Card>
         <SectionTitle>{t('Month start')}</SectionTitle>
         <MonthStartPicker />
+      </Card>
+
+      <Card>
+        <SectionTitle>{t('Budget options')}</SectionTitle>
+        <SettingSwitch
+          value={!!user.rollover}
+          save={(v) => saveSetting({ rollover: v })}
+          label={t('Carry over unspent budget')}
+          hint={t('What a category does not spend is added to its budget next month. Going over does not lower next month.')}
+        />
+        <SettingSwitch
+          value={!!user.mergeRepeats}
+          save={(v) => saveSetting({ mergeRepeats: v })}
+          label={t('Add quick repeats together')}
+          hint={t('The same expense (category, date and description) added again within 5 minutes goes into the last one: Transport 10 + Transport 10 = Transport 20.')}
+        />
       </Card>
 
       <Card>
@@ -405,5 +426,30 @@ function DeleteAccountForm({ onDeleted }: { onDeleted: () => void }) {
         {busy ? t('Deleting…') : t('Delete my account')}
       </button>
     </form>
+  );
+}
+
+/** An account setting as a sliding switch: flips at once, and flips back if saving fails. */
+function SettingSwitch({ value, save, label, hint }: { value: boolean; save: (v: boolean) => Promise<boolean>; label: string; hint: string }) {
+  const [on, setOn] = useState(value);
+  useEffect(() => setOn(value), [value]);
+  return (
+    <label className="setting-switch">
+      <span className="grow">
+        <span className="setting-switch-label">{label}</span>
+        <span className="tiny mute block">{hint}</span>
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        className="switch"
+        checked={on}
+        onChange={async (e) => {
+          const v = e.target.checked;
+          setOn(v);
+          if (!(await save(v))) setOn(!v);
+        }}
+      />
+    </label>
   );
 }

@@ -1,7 +1,7 @@
 import type { Queryable, Row } from './db.js';
 
 // Row -> API shape mappers (camelCase, booleans).
-export const mapCategory = (r: Row) => ({ id: r.id, name: r.name, isUni: r.is_uni, sort: r.sort });
+export const mapCategory = (r: Row) => ({ id: r.id, name: r.name, isUni: r.is_uni, sort: r.sort, icon: r.icon ?? null, color: r.color ?? null });
 export const mapExpense = (r: Row) => ({
   id: r.id,
   date: r.date,

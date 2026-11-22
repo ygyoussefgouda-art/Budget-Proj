@@ -34,13 +34,73 @@ export function parseRate(s: string): number | null {
   return Number.isFinite(v) && v > 0 ? v : null;
 }
 
-/** Minor units, or null when the text is empty / invalid / negative. Accepts Arabic digits. */
-export function parseMoney(s: string): number | null {
+/** Minor units of one plain amount ("12.50", "1,200", "٤٥"), or null. */
+function parsePlainMoney(s: string): number | null {
   const t = norm(s);
   if (!t || !/^\d*\.?\d*$/.test(t) || t === '.') return null;
   const v = Number(t);
   if (!Number.isFinite(v) || v < 0 || v > 1e11) return null;
   return Math.round(v * 100);
+}
+
+/** Maths signs people type: + − - × x * ÷ / (and the Arabic-keyboard ones). */
+const OP = /([+−\-×xX*÷/])/;
+export const hasMaths = (s: string) => OP.test(digits(s).replace(/^[+]/, ''));
+
+/** A plain number as a fraction (num / den) so × and ÷ need no floating point: "1.5" → 15 / 10. */
+function fraction(s: string): { num: number; den: number } | null {
+  let t = digits(s);
+  if (!t.includes('.')) t = t.replace(',', '.');
+  const m = /^(\d*)(?:\.(\d{0,6}))?$/.exec(t);
+  if (!m || (!m[1] && !m[2])) return null;
+  const dec = m[2] ?? '';
+  return { num: Number(`${m[1] || '0'}${dec}`), den: 10 ** dec.length };
+}
+
+/**
+ * Maths in an amount field: "45+30", "120/3", "3×45", "100-20+5". × and ÷ go before + and −.
+ * Each +/− part starts with an amount; × / ÷ by plain numbers, rounded once to whole minor units.
+ * Null for anything else (unknown signs, ÷ 0, a negative or too-large result).
+ */
+export function evalMoney(s: string): number | null {
+  const parts = digits(s).split(OP).filter((p) => p !== '');
+  if (!parts.length || OP.test(parts[0]) || OP.test(parts[parts.length - 1])) return null;
+  let total = 0;
+  let sign = 1;
+  let i = 0;
+  while (i < parts.length) {
+    const base = parsePlainMoney(parts[i]);
+    if (base === null) return null;
+    let num = base;
+    let den = 1;
+    i++;
+    while (i < parts.length && /^[×xX*÷/]$/.test(parts[i])) {
+      const f = fraction(parts[i + 1] ?? '');
+      if (!f) return null;
+      if (/^[÷/]$/.test(parts[i])) {
+        if (f.num === 0) return null;
+        num *= f.den;
+        den *= f.num;
+      } else {
+        num *= f.num;
+        den *= f.den;
+      }
+      i += 2;
+    }
+    total += sign * Math.round(num / den);
+    if (i < parts.length) {
+      if (!/^[+−-]$/.test(parts[i])) return null;
+      sign = parts[i] === '+' ? 1 : -1;
+      i++;
+      if (i >= parts.length) return null;
+    }
+  }
+  return Number.isFinite(total) && total >= 0 && total <= 1e13 ? total : null;
+}
+
+/** Minor units, or null when the text is empty / invalid / negative. Accepts Arabic digits and maths ("45+30"). */
+export function parseMoney(s: string): number | null {
+  return hasMaths(s) ? evalMoney(s) : parsePlainMoney(s);
 }
 
 export function parseNum(s: string): number | null {

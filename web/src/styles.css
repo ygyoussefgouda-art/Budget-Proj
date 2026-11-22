@@ -276,6 +276,27 @@ input[type='date'].input { min-width: 0; padding-inline: 10px; }
 .list-row:active { background: var(--press); }
 .list > .tiny { padding: 8px 10px 10px; }
 .avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; flex: none; }
+/* Category icon + name in budget rows */
+.row-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.row-name .avatar { width: 26px; height: 26px; font-size: 12px; }
+/* Category icon & colour picker */
+.look-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; margin-bottom: 12px; }
+.look-btn { height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--card2); color: var(--mute); display: grid; place-items: center; }
+.look-btn.on { border: 2px solid var(--accent-text); color: var(--accent-text); background: color-mix(in srgb, var(--accent-text) 12%, var(--card)); }
+.look-colors { display: flex; flex-wrap: wrap; gap: 10px; }
+.swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; outline: 2px solid transparent; outline-offset: 2px; }
+.swatch.on { outline-color: var(--text); }
+.swatch.none { background: conic-gradient(var(--card2) 0 25%, var(--line) 0 50%, var(--card2) 0 75%, var(--line) 0); border-color: var(--line); }
+/* Pull down to refresh */
+.ptr { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%; z-index: 30; width: 38px; height: 38px; margin-left: -19px;
+  border-radius: 50%; background: var(--card); border: 1px solid var(--line); display: grid; place-items: center; color: var(--accent-text);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2); pointer-events: none; transition: opacity .15s; }
+.ptr.spinning svg { animation: spin .8s linear infinite; }
+/* Maths keys under an amount field (the phone's number pad has no + or ×) */
+.calc-keys { display: flex; gap: 6px; margin-top: 6px; }
+.calc-keys button { flex: 1; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--card2); color: var(--text); font-size: 17px; font-weight: 700; }
+.calc-result { font-size: 13px; color: var(--accent-text); font-weight: 700; margin-top: 4px; }
+.log-again { margin-top: -4px; }
 
 .empty { display: grid; justify-items: center; gap: 8px; padding: 28px 0; color: var(--mute); text-align: center; }
 
@@ -567,6 +588,10 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .attach-row .attach-btn { flex-direction: column; gap: 4px; font-size: 12.5px; padding: 10px 6px; text-align: center; }
 /* Toggle rows and switches (app lock fingerprint, reminders, permissions) */
 .toggle-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+/* Settings → Budget options: one sliding switch per option, with room between them */
+.setting-switch { display: flex; align-items: center; gap: 14px; padding: 14px 0; cursor: pointer; }
+.setting-switch + .setting-switch { border-top: 1px solid var(--divider); margin-top: 4px; padding-top: 18px; }
+.setting-switch-label { display: block; font-weight: 700; margin-bottom: 4px; }
 .toggle-row + .toggle-row { border-top: 1px solid var(--divider); }
 .switch { appearance: none; -webkit-appearance: none; flex: none; width: 44px; height: 26px; border-radius: 99px; background: var(--card2);
   position: relative; cursor: pointer; transition: background .15s; border: 1px solid var(--line); margin: 0; }

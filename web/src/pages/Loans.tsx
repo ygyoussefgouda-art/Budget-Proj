@@ -26,11 +26,9 @@ import { parseMoney, plain } from '../domain/money';
 import { t } from '../i18n';
 import { defaultDate, shortDate, useApp } from '../state';
 
-const sideName = (borrowed: boolean) => (borrowed ? t('I owe') : t('Owed to me'));
-
 export default function Loans() {
-  const { data, fmt, refresh } = useApp();
-  const { confirm, toast } = useOverlay();
+  const { data, fmt } = useApp();
+  const { toast } = useOverlay();
   const undoDelete = useUndoDelete();
   const [borrowed, setBorrowed] = useState(true); // true = money I owe
   const [form, setForm] = useState<{ edit?: LoanEntry; person?: string } | null>(null);
@@ -46,23 +44,9 @@ export default function Loans() {
     .filter((l) => l.borrowed === borrowed)
     .sort((x, y) => y.date.localeCompare(x.date) || y.id - x.id);
 
-  const removePerson = async (name: string) => {
-    const ok = await confirm(
-      t('Remove {name}?', { name }),
-      t('{name} and all of their entries in "{side}" will be deleted.', { name, side: sideName(borrowed) }),
-      t('Remove'),
-    );
-    if (!ok) return;
-    try {
-      await api(`/loan-people?borrowed=${borrowed}&name=${encodeURIComponent(name)}`, 'DELETE');
-      await refresh();
-      toast(t('{name} removed.', { name }));
-    } catch (x) {
-      toast((x as Error).message);
-    }
-  };
-
-  // One entry: delete at once, with Undo in the toast. (Removing a whole person still asks first.)
+  // A person with all their entries, or one entry: deleted at once, with Undo in the toast.
+  const removePerson = (name: string) =>
+    undoDelete(`/loan-people?borrowed=${borrowed}&name=${encodeURIComponent(name)}`, t('{name} removed.', { name }));
   const del = (l: LoanEntry, _label: string) => undoDelete(`/loans/${l.id}`);
 
   return (
@@ -188,7 +172,7 @@ export default function Loans() {
 /** Rename a person (fixes typos, merges duplicates) or remove them with every entry. */
 function PersonForm({ name, borrowed, onAddEntry, onDone }: { name: string; borrowed: boolean; onAddEntry: () => void; onDone: () => void }) {
   const { refresh } = useApp();
-  const { confirm } = useOverlay();
+  const undoDelete = useUndoDelete();
   const [newName, setNewName] = useState(name);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -210,19 +194,7 @@ function PersonForm({ name, borrowed, onAddEntry, onDone }: { name: string; borr
   };
 
   const remove = async () => {
-    const ok = await confirm(
-      t('Remove {name}?', { name }),
-      t('{name} and all of their entries in "{side}" will be deleted.', { name, side: sideName(borrowed) }),
-      t('Remove'),
-    );
-    if (!ok) return;
-    try {
-      await api(`/loan-people?borrowed=${borrowed}&name=${encodeURIComponent(name)}`, 'DELETE');
-      await refresh();
-      onDone();
-    } catch (x) {
-      setErr((x as Error).message);
-    }
+    if (await undoDelete(`/loan-people?borrowed=${borrowed}&name=${encodeURIComponent(name)}`, t('{name} removed.', { name }))) onDone();
   };
 
   return (

@@ -25,6 +25,8 @@ export default function RemindersCard() {
       <p className="small mute">{t('Notifications on this phone. Nothing is sent from the server.')}</p>
       {row('rem-budget', t('A category reaches 80% or 100% of its budget'), prefs.budget, (v) => void update({ budget: v }))}
       {row('rem-recurring', t('A recurring expense is due'), prefs.recurring, (v) => void update({ recurring: v }))}
+      {row('rem-fortnight', t('Every 2 weeks: how much money is left'), prefs.fortnight, (v) => void update({ fortnight: v }))}
+      {row('rem-month-end', t('Last evening of the month: a summary'), prefs.monthEnd, (v) => void update({ monthEnd: v }))}
       {row('rem-daily', t("Every day: log today's expenses"), prefs.daily, (v) => void update({ daily: v }))}
       {prefs.daily && (
         <div className="toggle-row">

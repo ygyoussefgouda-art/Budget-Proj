@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Home, PieChart, PiggyBank, ReceiptText, HandCoins } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, type ReactNode } from 'react';
+import PullToRefresh from './components/PullToRefresh';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { api, ApiError } from './api';
 import { AppLock } from './components/AppLock';
@@ -10,7 +11,10 @@ import { OfflineBar, OfflineProvider } from './components/OfflineQueue';
 import Tutorial from './components/Tutorial';
 import { useReminders } from './notify';
 import { FirstRunPermissions } from './pages/Permissions';
-import { budgetAlerts } from './domain/calc';
+import { budgetAlerts, dailyAllowance, periodRange } from './domain/calc';
+import { fmtMoney } from './domain/money';
+import { readLock } from './pin';
+import { sendWidget, widgetText } from './widget';
 import Admin from './pages/Admin';
 import Budget from './pages/Budget';
 import Dashboard from './pages/Dashboard';
@@ -22,7 +26,7 @@ import Savings, { GoalDetail } from './pages/Savings';
 import Settings from './pages/Settings';
 import { t } from './i18n';
 import { isNetworkError, readKit, saveKit } from './offline';
-import { AppStateProvider, useApp, type User } from './state';
+import { AppStateProvider, thisMonth, todayIso, useApp, type User } from './state';
 import type { DueItem } from './domain/calc';
 
 const NO_DUE: DueItem[] = [];
@@ -96,10 +100,36 @@ function ScrollToTop() {
 
 function Shell() {
   const { data, error, loading, summary, refresh, updatedAt, user, month, catName } = useApp();
+  const qc = useQueryClient();
+  // Pull to refresh: this month, every list on screen and the account itself.
+  const reloadAll = useCallback(() => Promise.all([refresh(), qc.invalidateQueries()]), [refresh, qc]);
   // Badge on the Budget tab: categories at 80%+ of their budget (red when one is at 100% or over).
   const alerts = useMemo(() => (summary ? budgetAlerts(summary.rows) : []), [summary]);
+  // This budget month's numbers (null while looking at another month): month-end summary + widget.
+  const current = month === thisMonth(user.monthStartDay || 1);
+  const monthEnd = useMemo(
+    () =>
+      current && summary
+        ? {
+            month,
+            from: periodRange(month, user.monthStartDay || 1).from,
+            last: periodRange(month, user.monthStartDay || 1).last,
+            locked: !!readLock(user.id),
+            spent: summary.spending,
+            saved: summary.netSaved,
+            left: summary.moneyLeft,
+            fmt: (m: number) => fmtMoney(m, user.currency),
+          }
+        : undefined,
+    [current, summary, month, user.monthStartDay, user.currency],
+  );
   // Android app: the same alerts (and due recurring expenses) as notifications on the phone.
-  useReminders(user.id, alerts, data?.recurringDue ?? NO_DUE, month, catName);
+  useReminders(user.id, alerts, data?.recurringDue ?? NO_DUE, month, catName, monthEnd);
+  useEffect(() => {
+    if (!monthEnd) return;
+    const a = dailyAllowance(monthEnd.left, todayIso(), month, user.monthStartDay || 1);
+    sendWidget(widgetText(a ? { ...a, left: monthEnd.left, fmt: monthEnd.fmt } : null, monthEnd.locked));
+  }, [monthEnd, month, user.id, user.monthStartDay]);
   const alertBadge = alerts.length ? { n: alerts.length, red: alerts.some((a) => a.level !== 'warn') } : undefined;
   if (loading && !data) return <Splash />;
   if (error && !data) return <Splash text={error.message} retry={() => void refresh()} />;
@@ -107,6 +137,7 @@ function Shell() {
     <div className="shell">
       <ScrollToTop />
       <SplashExit />
+      <PullToRefresh onRefresh={reloadAll} />
       <OfflineBar updatedAt={updatedAt} />
       <main className="content enter">
         <Routes>

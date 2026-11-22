@@ -14,6 +14,7 @@ import {
 import { alertLevel, budgetAlerts, rowBar, rowLeft, rowMet, rowStatus, type BudgetRow, type Txn } from '../domain/calc';
 import { t } from '../i18n';
 import { monthLabel, periodLabel, shiftMonth, shortDate, useApp } from '../state';
+import { CategoryIcon } from './CategoryIcon';
 import { Bar, COLORS, Pill } from './ui';
 
 export function MonthBar() {
@@ -44,7 +45,8 @@ export function MonthBar() {
 }
 
 export function BudgetRowTile({ r, onClick }: { r: BudgetRow; onClick?: () => void }) {
-  const { fmt } = useApp();
+  const { fmt, data } = useApp();
+  const cat = r.catId === null ? undefined : data?.categories.find((c) => c.id === r.catId);
   // Spending rows: amber from 80% of the budget, red at 100% and over (same colours as the alert banner).
   const alert = alertLevel(r);
   const color = alert === 'over' || alert === 'full' ? COLORS.red : alert === 'warn' ? COLORS.amber : r.isGoal ? (rowMet(r) ? COLORS.accent : COLORS.amber) : COLORS.accent;
@@ -52,14 +54,18 @@ export function BudgetRowTile({ r, onClick }: { r: BudgetRow; onClick?: () => vo
   const body = (
     <>
       <div className="row between">
-        {/* "Savings" / "Loan repayments" are built-in rows: translate; category names are the user's own */}
-        <strong>{r.catId === null ? t(r.name) : r.name}</strong>
+        <span className="row-name">
+          {cat && (cat.icon || cat.color) && <CategoryIcon cat={cat} fallbackColor={COLORS.accent} size={15} />}
+          {/* "Savings" / "Loan repayments" are built-in rows: translate; category names are the user's own */}
+          <strong>{r.catId === null ? t(r.name) : r.name}</strong>
+        </span>
         <Pill color={color}>{t(rowStatus(r))}</Pill>
       </div>
       <Bar value={rowBar(r)} color={color} />
       <div className="row between tiny">
         <span className="mute">
           {t('{a} of {b}', { a: fmt(r.actual), b: fmt(r.planned) })}
+          {r.carried ? ` · ${t('{amount} carried over', { amount: fmt(r.carried) })}` : ''}
         </span>
         <span style={{ color: left >= 0 ? 'var(--mute)' : COLORS.red }}>
           {left >= 0 ? t('{amount} left', { amount: fmt(left) }) : t('{amount} over', { amount: fmt(-left) })}

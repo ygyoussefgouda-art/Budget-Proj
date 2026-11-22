@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { audit } from './admin.js';
-import { checkPassword, COOKIE, cookieOptionsFor, createSession, publicUser, sha256, type AuthUser } from './auth.js';
+import { checkPassword, COOKIE, cookieOptionsFor, createSession, publicUser, sha256, USER_COLUMNS, type AuthUser } from './auth.js';
 import type { Db, Queryable } from './db.js';
 import { ah, HttpError } from './http.js';
 import { newBackupCodes, newTotpSecret, normalizeBackupCode, otpauthUri, verifyTotp } from './totp.js';
@@ -64,8 +64,7 @@ export function loginSecondStepHandler(db: Db) {
       await q.query('DELETE FROM login_challenges WHERE token_hash = $1', [sha256(b.ticket)]);
       user = (
         await q.query(
-          `SELECT u.id, u.username, u.currency, u.month_start_day AS "monthStartDay", u.email, (u.totp_enabled_at IS NOT NULL) AS "twoFactor"
-           FROM users u WHERE u.id = $1`,
+          `SELECT ${USER_COLUMNS} FROM users u WHERE u.id = $1`,
           [c.user_id],
         )
       ).rows[0] as AuthUser;

@@ -35,10 +35,11 @@ export function readLangPref(): LangPref {
 const resolve = (p: LangPref): Lang => (p === 'system' ? systemLang() : p);
 
 /** Options for language selectors (the System label is translated where it is shown). */
+/** Order (owner's choice): English, عربي, then System last (like the Appearance switch below it). */
 export const langOptions = (): { value: LangPref; label: string }[] => [
-  { value: 'system', label: t('System') },
   { value: 'en', label: 'English' },
   { value: 'ar', label: 'عربي' },
+  { value: 'system', label: t('System') },
 ];
 
 let current: Lang = resolve(readLangPref());

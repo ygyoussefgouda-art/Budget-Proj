@@ -24,7 +24,6 @@ import { DueList } from '../components/Recurring';
 import { ExpenseForm } from './Expenses';
 import { dailyAllowance, type Category } from '../domain/calc';
 import { t } from '../i18n';
-import { APP_VERSION, MARK, VERSION_KEY } from '../version';
 import { BudgetAlerts, BudgetRowTile, MonthBar, TxnTile } from '../components/rows';
 import { AddButton, Card, COLORS, DeleteButton, Empty, Fab, IconBadge, IconButton, PageHeader, PALETTE, SectionTitle, StatTile } from '../components/ui';
 import { monthLabel, shortDate, todayIso, useApp } from '../state';
@@ -60,9 +59,6 @@ export default function Dashboard() {
           <span className="brand">
             <span dir="ltr">
               Budget <span style={{ color: COLORS.accent }}>me</span>
-            </span>
-            <span className="stage-badge" title={t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}>
-              {MARK}
             </span>
           </span>
         }

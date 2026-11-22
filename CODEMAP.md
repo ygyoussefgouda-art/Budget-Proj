@@ -39,7 +39,8 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `routes.ts` | Main data API: `/state`, `/settings`, `/categories`, `/budget/:month` (+ copy-previous, clear-plans), `/expenses` (+ suggestions), `/tags`, `/goals`, `/goal-entries`, `/loans`, `/loan-people`, `/reports/*` (year, compare, weekdays), `/backup` + `/backup/restore`, `/reset` |
 | `recurring.ts` | Monthly recurring rules, due occurrences, add/skip, auto-add |
 | `receipts.ts` | `/expenses/:id/receipt` upload/view/delete; file-type sniffing (JPEG/PNG/WebP/PDF); per-account quota |
-| `undo.ts` | Deletes move rows to `trash`; `/undo/:id`; `purgeTrash()` |
+| `undo.ts` | Deletes move rows to `trash` (also a whole goal or loan person); `/undo/:id`; `purgeTrash()` |
+| `rollover.ts` | Budget rollover: unspent budget carried in per category (`carryChain` is unit-tested) |
 | `backup.ts` | `exportBackup` (one snapshot, JSON v2) and `restoreBackup` (id remapping); the routes are in `routes.ts` |
 | `export.ts` | `/export` CSV/XLSX for expenses, loans, savings by date range (Arabic headers); `/reports/tags` |
 | `xlsx.ts` | Tiny dependency-free .xlsx writer |
@@ -59,7 +60,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`) · `009_two_factor` (totp columns, backup codes, login challenges)
 
 ### Server tests (`server/test/`)
-`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6) + `spa.test.ts` (Express 5: static files, page fallback, no hidden-file leaks) + `ipKey.test.ts` (rate-limit key per IPv4 / IPv6 /56): vitest + supertest against PGlite.
+`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6) + `spa.test.ts` (Express 5: static files, page fallback, no hidden-file leaks) + `ipKey.test.ts` (rate-limit key per IPv4 / IPv6 /56) + `qol.test.ts` (1.2.0: icons/colours, rollover, merge repeats, Undo for goals/people): vitest + supertest against PGlite.
 
 ## Web (`web/`)
 | Path | Purpose |
@@ -89,13 +90,14 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `version.ts` | Version label text |
 | `styles.css` | All styles, CSS variables for themes |
 | `native.ts` | `isNative()`, `BudgetNative` + Capacitor plugins by name (camera, notifications, haptics, app, filesystem, share), `haptic`, `saveFile`, `nativeReceiptPhoto` |
-| `notify.ts` | Local notifications: budget 80/100%, recurring due, daily reminder (`remindersToSend` is unit-tested) |
+| `notify.ts` | Local notifications: budget 80/100%, recurring due, daily reminder, 2-weekly money check, month-end summary (pure parts unit-tested) |
+| `widget.ts` | Android home-screen widget text (`widgetText`, no amounts while App lock is on) |
 | `update.ts` | Android update check (6 h), `updateNeed` (optional / required), download + install flow (unit-tested) |
 
 `pages/`: `Dashboard`, `Budget`, `Expenses` (largest), `Loans`, `Savings` (+ GoalDetail), `Reports`, `Settings`, `Admin`, `Login`.
 `Permissions` (first-run permissions screen, Android app only).
 
-`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `BudgetForms`,
+`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `CategoryIcon` (category icon/colour badge + picker), `PullToRefresh`, `BudgetForms`,
 `charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour), `AppLock` +
 `AppLockSettings`, `OfflineApp` + `OfflineQueue`, `ExportLinks`, `MonthStartPicker`, `ContactCard` (contact email constant),
 `PasswordRules` (live new-password checklist, `newPasswordError`), `ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).
@@ -113,7 +115,8 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `capacitor.config.ts` | `appId`, `server.url` from `BUDGET_ME_URL`, `allowNavigation`, fallback `www/` |
 | `www/` | Offline/"can't reach server" fallback page |
 | `android/` | Generated Android project; `AndroidManifest.xml` permissions, FileProvider, shortcut |
-| `android/app/src/main/java/com/budgetme/app/BudgetNativePlugin.java` | Self-update, fingerprint unlock, open app settings |
+| `android/app/src/main/java/com/budgetme/app/BudgetNativePlugin.java` | Self-update, fingerprint unlock, open app settings, widget text |
+| `android/app/src/main/java/com/budgetme/app/BudgetWidget.java` | Home-screen widget ("Left today" + Add expense); layout `res/layout/budget_widget.xml` |
 | `android/app/src/main/res/xml/` | `shortcuts.xml` (Add expense), `file_paths.xml` (FileProvider), `data_extraction_rules.xml` (no backups) |
 | `www/` | Fallback page when the server can't be reached (EN + AR) |
 | `scripts/release.sh` | Build, sign, checksum, upload APK + `latest.json` |

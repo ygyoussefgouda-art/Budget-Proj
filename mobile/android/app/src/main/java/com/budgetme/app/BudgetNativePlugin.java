@@ -36,7 +36,8 @@ import java.util.concurrent.Executors;
  *  - self-update: download the APK named in latest.json, check size + SHA-256 + package name +
  *    a higher versionCode, then hand it to Android's installer (docs/ANDROID_SELF_UPDATE.md);
  *  - fingerprint / face unlock for the app lock (the PIN stays as the fallback);
- *  - open this app's system settings (permissions that were permanently denied).
+ *  - open this app's system settings (permissions that were permanently denied);
+ *  - the home-screen widget's text (BudgetWidget).
  */
 @CapacitorPlugin(name = "BudgetNative")
 public class BudgetNativePlugin extends Plugin {
@@ -93,6 +94,21 @@ public class BudgetNativePlugin extends Plugin {
         Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getContext().getPackageName()));
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(i);
+        call.resolve();
+    }
+
+    // ---------- home-screen widget ----------
+
+    /** New text for the widget (sent by the web app, already translated; no amounts while App lock is on). */
+    @PluginMethod
+    public void updateWidget(PluginCall call) {
+        BudgetWidget.save(
+            getContext(),
+            call.getString("title", "Budget me"),
+            call.getString("value", ""),
+            call.getString("sub", ""),
+            call.getString("add", "")
+        );
         call.resolve();
     }
 

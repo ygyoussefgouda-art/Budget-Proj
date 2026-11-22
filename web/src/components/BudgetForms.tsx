@@ -4,6 +4,7 @@ import { uniMonthly, type Category, type MonthBudget } from '../domain/calc';
 import { num2, parseMoneyOrZero, parseNumOrZero, plainOrEmpty } from '../domain/money';
 import { t } from '../i18n';
 import { monthLabel, useApp } from '../state';
+import { CategoryLookPicker } from './CategoryIcon';
 import { useOverlay } from './Overlays';
 import { Field, FormError, MoneyInput, SaveButton } from './ui';
 
@@ -90,6 +91,8 @@ export function CategoryForm({ edit, onDone }: { edit?: Category; onDone: () => 
   const otherPerDay = data!.categories.find((c) => c.isUni && c.id !== edit?.id);
   const [name, setName] = useState(edit?.name ?? '');
   const [perDay, setPerDay] = useState(edit?.isUni ?? false);
+  const [icon, setIcon] = useState<string | null>(edit?.icon ?? null);
+  const [color, setColor] = useState<string | null>(edit?.color ?? null);
   const [plan, setPlan] = useState(edit && !edit.isUni ? plainOrEmpty(b.plans[String(edit.id)] ?? 0) : '');
   const [days, setDays] = useState(b.uniDays ? num2(b.uniDays) : '');
   const [weeks, setWeeks] = useState(num2(b.uniWeeks || 4));
@@ -117,7 +120,7 @@ export function CategoryForm({ edit, onDone }: { edit?: Category; onDone: () => 
     }
     setBusy(true);
     try {
-      const body = { name: n, month, perDay, ...(perDay ? {} : { planned }) };
+      const body = { name: n, month, perDay, icon, color, ...(perDay ? {} : { planned }) };
       const id = edit?.id ?? createdId;
       if (id) await api(`/categories/${id}`, 'PUT', body);
       else setCreatedId((await api<{ id: number }>('/categories', 'POST', body)).id);
@@ -148,6 +151,7 @@ export function CategoryForm({ edit, onDone }: { edit?: Category; onDone: () => 
       <Field label={t('Name')}>
         <input className="input" value={name} autoFocus={!edit} onChange={(e) => setName(e.target.value)} maxLength={60} />
       </Field>
+      <CategoryLookPicker icon={icon} color={color} onIcon={setIcon} onColor={setColor} />
 
       <label className="check">
         <input type="checkbox" checked={perDay} onChange={(e) => setPerDay(e.target.checked)} />

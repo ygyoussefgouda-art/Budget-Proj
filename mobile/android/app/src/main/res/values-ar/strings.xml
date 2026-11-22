@@ -1,4 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
+<!-- Egyptian Arabic for the few texts Android shows itself (the app's own screens are translated in the web app). -->
 <resources>
     <string name="shortcut_add_expense">ضيف مصروف</string>
+    <string name="widget_description">تقدر تصرف كام النهارده، وزرار تضيف بيه مصروف.</string>
+    <string name="widget_open">افتح Budget me</string>
 </resources>

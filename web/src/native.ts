@@ -22,6 +22,8 @@ interface BudgetNativePlugin {
   cleanup(): Promise<void>;
   biometricStatus(): Promise<{ available: boolean; reason: 'ok' | 'none_enrolled' | 'no_hardware' | 'unavailable' }>;
   biometricVerify(o: { title: string; subtitle?: string; cancel?: string }): Promise<{ verified: boolean; code?: number; message?: string }>;
+  /** Home-screen widget text (1.2.0+; older app versions don't have it). */
+  updateWidget(o: { title: string; value: string; sub: string; add: string }): Promise<void>;
   addListener(event: 'downloadProgress', fn: (p: { received: number; total: number }) => void): Promise<PluginListenerHandle>;
 }
 export const BudgetNative = registerPlugin<BudgetNativePlugin>('BudgetNative');

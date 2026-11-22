@@ -27,9 +27,15 @@ export interface AuthUser {
   email?: string | null;
   /** Two-step sign-in (authenticator app) is on. */
   twoFactor?: boolean;
+  /** Unspent category budget carries into the next month. */
+  rollover?: boolean;
+  /** Same expense added again within 5 minutes is added to the last one. */
+  mergeRepeats?: boolean;
 }
 
-const USER_COLUMNS = 'u.id, u.username, u.currency, u.month_start_day AS "monthStartDay", u.email, (u.totp_enabled_at IS NOT NULL) AS "twoFactor"';
+export const USER_COLUMNS =
+  'u.id, u.username, u.currency, u.month_start_day AS "monthStartDay", u.email, (u.totp_enabled_at IS NOT NULL) AS "twoFactor", ' +
+  'u.rollover, u.merge_repeats AS "mergeRepeats"';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -202,6 +208,8 @@ export const publicUser = (u: AuthUser) => ({
   monthStartDay: u.monthStartDay,
   email: u.email ?? null,
   twoFactor: !!u.twoFactor,
+  rollover: !!u.rollover,
+  mergeRepeats: !!u.mergeRepeats,
   isAdmin: isAdminName(u.username),
 });
 

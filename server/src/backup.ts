@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Db } from './db.js';
 import { HttpError } from './http.js';
-import { CURRENCIES, isoDate, monthStr, tag } from './validation.js';
+import { CATEGORY_COLORS, CATEGORY_ICONS, CURRENCIES, isoDate, monthStr, tag } from './validation.js';
 
 /**
  * Backup format (version 2). Same table/column names as the original phone
@@ -18,10 +18,10 @@ export async function exportBackup(db: Db, userId: number) {
     version: 2,
     exportedAt: new Date().toISOString(),
     settings: (
-      await t.query('SELECT currency, month_start_day AS "monthStartDay" FROM users WHERE id = $1', [userId])
+      await t.query('SELECT currency, month_start_day AS "monthStartDay", rollover, merge_repeats AS "mergeRepeats" FROM users WHERE id = $1', [userId])
     ).rows[0],
     tables: {
-      categories: await q('SELECT id, name, is_uni, sort FROM categories WHERE user_id = $1 ORDER BY sort, id'),
+      categories: await q('SELECT id, name, is_uni, sort, icon, color FROM categories WHERE user_id = $1 ORDER BY sort, id'),
       month_budgets: await q(
         `SELECT month, income, uni_days, uni_weeks, uni_cost, save_plan, loan_plan
          FROM month_budgets WHERE user_id = $1 ORDER BY month`,
@@ -60,10 +60,22 @@ const backupSchema = z.object({
   app: z.literal('student_budget', { error: 'This is not a Budget me backup.' }),
   version: z.number().int().min(1).max(2).optional(),
   settings: z
-    .object({ currency: z.enum(CURRENCIES).optional(), monthStartDay: z.number().int().min(1).max(28).optional() })
+    .object({ currency: z.enum(CURRENCIES).optional(), monthStartDay: z.number().int().min(1).max(28).optional(), rollover: z.boolean().optional(), mergeRepeats: z.boolean().optional() })
     .optional(),
   tables: z.object({
-    categories: z.array(z.object({ id: int, name: name(60), is_uni: bool, sort: int.default(0) })).max(200),
+    categories: z
+      .array(
+        z.object({
+          id: int,
+          name: name(60),
+          is_uni: bool,
+          sort: int.default(0),
+          // Added in 1.2.0; older backups have none. An unknown value is dropped rather than failing the restore.
+          icon: z.enum(CATEGORY_ICONS).nullish().catch(null),
+          color: z.enum(CATEGORY_COLORS).nullish().catch(null),
+        }),
+      )
+      .max(200),
     month_budgets: z
       .array(
         z.object({
@@ -153,16 +165,20 @@ export async function restoreBackup(db: Db, userId: number, body: unknown) {
     if (settings?.monthStartDay) {
       await q.query('UPDATE users SET month_start_day = $1 WHERE id = $2', [settings.monthStartDay, userId]);
     }
+    if (settings?.rollover !== undefined) await q.query('UPDATE users SET rollover = $1 WHERE id = $2', [settings.rollover, userId]);
+    if (settings?.mergeRepeats !== undefined) await q.query('UPDATE users SET merge_repeats = $1 WHERE id = $2', [settings.mergeRepeats, userId]);
     for (const table of ['trash', 'recurring_rules', 'expenses', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
       await q.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
     }
     const catMap = new Map<number, number>();
     for (const c of t.categories) {
-      const r = await q.query('INSERT INTO categories(user_id, name, is_uni, sort) VALUES ($1, $2, $3, $4) RETURNING id', [
+      const r = await q.query('INSERT INTO categories(user_id, name, is_uni, sort, icon, color) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [
         userId,
         c.name,
         c.is_uni,
         c.sort,
+        c.icon ?? null,
+        c.color ?? null,
       ]);
       catMap.set(c.id, r.rows[0].id);
     }

@@ -26,6 +26,17 @@ const name = (max: number) => z.string().trim().min(1, 'is required').max(max);
 
 export const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'KWD', 'QAR', 'JOD'] as const;
 
+/** Category icons and colours the app can draw (same lists as web/src/components/CategoryIcon.tsx). */
+export const CATEGORY_ICONS = [
+  'food', 'coffee', 'groceries', 'transport', 'car', 'fuel', 'home', 'bills', 'phone', 'internet', 'uni', 'books',
+  'health', 'clothes', 'gifts', 'games', 'movies', 'travel', 'sport', 'kids', 'pets', 'beauty', 'repairs', 'other',
+] as const;
+export const CATEGORY_COLORS = ['green', 'gold', 'red', 'blue', 'purple', 'teal', 'pink', 'gray'] as const;
+const categoryLook = {
+  icon: z.enum(CATEGORY_ICONS).nullable().optional(),
+  color: z.enum(CATEGORY_COLORS).nullable().optional(),
+};
+
 /** Names nobody can sign up with (the built-in account and look-alikes). */
 export const RESERVED_USERNAMES = new Set(['owner', 'admin', 'administrator', 'root', 'system', 'support']);
 
@@ -125,8 +136,13 @@ export const schemas = {
   forgotPassword: z.object({ email }),
   setEmail: z.object({ email, password: z.string().min(1).max(200) }),
   settings: z
-    .object({ currency: z.enum(CURRENCIES).optional(), monthStartDay: z.number().int().min(1).max(28).optional() })
-    .refine((s) => s.currency !== undefined || s.monthStartDay !== undefined, 'Nothing to change.'),
+    .object({
+      currency: z.enum(CURRENCIES).optional(),
+      monthStartDay: z.number().int().min(1).max(28).optional(),
+      rollover: z.boolean().optional(),
+      mergeRepeats: z.boolean().optional(),
+    })
+    .refine((s) => Object.values(s).some((v) => v !== undefined), 'Nothing to change.'),
   budget: z.object({
     income: money,
     uniDays: z.number().min(0).max(7),
@@ -136,8 +152,8 @@ export const schemas = {
     loanPlan: money,
   }),
   plan: z.object({ planned: money }),
-  categoryCreate: z.object({ name: name(60), planned: money.default(0), month: monthStr, perDay: z.boolean().default(false) }),
-  categoryUpdate: z.object({ name: name(60), planned: money.optional(), month: monthStr, perDay: z.boolean().optional() }),
+  categoryCreate: z.object({ name: name(60), planned: money.default(0), month: monthStr, perDay: z.boolean().default(false), ...categoryLook }),
+  categoryUpdate: z.object({ name: name(60), planned: money.optional(), month: monthStr, perDay: z.boolean().optional(), ...categoryLook }),
   loanPersonRename: z.object({ borrowed: z.boolean(), from: name(60), to: name(60) }),
   loanPersonDelete: z.object({ borrowed: z.enum(['true', 'false']).transform((v) => v === 'true'), name: name(60) }),
   expense: z.object({
@@ -152,6 +168,8 @@ export const schemas = {
     foreign: foreign.nullable().optional(),
     /** Made on the phone for offline entries: sending it again never creates a second expense. */
     clientId: z.string().regex(/^[A-Za-z0-9-]{8,64}$/, 'is not a valid id').optional(),
+    /** Never merge this one into the last expense (e.g. a receipt is about to be attached to it). */
+    noMerge: z.boolean().optional(),
   }),
   goal: z.object({ name: name(60), target: positiveMoney, start: money.default(0), monthly: money.default(0) }),
   goalEntry: z.object({ date: isoDate, deposit: z.boolean(), amount: positiveMoney, note: text(200).default('') }),

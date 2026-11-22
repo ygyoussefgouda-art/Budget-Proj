@@ -20,7 +20,19 @@ import {
 import { fmtMoney } from './domain/money';
 import { isRtl, locale, t } from './i18n';
 
-export interface User { id: number; username: string; currency: string; monthStartDay: number; isAdmin?: boolean; email?: string | null; twoFactor?: boolean }
+export interface User {
+  id: number;
+  username: string;
+  currency: string;
+  monthStartDay: number;
+  isAdmin?: boolean;
+  email?: string | null;
+  twoFactor?: boolean;
+  /** Unspent category budget carries into the next month. */
+  rollover?: boolean;
+  /** The same expense added again within 5 minutes is added to the last one. */
+  mergeRepeats?: boolean;
+}
 
 export interface ServerState {
   month: string;
@@ -38,6 +50,8 @@ export interface ServerState {
   copyFrom: string | null;
   /** Recurring expenses waiting for Add / Skip. */
   recurringDue: DueItem[];
+  /** Budget rollover on: unspent budget per category carried in from earlier months. */
+  carry?: Record<string, number>;
 }
 
 export const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'KWD', 'QAR', 'JOD'];
@@ -129,7 +143,7 @@ export function AppStateProvider({ user, children }: { user: User; children: Rea
 
   const summary = useMemo(
     () =>
-      data ? monthSummary(data.budget, data.categories, data.expenses, data.goalEntries, data.loans, startDay) : undefined,
+      data ? monthSummary(data.budget, data.categories, data.expenses, data.goalEntries, data.loans, startDay, data.carry ?? {}) : undefined,
     [data, startDay],
   );
   const totals = useMemo(

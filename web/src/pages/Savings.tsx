@@ -71,24 +71,14 @@ function ForecastLines({ g, balance, planned, compact = false }: { g: Goal; bala
 }
 
 export default function Savings() {
-  const { data, summary, fmt, totals, month, refresh } = useApp();
-  const { confirm, toast } = useOverlay();
+  const { data, summary, fmt, totals, month } = useApp();
   const nav = useNavigate();
   const [form, setForm] = useState(false);
+  const undoDelete = useUndoDelete();
   if (!data || !summary) return null;
 
-  const deleteGoal = async (g: Goal) => {
-    const n = data.goalEntries.filter((e) => e.goalId === g.id).length;
-    const msg = t('Delete "{name}" and its {n} deposit(s)/withdrawal(s)? This also lowers your total savings.', { name: g.name, n });
-    if (!(await confirm(t('Delete goal?'), msg))) return;
-    try {
-      await api(`/goals/${g.id}`, 'DELETE');
-      await refresh();
-      toast(t('"{name}" deleted.', { name: g.name }));
-    } catch (x) {
-      toast((x as Error).message);
-    }
-  };
+  // Deletes the goal and its entries at once; Undo in the toast brings all of it back.
+  const deleteGoal = (g: Goal) => undoDelete(`/goals/${g.id}`, t('"{name}" deleted.', { name: g.name }));
 
   return (
     <div className="page">
@@ -146,8 +136,7 @@ export default function Savings() {
 export function GoalDetail() {
   const { id } = useParams();
   const goalId = Number(id);
-  const { data, fmt, month, refresh, startDay } = useApp();
-  const { confirm, toast } = useOverlay();
+  const { data, fmt, month, startDay } = useApp();
   const nav = useNavigate();
   const [editGoal, setEditGoal] = useState(false);
   const [entryForm, setEntryForm] = useState<{ deposit: boolean; edit?: GoalEntry } | null>(null);
@@ -172,17 +161,9 @@ export function GoalDetail() {
   for (const e of entries) points.push(points[points.length - 1] + (e.deposit ? e.amount : -e.amount));
 
   const delGoal = async () => {
-    const msg = t('Delete "{name}" and its {n} deposit(s)/withdrawal(s)? This also lowers your total savings.', { name: g.name, n: entries.length });
-    if (!(await confirm(t('Delete goal?'), msg))) return;
-    try {
-      await api(`/goals/${g.id}`, 'DELETE');
-      await refresh();
-      nav('/savings');
-    } catch (x) {
-      toast((x as Error).message);
-    }
+    if (await undoDelete(`/goals/${g.id}`, t('"{name}" deleted.', { name: g.name }))) nav('/savings');
   };
-  // One entry: delete at once, with Undo in the toast. (Deleting the whole goal still asks first.)
+  // Deletes at once, with Undo in the toast.
   const delEntry = (e: GoalEntry) => undoDelete(`/goal-entries/${e.id}`);
 
   return (

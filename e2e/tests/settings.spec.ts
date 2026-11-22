@@ -76,13 +76,14 @@ test.describe('settings, language and navigation', () => {
     }
   });
 
-  test('MK1: the badge under the logo, and the Settings footer credits the developer', async ({ page }) => {
+  test('MK1: no badge under the name on Home; Settings shows the mark and credits the developer', async ({ page }) => {
     await tab(page, 'Home').click();
-    await expect(page.locator('.stage-badge').first()).toHaveText('MK1');
+    await expect(page.locator('.page-header .stage-badge')).toHaveCount(0); // removed in 1.2.0 (owner's call)
     await page.getByRole('button', { name: 'Settings' }).click();
+    await expect(page.locator('.stage-badge').first()).toHaveText('MK1');
     const footer = page.locator('footer.app-footer');
     await expect(footer).toContainText('Developed by Youssef Gouda');
-    await expect(footer).toContainText('Budget me MK1 · Version 1.1.0');
+    await expect(footer).toContainText('Budget me MK1 · Version 1.2.0');
     await expect(page.getByText(/alpha/i)).toHaveCount(0);
   });
 

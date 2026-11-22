@@ -1,5 +1,6 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Plus, Trash2, type LucideIcon } from 'lucide-react';
+import { evalMoney, fmtMoney, hasMaths, plain } from '../domain/money';
 import { t } from '../i18n';
 
 /** Theme colours as CSS variables, so they follow light/dark mode (see styles.css). */
@@ -142,20 +143,84 @@ export function Field({ label, children, hint }: { label: string; children: Reac
   );
 }
 
-export function MoneyInput({ value, onChange, suffix, autoFocus }: { value: string; onChange: (v: string) => void; suffix: string; autoFocus?: boolean }) {
+/**
+ * Amount field. Every amount field understands maths ("45+30"); with `calc`, + − × ÷ keys appear
+ * while it's focused (phone number pads have no + key), and the result shows underneath.
+ */
+export function MoneyInput({
+  value,
+  onChange,
+  suffix,
+  autoFocus,
+  calc = false,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  suffix: string;
+  autoFocus?: boolean;
+  calc?: boolean;
+  label?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  // Leaving the field (e.g. tapping Save) must not move the page under the finger: the keys and the
+  // "= 75" line stay a moment longer, then go.
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maths = hasMaths(value);
+  const result = maths ? evalMoney(value) : null;
+  const add = (op: string) => {
+    const v = value.trim();
+    onChange(v === '' || /[+−\-×÷]$/.test(v) ? v : `${v}${op}`);
+    input.current?.focus();
+  };
   return (
-    <div className="input-wrap">
-      <input
-        className="input"
-        inputMode="decimal"
-        autoComplete="off"
-        value={value}
-        autoFocus={autoFocus}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="0"
-      />
-      <span className="input-suffix">{suffix}</span>
-    </div>
+    <>
+      <div className="input-wrap">
+        <input
+          ref={input}
+          className="input"
+          inputMode="decimal"
+          autoComplete="off"
+          value={value}
+          autoFocus={autoFocus}
+          aria-label={label}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => {
+            if (leaveTimer.current) clearTimeout(leaveTimer.current);
+            setFocused(true);
+          }}
+          onBlur={() => {
+            leaveTimer.current = setTimeout(() => {
+              setFocused(false);
+              if (maths && result !== null) onChange(plain(result)); // "45+30" becomes "75"
+            }, 250);
+          }}
+          placeholder="0"
+        />
+        <span className="input-suffix">{suffix}</span>
+      </div>
+      {maths && (
+        <div className="calc-result" aria-live="polite">
+          {result === null ? t('Check the sum') : `= ${fmtMoney(result, suffix)}`}
+        </div>
+      )}
+      {calc && focused && (
+        <div className="calc-keys" role="group" aria-label={t('Maths')}>
+          {[
+            ['+', t('Plus')],
+            ['−', t('Minus')],
+            ['×', t('Times')],
+            ['÷', t('Divided by')],
+          ].map(([op, name]) => (
+            // mousedown would take focus from the field (and hide these keys) before the click
+            <button key={op} type="button" aria-label={name} onMouseDown={(e) => e.preventDefault()} onClick={() => add(op)}>
+              {op}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 

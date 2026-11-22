@@ -103,6 +103,6 @@ describe('"Owed to me" entries made by a split', () => {
 
     // Deleting the expense takes its entry along; then the person can be removed.
     await a.delete(`/api/expenses/${e.id}`).expect(200);
-    await a.delete('/api/loan-people?borrowed=false&name=Omar').expect(204);
+    await a.delete('/api/loan-people?borrowed=false&name=Omar').expect(200);
   });
 });

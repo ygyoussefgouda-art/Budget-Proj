@@ -245,7 +245,7 @@ describe('savings goals', () => {
     const d = await agent.post(`/api/goals/${g.body.id}/entries`).send({ date: '2026-11-05', deposit: true, amount: 1000 });
     await agent.post(`/api/goals/${g.body.id}/entries`).send({ date: '2026-11-06', deposit: false, amount: 800 }).expect(201);
     expect((await agent.delete(`/api/goal-entries/${d.body.id}`)).status).toBe(400);
-    await agent.delete(`/api/goals/${g.body.id}`).expect(204);
+    await agent.delete(`/api/goals/${g.body.id}`).expect(200);
   });
 });
 
@@ -265,7 +265,7 @@ describe('loans', () => {
     // put it back for later tests
     await agent.put('/api/loan-people').send({ borrowed: true, from: 'Yasmine', to: 'Yaso' }).expect(200);
     await agent.post('/api/loans').send({ date: '2026-11-08', person: 'Temp', borrowed: false, repayment: false, amount: 100 });
-    await agent.delete('/api/loan-people?borrowed=false&name=temp').expect(204);
+    await agent.delete('/api/loan-people?borrowed=false&name=temp').expect(200);
     const lent = (await agent.get('/api/state?month=2026-11')).body.loans.filter((l: any) => !l.borrowed);
     expect(lent).toHaveLength(0);
   });
@@ -520,7 +520,7 @@ describe('security hardening', () => {
     await agent.post(`/api/goals/${g.body.id}/entries`).send({ date: '2026-11-10', deposit: false, amount: 40000 }).expect(201);
     expect((await agent.put(`/api/goals/${g.body.id}`).send({ name: 'Bike', target: 100000, start: 10000 })).status).toBe(400);
     await agent.put(`/api/goals/${g.body.id}`).send({ name: 'Bike', target: 100000, start: 40000 }).expect(200);
-    await agent.delete(`/api/goals/${g.body.id}`).expect(204);
+    await agent.delete(`/api/goals/${g.body.id}`).expect(200);
   });
 
   it('receipts: stored privately, never cached, PDFs download, per-account quota', async () => {

@@ -1,6 +1,6 @@
 /** Pure calculations. They mirror the formulas of Student_Budget.xlsx. */
 
-export interface Category { id: number; name: string; isUni: boolean; sort: number }
+export interface Category { id: number; name: string; isUni: boolean; sort: number; icon?: string | null; color?: string | null }
 export interface Expense {
   id: number;
   date: string;
@@ -83,9 +83,12 @@ export interface DueItem { ruleId: number; date: string; amount: number; categor
 export interface BudgetRow {
   catId: number | null; // null for the Savings / Loan repayment rows
   name: string;
+  /** This month's budget, including `carried`. */
   planned: number;
   actual: number;
   isGoal: boolean;
+  /** Budget rollover: unspent budget carried in from earlier months (part of `planned`). */
+  carried?: number;
 }
 
 export const rowLeft = (r: BudgetRow) => r.planned - r.actual;
@@ -192,16 +195,21 @@ export function monthSummary(
   goalEntries: GoalEntry[],
   loans: LoanEntry[],
   startDay = 1,
+  /** Budget rollover: unspent budget per category carried in from earlier months. */
+  carry: Record<string, number> = {},
 ): MonthSummary {
   const rows: BudgetRow[] = [];
   let spending = 0;
+  let carriedTotal = 0;
   for (const c of cats) {
-    const planned = c.isUni ? uniMonthly(b) : b.plans[String(c.id)] ?? 0;
+    const carried = carry[String(c.id)] ?? 0;
+    const planned = (c.isUni ? uniMonthly(b) : b.plans[String(c.id)] ?? 0) + carried;
     const actual = expenses
       .filter((e) => e.categoryId === c.id && inMonth(e.date, b.month, startDay))
       .reduce((s, e) => s + e.amount, 0);
     spending += actual;
-    rows.push({ catId: c.id, name: c.name, planned, actual, isGoal: false });
+    carriedTotal += carried;
+    rows.push({ catId: c.id, name: c.name, planned, actual, isGoal: false, ...(carried ? { carried } : {}) });
   }
   const net = netSaved(goalEntries, b.month, undefined, startDay);
   const rep = loans
@@ -209,7 +217,8 @@ export function monthSummary(
     .reduce((s, l) => s + l.amount, 0);
   rows.push({ catId: null, name: 'Savings', planned: b.savePlan, actual: net, isGoal: true });
   rows.push({ catId: null, name: 'Loan repayments', planned: b.loanPlan, actual: rep, isGoal: true });
-  const plannedTotal = rows.reduce((s, r) => s + r.planned, 0);
+  // Carried-over money was budgeted in an earlier month, so it is not planned out of this month's income.
+  const plannedTotal = rows.reduce((s, r) => s + r.planned, 0) - carriedTotal;
   const actualTotal = rows.reduce((s, r) => s + r.actual, 0);
   return {
     budget: b,

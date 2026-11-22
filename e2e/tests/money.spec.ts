@@ -162,10 +162,12 @@ test.describe('savings and loans', () => {
     await expect(s.getByText(/cannot withdraw more than the balance/)).toBeVisible();
     await page.keyboard.press('Escape');
 
+    // Deleting the goal is instant (no "Are you sure?"); Undo brings it back with its deposit
     await page.getByRole('button', { name: 'Delete goal' }).click();
-    await confirmDialog(page, 'Delete');
     await expect(page).toHaveURL(/\/savings$/);
     await expect(page.getByText(/No savings goals yet/)).toBeVisible();
+    await page.locator('.toast', { hasText: '"Laptop" deleted.' }).getByRole('button', { name: 'Undo' }).click();
+    await expect(page.locator('.list-item', { hasText: 'Laptop' })).toContainText('2,500 EGP of 10,000 EGP');
   });
 
   test('loans: borrow, over-repayment warning, rename and remove a person', async ({ page }) => {
@@ -200,10 +202,12 @@ test.describe('savings and loans', () => {
     await expect(page.locator('.list-item', { hasText: 'Ahmed Ali' }).first()).toBeVisible();
     await expect(page.getByText('Paid back · Ahmed Ali')).toBeVisible();
 
-    // Remove the person and all their entries
+    // Remove the person and all their entries: instant, and Undo brings every entry back
     await page.getByRole('button', { name: 'Remove Ahmed Ali' }).click();
-    await confirmDialog(page, 'Remove');
     await expect(page.getByText('You have not borrowed anything.')).toBeVisible();
     await expect(page.locator('.hero')).toContainText('0 EGP');
+    await page.locator('.toast', { hasText: 'Ahmed Ali removed.' }).getByRole('button', { name: 'Undo' }).click();
+    await expect(page.locator('.hero')).toContainText('200 EGP');
+    await expect(page.getByText('Paid back · Ahmed Ali')).toBeVisible();
   });
 });

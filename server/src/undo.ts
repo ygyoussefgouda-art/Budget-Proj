@@ -1,5 +1,6 @@
 /**
- * Undo for deletes. Deleting an expense, savings entry or loan entry moves it (and its receipt)
+ * Undo for deletes. Deleting an expense, savings entry, loan entry, whole savings goal (with its
+ * entries) or person in Loans (all their entries) moves it (and any receipt)
  * into `trash` right away, so every total updates at once and no other query has to know about it.
  * "Undo" puts it back with the same id. After UNDO_SECONDS it is purged for good.
  * The app shows the Undo button for ~6 seconds; the server keeps a margin for slow connections.
@@ -7,22 +8,26 @@
 import { Router } from 'express';
 import type { Db, Queryable, Row } from './db.js';
 import { ah, HttpError } from './http.js';
+import { underLimit } from './limits.js';
 import { checkReceiptRoom } from './receipts.js';
 import { id as idSchema } from './validation.js';
 
 export const UNDO_SECONDS = 120;
-export type TrashKind = 'expense' | 'goal_entry' | 'loan_entry';
+/** One row, or a group: a goal with its entries, or every loan entry of one person. */
+export type TrashKind = 'expense' | 'goal_entry' | 'loan_entry' | 'goal' | 'loan_person';
+type RowKind = 'expense' | 'goal_entry' | 'loan_entry' | 'goal';
 
-const TABLE: Record<TrashKind, string> = { expense: 'expenses', goal_entry: 'goal_entries', loan_entry: 'loan_entries' };
-const COLUMNS: Record<TrashKind, string[]> = {
+const TABLE: Record<RowKind, string> = { expense: 'expenses', goal_entry: 'goal_entries', loan_entry: 'loan_entries', goal: 'goals' };
+const COLUMNS: Record<RowKind, string[]> = {
   expense: ['id', 'user_id', 'date', 'category_id', 'description', 'amount', 'created_at', 'tags', 'orig_amount', 'orig_currency', 'fx_rate', 'client_id'],
   goal_entry: ['id', 'user_id', 'goal_id', 'date', 'type', 'amount', 'note', 'created_at'],
   loan_entry: ['id', 'user_id', 'date', 'person', 'direction', 'kind', 'amount', 'note', 'created_at', 'expense_id'],
+  goal: ['id', 'user_id', 'name', 'target', 'start_balance', 'monthly', 'sort'],
 };
 
-const pick = (kind: TrashKind, row: Row) => Object.fromEntries(COLUMNS[kind].filter((c) => c in row).map((c) => [c, row[c]]));
+const pick = (kind: RowKind, row: Row) => Object.fromEntries(COLUMNS[kind].filter((c) => c in row).map((c) => [c, row[c]]));
 
-async function insertRow(q: Queryable, kind: TrashKind, item: Row) {
+async function insertRow(q: Queryable, kind: RowKind, item: Row) {
   const cols = COLUMNS[kind].filter((c) => c in item);
   await q.query(
     `INSERT INTO ${TABLE[kind]}(${cols.join(', ')}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(', ')})`,
@@ -30,8 +35,26 @@ async function insertRow(q: Queryable, kind: TrashKind, item: Row) {
   );
 }
 
+const addTrash = async (q: Queryable, u: number, kind: TrashKind, item: Row) =>
+  (await q.query(`INSERT INTO trash(user_id, kind, item) VALUES ($1, $2, $3) RETURNING id`, [u, kind, JSON.stringify(item)])).rows[0].id as number;
+
+/** Moves a savings goal and all its entries (already checked to belong to `u`) into the trash. */
+export async function trashGoal(q: Queryable, u: number, goal: Row): Promise<number> {
+  const entries = (await q.query('SELECT * FROM goal_entries WHERE goal_id = $1 AND user_id = $2 ORDER BY id', [goal.id, u])).rows;
+  const id = await addTrash(q, u, 'goal', { ...pick('goal', goal), entries: entries.map((e) => pick('goal_entry', e)) });
+  await q.query('DELETE FROM goals WHERE id = $1 AND user_id = $2', [goal.id, u]); // entries go with it (cascade)
+  return id;
+}
+
+/** Moves every loan entry of one person (rows already checked to belong to `u`) into the trash. */
+export async function trashLoanPerson(q: Queryable, u: number, rows: Row[]): Promise<number> {
+  const id = await addTrash(q, u, 'loan_person', { user_id: u, entries: rows.map((r) => pick('loan_entry', r)) });
+  await q.query('DELETE FROM loan_entries WHERE user_id = $1 AND id = ANY($2::bigint[])', [u, rows.map((r) => r.id)]);
+  return id;
+}
+
 /** Moves one row (already checked to belong to `u`) into the trash. Returns the undo id. */
-export async function moveToTrash(q: Queryable, u: number, kind: TrashKind, row: Row): Promise<number> {
+export async function moveToTrash(q: Queryable, u: number, kind: 'expense' | 'goal_entry' | 'loan_entry', row: Row): Promise<number> {
   let receipt: Row | undefined;
   const item: Row = pick(kind, row);
   if (kind === 'expense') {
@@ -107,6 +130,21 @@ export function undoRoutes(db: Db): Router {
               throw new HttpError(409, 'Bringing this withdrawal back would make the balance negative.');
             }
           }
+        }
+        if (kind === 'goal') {
+          await underLimit(q, 'goals', u);
+          const entries = (item.entries as Row[] | undefined) ?? [];
+          delete item.entries;
+          await insertRow(q, 'goal', item);
+          for (const e of entries) await insertRow(q, 'goal_entry', e);
+          return kind;
+        }
+        if (kind === 'loan_person') {
+          for (const e of (item.entries as Row[] | undefined) ?? []) {
+            if (Number(e.user_id) !== u) throw gone();
+            await insertRow(q, 'loan_entry', { ...e, expense_id: null }); // split-expense entries can't be deleted this way
+          }
+          return kind;
         }
         if (kind === 'loan_entry' && item.expense_id) {
           // Re-link to its split expense only if that expense is still there and not linked again.

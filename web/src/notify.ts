@@ -12,11 +12,89 @@ export interface ReminderPrefs {
   recurring: boolean; // a recurring expense is due
   daily: boolean; // "Log today's expenses" every evening
   dailyTime: string; // "HH:MM"
+  monthEnd: boolean; // a summary on the last evening of the budget month
+  fortnight: boolean; // every 2 weeks: how much money is left
 }
-const DEFAULTS: ReminderPrefs = { budget: true, recurring: true, daily: false, dailyTime: '20:00' };
+const DEFAULTS: ReminderPrefs = { budget: true, recurring: true, daily: false, dailyTime: '20:00', monthEnd: true, fortnight: true };
 const prefsKey = (uid: number) => `bm-reminders:${uid}`;
 const sentKey = (uid: number) => `bm-notified:${uid}`;
 const DAILY_ID = 1_000_000;
+const MONTH_END_ID = 1_000_001;
+const FORTNIGHT_ID = 1_000_002;
+
+/** This budget month's numbers for the money notifications (minor units; `fmt` formats them). */
+export interface MonthEndInput {
+  month: string;
+  /** First and last day of the budget month, 'YYYY-MM-DD'. */
+  from: string;
+  last: string;
+  spent: number;
+  saved: number;
+  left: number;
+  fmt: (minor: number) => string;
+  /** App lock is on: notifications show no amounts (they appear on the lock screen). */
+  locked: boolean;
+}
+export interface Note { at: Date; title: string; body: string }
+
+const atTime = (iso: string, hour: number, addDays = 0) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d + addDays, hour, 0, 0);
+};
+const dayDiff = (a: Date, b: Date) => Math.round((Date.UTC(b.getFullYear(), b.getMonth(), b.getDate()) - Date.UTC(a.getFullYear(), a.getMonth(), a.getDate())) / 86_400_000);
+
+/**
+ * The month-end summary (pure, unit-tested): at 20:00 on the last day of the budget month.
+ * Null when that moment has already passed.
+ */
+export function monthEndNote(x: MonthEndInput, now = new Date()): Note | null {
+  const at = atTime(x.last, 20);
+  if (at.getTime() <= now.getTime()) return null;
+  const title = t('Your month in Budget me');
+  if (x.locked) return { at, title, body: t('Your month ends today. Open Budget me to see how it went.') };
+  const body =
+    x.left >= 0
+      ? t('You spent {spent} and saved {saved}. {left} is left over.', { spent: x.fmt(x.spent), saved: x.fmt(x.saved), left: x.fmt(x.left) })
+      : t('You spent {spent} and saved {saved}. You went {over} over your income.', { spent: x.fmt(x.spent), saved: x.fmt(x.saved), over: x.fmt(-x.left) });
+  return { at, title, body };
+}
+
+/**
+ * Every 2 weeks (pure, unit-tested): at 19:00 on day 14 and day 28 of the budget month, how much
+ * is left and what that is per day. The next one still ahead and before the last day (the
+ * month-end summary covers that day); null when none is left this month.
+ */
+export function fortnightNote(x: MonthEndInput, now = new Date()): Note | null {
+  const end = atTime(x.last, 0);
+  for (const days of [14, 28]) {
+    const at = atTime(x.from, 19, days);
+    if (at.getTime() <= now.getTime() || at.getTime() >= end.getTime()) continue;
+    const title = t('Money check');
+    if (x.locked) return { at, title, body: t('Open Budget me to see how much you have left this month.') };
+    if (x.left < 0) return { at, title, body: t('You are {amount} over your income this month.', { amount: x.fmt(-x.left) }) };
+    const daysLeft = dayDiff(at, end) + 1; // that day included
+    return {
+      at,
+      title,
+      body: t('You have {left} left this month: about {perDay} a day for {n} days.', { left: x.fmt(x.left), perDay: x.fmt(Math.trunc(x.left / daysLeft)), n: daysLeft }),
+    };
+  }
+  return null;
+}
+
+/** Keeps exactly one of `id` scheduled with today's numbers, or none. */
+async function keepOne(id: number, note: Note | null) {
+  await LocalNotifications.cancel({ notifications: [{ id }] }).catch(() => undefined);
+  if (!note) return;
+  await LocalNotifications.schedule({ notifications: [{ id, title: note.title, body: note.body, schedule: { at: note.at, allowWhileIdle: true } }] }).catch(() => undefined);
+}
+
+/** The month-end summary and the every-2-weeks money check, with the latest numbers (or cancelled). */
+export async function syncMoneyNotes(prefs: ReminderPrefs, input: MonthEndInput | null) {
+  if (!isNative()) return;
+  await keepOne(MONTH_END_ID, prefs.monthEnd && input ? monthEndNote(input) : null);
+  await keepOne(FORTNIGHT_ID, prefs.fortnight && input ? fortnightNote(input) : null);
+}
 
 const read = <T extends object>(k: string, fallback: T): T => {
   try {
@@ -78,7 +156,15 @@ export function remindersToSend(
 
 let nextId = 1;
 /** Sends what's new and keeps the daily reminder in line with the settings. Native only. */
-export function useReminders(uid: number, alerts: BudgetAlert[], due: DueItem[], month: string, catName: (id: number) => string) {
+export function useReminders(
+  uid: number,
+  alerts: BudgetAlert[],
+  due: DueItem[],
+  month: string,
+  catName: (id: number) => string,
+  /** Numbers for this budget month; undefined (looking at another month) leaves the scheduled one alone. */
+  monthEnd?: MonthEndInput,
+) {
   useEffect(() => {
     if (!isNative()) return;
     let stop = false;
@@ -96,11 +182,12 @@ export function useReminders(uid: number, alerts: BudgetAlert[], due: DueItem[],
         write(sentKey(uid), [...sent].slice(-300)); // remember only recent ones
       }
       await syncDaily(prefs);
+      if (monthEnd) await syncMoneyNotes(prefs, monthEnd);
     })();
     return () => {
       stop = true;
     };
-  }, [uid, alerts, due, month, catName]);
+  }, [uid, alerts, due, month, catName, monthEnd]);
 }
 
 /** The repeating "Log today's expenses" reminder: on at the chosen time, or cancelled. */
@@ -125,11 +212,14 @@ export function useReminderPrefs(uid: number) {
     const next = { ...prefs, ...p };
     setPrefs(next);
     write(prefsKey(uid), next);
-    if (next.budget || next.recurring || next.daily) {
+    if (next.budget || next.recurring || next.daily || next.monthEnd || next.fortnight) {
       const perm = await LocalNotifications.checkPermissions().catch(() => ({ display: 'denied' as const }));
       if (perm.display !== 'granted') await LocalNotifications.requestPermissions().catch(() => undefined);
     }
     await syncDaily(next);
+    // Turned off: cancel that one now. Turned on: scheduled the next time the app has this month's numbers.
+    if (isNative() && !next.monthEnd) await keepOne(MONTH_END_ID, null);
+    if (isNative() && !next.fortnight) await keepOne(FORTNIGHT_ID, null);
   };
   return [prefs, update] as const;
 }

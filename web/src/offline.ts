@@ -7,6 +7,7 @@
  */
 import { clearOfflineCache } from './persist';
 import { api, ApiError } from './api';
+import { sendWidget, widgetText } from './widget';
 
 export interface QueuedBody {
   date: string;
@@ -132,12 +133,13 @@ export function readKit(): OfflineKit | null {
     return null;
   }
 }
-/** Forget everything this account left on the phone for offline use (kit + the cached data). */
+/** Forget everything this account left on the phone for offline use (kit + the cached data + the widget's numbers). */
 export function clearKit(): Promise<void> {
   try {
     localStorage.removeItem(KIT);
   } catch {
     /* ignore */
   }
+  sendWidget(widgetText(null, false)); // the home-screen widget stops showing this account's money
   return clearOfflineCache();
 }
