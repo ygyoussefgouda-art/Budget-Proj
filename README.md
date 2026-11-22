@@ -1,4 +1,4 @@
-# Budget me · MK1 (version 1.0.0)
+# Budget me · MK1 (version 1.0.1)
 
 ![Budget me MK1: Home, Budget, Expenses, Savings, Reports, light mode and Arabic](design/screenshots/overview.png)
 

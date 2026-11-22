@@ -82,7 +82,7 @@ test.describe('settings, language and navigation', () => {
     await page.getByRole('button', { name: 'Settings' }).click();
     const footer = page.locator('footer.app-footer');
     await expect(footer).toContainText('Developed by Youssef Gouda');
-    await expect(footer).toContainText('Budget me MK1 · Version 1.0.0');
+    await expect(footer).toContainText('Budget me MK1 · Version 1.0.1');
     await expect(page.getByText(/alpha/i)).toHaveCount(0);
   });
 

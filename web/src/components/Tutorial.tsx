@@ -1,4 +1,17 @@
-import { CalendarClock, HandCoins, Home, PieChart, PiggyBank, ReceiptText, Settings, Sparkles, type LucideIcon } from 'lucide-react';
+import {
+  BarChart3,
+  CalendarClock,
+  HandCoins,
+  Home,
+  PieChart,
+  PiggyBank,
+  ReceiptText,
+  Settings,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  type LucideIcon,
+} from 'lucide-react';
 import MonthStartPicker from './MonthStartPicker';
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -46,7 +59,7 @@ const STEPS: Step[] = [
       'Use the arrows at the top to move between months.',
       'Tap Income or any Budget usage row to edit it.',
       'Tap "+ Expense" at the bottom to log something quickly. Under your balance you see how much you can spend per day.',
-      'The chart icon at the top opens Reports: this month against last month, and which weekdays you spend the most.',
+      'The chart icon at the top opens Reports.',
     ],
     route: '/',
   },
@@ -91,8 +104,23 @@ const STEPS: Step[] = [
     icon: HandCoins,
     title: 'Keep track of loans',
     text: '"I owe" is money you borrowed. "Owed to me" is money you lent. Add an entry when money changes hands.',
-    tips: ['Repayments lower what is still owed.', 'Tap a person to rename, merge or remove them.'],
+    tips: [
+      'Repayments lower what is still owed.',
+      'Tap a person to rename, merge or remove them.',
+      'Split an expense with a friend and their share shows up here by itself.',
+    ],
     route: '/loans',
+  },
+  {
+    icon: BarChart3,
+    title: 'See where your money goes',
+    text: 'Reports show your whole year month by month: what came in, what you spent, saved and repaid.',
+    tips: [
+      'Open Reports from the chart icon at the top of Home.',
+      'Compare this month with last month, and see which weekday you spend the most on.',
+      'Tag expenses with #tags (like #trip) to see how much each tag cost you.',
+    ],
+    route: '/reports',
   },
   {
     icon: Settings,
@@ -100,13 +128,36 @@ const STEPS: Step[] = [
     text: 'In Settings you can switch the language (English or Arabic), change your month start day, pick light or dark mode and your currency, and download backups.',
     tips: [
       'Export your expenses, loans or savings to Excel or CSV from Settings.',
-      'Want privacy? Turn on App lock to ask for a PIN when the app is opened again.',
+      'Download a backup now and then, and keep it somewhere safe.',
       'Found a bug or have an idea? Use "Contact us" at the bottom of Settings.',
-      'Forgot your password? Ask the person who runs the app for a reset code, then tap "Forgot password?" on the sign-in screen.',
-      'Under Account you can change your password, sign out on every device, or delete your account.',
-      'Added the app to your home screen? Long-press its icon for an "Add expense" shortcut.',
       'Running the app for others? Admins see an Admin page in Settings for accounts, sign-ups and reset codes.',
       'You can replay this tutorial from Settings at any time.',
+    ],
+    route: '/settings',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Keep your account safe',
+    text: 'Your data is private to your account. A few switches in Settings make it even safer.',
+    tips: [
+      'Add your email under Account, so you can reset your password yourself.',
+      'Forgot your password? Tap "Forgot password?" on the sign-in screen and we email you a code.',
+      'Turn on Two-step sign-in: you then also enter a code from an authenticator app. Keep the backup codes safe.',
+      'Turn on App lock to ask for a PIN when the app is opened again. In the Android app you can unlock it with your fingerprint.',
+      'Under Account you can change your password, sign out on every device, or delete your account.',
+    ],
+    route: '/settings',
+  },
+  {
+    icon: Smartphone,
+    title: 'On your phone',
+    text: 'Budget me works in the browser and as an Android app, even when the connection drops.',
+    tips: [
+      'No internet? You can still look at your budget, and new expenses wait on your phone until you are back online.',
+      'Turn on Reminders in Settings to get a nudge to log your spending. Nothing is sent from the server.',
+      'The Android app updates itself: you get a message when a new version is ready. You can also tap "Check for updates" in Settings.',
+      'In the Android app, exports and backups open the share sheet, so you can save them to Files or Drive.',
+      'Added the app to your home screen? Long-press its icon for an "Add expense" shortcut.',
     ],
     route: '/settings',
   },

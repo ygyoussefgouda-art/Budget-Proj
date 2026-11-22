@@ -99,7 +99,7 @@ test.describe('accounts', () => {
   test('first-run tutorial walks through every tab and the month-start calendar', async ({ page }) => {
     await signUp(page);
     const dlg = page.getByRole('dialog');
-    await expect(dlg.getByText('Step 1 of 8')).toBeVisible();
+    await expect(dlg.getByText('Step 1 of 11')).toBeVisible();
     await dlg.getByRole('button', { name: 'Next' }).click();
 
     // Step 2: choose the day the money arrives on the calendar
@@ -108,11 +108,25 @@ test.describe('accounts', () => {
     await expect(dlg.getByRole('radio', { name: '25' })).toHaveAttribute('aria-checked', 'true');
     await expect(dlg.getByRole('radio', { name: '30' })).toBeDisabled();
 
-    const expectedPaths = ['/', '/budget', '/expenses', '/savings', '/loans', '/settings'];
-    for (const p of expectedPaths) {
+    // Every tab, Reports, then Settings, account safety and the phone features
+    const expected: [string, string][] = [
+      ['/', 'Your month at a glance'],
+      ['/budget', 'Set up your budget'],
+      ['/expenses', 'Log your expenses'],
+      ['/savings', 'Save for goals'],
+      ['/loans', 'Keep track of loans'],
+      ['/reports', 'See where your money goes'],
+      ['/settings', 'Make it yours'],
+      ['/settings', 'Keep your account safe'],
+      ['/settings', 'On your phone'],
+    ];
+    for (const [p, title] of expected) {
       await dlg.getByRole('button', { name: 'Next' }).click();
-      await expect(page).toHaveURL(new RegExp(`${p === '/' ? '/$' : p}`));
+      await expect(page).toHaveURL(new RegExp(`${p === '/' ? '/$' : `${p}$`}`));
+      await expect(dlg.getByText(title, { exact: true })).toBeVisible();
     }
+    await expect(dlg.getByText('Step 11 of 11')).toBeVisible();
+    await expect(dlg.getByText(/updates itself/)).toBeVisible();
     await expect(dlg.getByRole('button', { name: 'Get started' })).toBeVisible();
     await dlg.getByRole('button', { name: 'Get started' }).click();
     await expect(page).toHaveURL(/\/budget$/);

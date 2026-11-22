@@ -364,8 +364,7 @@ export const AR: Record<string, string> = {
     'الفئة بتقلب برتقاني لما توصل 80% من ميزانيتها وأحمر عند 100%، وفي تنبيه في الرئيسية بيقولك أنهي فئة.',
   "Each goal shows when you'll reach it at your current pace, and warns you when you're behind plan.":
     'كل هدف بيوريك هتوصله إمتى بالمعدل اللي إنت ماشي بيه، وبينبّهك لو إنت متأخر عن الخطة.',
-  'The chart icon at the top opens Reports: this month against last month, and which weekdays you spend the most.':
-    'علامة الرسم البياني اللي فوق بتفتح التقارير: الشهر ده قصاد اللي فات، وأكتر أيام في الأسبوع بتصرف فيها.',
+  'The chart icon at the top opens Reports.': 'علامة الرسم البياني اللي فوق بتفتح التقارير.',
   'Save for goals': 'حوّش لأهدافك',
   'Create a goal (a laptop, a trip...), then add deposits or withdrawals as you save.': 'اعمل هدف (لابتوب، رحلة...)، وبعدين ضيف إيداع أو سحب وإنت بتحوّش.',
   'See your progress and about how many months are left.': 'شوف وصلت لفين وفاضل حوالي كام شهر.',
@@ -377,6 +376,38 @@ export const AR: Record<string, string> = {
   'Make it yours': 'خليه على مزاجك',
   'In Settings you can switch the language (English or Arabic), change your month start day, pick light or dark mode and your currency, and download backups.': 'من الإعدادات تقدر تغيّر اللغة (إنجليزي أو عربي)، وتغيّر يوم بداية الشهر، وتختار فاتح أو غامق والعملة، وتنزّل نسخة احتياطية.',
   'You can replay this tutorial from Settings at any time.': 'تقدر تشوف الشرح ده تاني من الإعدادات في أي وقت.',
+  'Split an expense with a friend and their share shows up here by itself.': 'لو قسمت مصروف مع صاحبك، نصيبه هيظهر هنا لوحده.',
+  'See where your money goes': 'شوف فلوسك بتروح فين',
+  'Reports show your whole year month by month: what came in, what you spent, saved and repaid.':
+    'التقارير بتوريك السنة كلها شهر بشهر: دخل كام، وصرفت كام، وحوّشت كام، ورجّعت كام.',
+  'Open Reports from the chart icon at the top of Home.': 'افتح التقارير من علامة الرسم البياني اللي فوق في الرئيسية.',
+  'Compare this month with last month, and see which weekday you spend the most on.':
+    'قارن الشهر ده بالشهر اللي فات، وشوف أنهي يوم في الأسبوع بتصرف فيه أكتر.',
+  'Tag expenses with #tags (like #trip) to see how much each tag cost you.':
+    'حط #تاجات على مصاريفك (زي #رحلة) عشان تعرف كل تاج كلّفك كام.',
+  'Download a backup now and then, and keep it somewhere safe.': 'نزّل نسخة احتياطية كل فترة، وخليها في مكان آمن.',
+  'Keep your account safe': 'خلّي حسابك في أمان',
+  'Your data is private to your account. A few switches in Settings make it even safer.':
+    'بياناتك خاصة بحسابك بس. وفي كام اختيار في الإعدادات بيخلّوها في أمان أكتر.',
+  'Add your email under Account, so you can reset your password yourself.':
+    'ضيف إيميلك في الحساب، عشان تقدر تغيّر الباسورد بنفسك لو نسيته.',
+  'Forgot your password? Tap "Forgot password?" on the sign-in screen and we email you a code.':
+    'نسيت الباسورد؟ دوس "نسيت الباسورد؟" في شاشة الدخول وهنبعتلك كود على الإيميل.',
+  'Turn on Two-step sign-in: you then also enter a code from an authenticator app. Keep the backup codes safe.':
+    'شغّل الدخول بخطوتين: هتكتب كمان كود من أبلكيشن المصادقة. وخلّي الأكواد الاحتياطية في مكان آمن.',
+  'Turn on App lock to ask for a PIN when the app is opened again. In the Android app you can unlock it with your fingerprint.':
+    'شغّل قفل التطبيق عشان يطلب رقم سري لما تفتحه تاني. وفي أبلكيشن أندرويد تقدر تفتحه بصباعك.',
+  'On your phone': 'على موبايلك',
+  'Budget me works in the browser and as an Android app, even when the connection drops.':
+    'Budget me شغال في المتصفح وكأبلكيشن أندرويد، حتى لو النت فصل.',
+  'No internet? You can still look at your budget, and new expenses wait on your phone until you are back online.':
+    'مفيش نت؟ تقدر تشوف ميزانيتك عادي، والمصاريف الجديدة بتستنى على موبايلك لحد ما النت يرجع.',
+  'Turn on Reminders in Settings to get a nudge to log your spending. Nothing is sent from the server.':
+    'شغّل التنبيهات من الإعدادات عشان يفكّرك تسجّل مصاريفك. مفيش حاجة بتتبعت من السيرفر.',
+  'The Android app updates itself: you get a message when a new version is ready. You can also tap "Check for updates" in Settings.':
+    'أبلكيشن أندرويد بيحدّث نفسه: هتجيلك رسالة لما نسخة جديدة تجهز. وتقدر كمان تدوس "شيك على التحديثات" في الإعدادات.',
+  'In the Android app, exports and backups open the share sheet, so you can save them to Files or Drive.':
+    'في أبلكيشن أندرويد، التصدير والنسخ الاحتياطي بيفتحوا قايمة المشاركة، فتقدر تحفظهم في الملفات أو Drive.',
   'Step {n} of {total}': 'خطوة {n} من {total}',
   'Get started': 'يلا نبدأ',
 
@@ -599,7 +630,6 @@ export const AR: Record<string, string> = {
   // Tutorial (phase 4)
   'Swipe a row left to delete it or right to edit it. No connection? New expenses wait on your phone and sync later.':
     'اسحب السطر يمين عشان تمسحه أو شمال عشان تعدّله. مفيش نت؟ المصاريف الجديدة بتستنى على موبايلك وبتتبعت بعدين.',
-  'Want privacy? Turn on App lock to ask for a PIN when the app is opened again.': 'عايز خصوصية؟ شغّل قفل التطبيق عشان يطلب رقم سري لما تفتحه تاني.',
 
   // Offline entry
   "You're offline. New expenses are saved on this phone and sync later.": 'إنت مش متصل. المصاريف الجديدة بتتحفظ على الموبايل وبتتبعت بعدين.',
@@ -708,8 +738,6 @@ export const AR: Record<string, string> = {
   'invite code removed': 'كود الدعوة اتشال',
 
   // Forgot password
-  'Forgot your password? Ask the person who runs the app for a reset code, then tap "Forgot password?" on the sign-in screen.':
-    'نسيت الباسورد؟ اطلب كود إعادة التعيين من المسؤول عن التطبيق، وبعدين دوس "نسيت الباسورد؟" في شاشة الدخول.',
   'Forgot password?': 'نسيت الباسورد؟',
   'Reset your password': 'غيّر الباسورد بتاعك',
   'Ask the person who runs this app for a reset code. It works once, for 1 hour.': 'اطلب كود إعادة التعيين من المسؤول عن التطبيق. بيشتغل مرة واحدة، لمدة ساعة.',
