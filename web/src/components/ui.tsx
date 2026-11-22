@@ -4,7 +4,8 @@ import { t } from '../i18n';
 
 /** Theme colours as CSS variables, so they follow light/dark mode (see styles.css). */
 export const COLORS = {
-  accent: 'var(--accent)',
+  /** The main colour where it is text, a line or a tint (solid buttons use the CSS classes). */
+  accent: 'var(--accent-text)',
   highlight: 'var(--highlight)',
   red: 'var(--red)',
   amber: 'var(--amber)',
@@ -18,7 +19,7 @@ export const COLORS = {
 export const tint = (color: string, percent: number) => `color-mix(in srgb, ${color} ${percent}%, transparent)`;
 
 /** Chart colours (readable on both light and dark cards). */
-export const PALETTE = ['#14b8a6', '#ff8a65', '#60a5fa', '#a78bfa', '#f5b53d', '#f472b6', '#2dd4bf', '#94a3b8'];
+export const PALETTE = ['#d29a5c', '#6fbf8a', '#8a8ff0', '#e07a6f', '#5bb0c9', '#c9a0dc', '#b9c96b', '#94a3b8'];
 
 export function Card({ children, onClick, className = '', style }: { children: ReactNode; onClick?: () => void; className?: string; style?: CSSProperties }) {
   if (onClick) {

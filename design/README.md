@@ -8,3 +8,9 @@ Put pictures here for Claude to look at and use. Nothing in this folder is built
 | `references/` | Design references already used for the current look (`reference-1.jpeg`: dark expense tracker with a donut; `reference-2.jpeg`: budget tiles with progress rings). |
 
 When you add something, tell Claude "check the design inbox". Claude will look at the images, apply them to the app (theme colours, logo, icons) and move the used ones to `references/`.
+
+## Screenshots
+
+`screenshots/` has presentation pictures of the app (phone size, dark, light and Arabic) and `overview.png` (a 16:9 slide).
+They are made with demo data by `scripts/screenshots.mjs`: build the web app (`cd web` then `npm run build`), then run
+`node scripts/screenshots.mjs` from the repo root. It starts its own empty copy of the app on port 3200, so your data is never touched.

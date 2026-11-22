@@ -29,8 +29,8 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false,
   },
   plugins: {
-    SplashScreen: { launchShowDuration: 600, backgroundColor: '#0b1416', showSpinner: false },
-    LocalNotifications: { smallIcon: 'ic_stat_budget', iconColor: '#14b8a6' },
+    SplashScreen: { launchShowDuration: 600, backgroundColor: '#0b0c1f', showSpinner: false },
+    LocalNotifications: { smallIcon: 'ic_stat_budget', iconColor: '#d29a5c' },
   },
 };
 

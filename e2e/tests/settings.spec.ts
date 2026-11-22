@@ -46,9 +46,10 @@ test.describe('settings, language and navigation', () => {
     await page.getByRole('tab', { name: 'Light' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    expect(bg).toBe('rgb(242, 248, 247)');
+    expect(bg).toBe('rgb(245, 245, 247)'); // #f5f5f7
     await page.getByRole('tab', { name: 'Dark' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(11, 12, 31)'); // #0b0c1f
   });
 
   test('month start day changes the budget month range', async ({ page }) => {

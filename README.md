@@ -1,5 +1,7 @@
 # Budget me · MK1 (version 1.0.0)
 
+![Budget me MK1: Home, Budget, Expenses, Savings, Reports, light mode and Arabic](design/screenshots/overview.png)
+
 > **MK1** is the first full release (after the 0.x alphas). Developed by Youssef Gouda. Download a backup now and then (Settings → Download backup).
 
 A mobile web app for managing a budget: monthly budget, expenses, savings goals, loans and yearly reports.

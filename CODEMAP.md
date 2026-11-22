@@ -11,8 +11,8 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `e2e/` | Playwright tests in a phone-sized browser against the real app |
 | `mobile/` | Capacitor 8 Android shell (remote URL mode), `BudgetNativePlugin.java`, release script |
 | `deploy/` | VPS ops: `Caddyfile`, `nginx-budget-me.conf`, `update.sh`, `backup-now.sh`, `restore.sh`, `backup-offsite.sh` (age + rclone), `restore-test.sh`, `check-health.sh` (alerts), `rollback.sh`, `lib.sh` (`load_env`, `alert`) |
-| `design/` | Design notes + reference images |
-| `scripts/` | Windows dev helpers (`dev-server.cmd`, `n.cmd`, `setup-node.cmd`) using portable Node in `D:\devtools` |
+| `design/` | Design notes, reference images, `screenshots/` (presentation pictures + `overview.png`) |
+| `scripts/` | `screenshots.mjs` (demo data + presentation screenshots), Windows dev helpers (`dev-server.cmd`, `n.cmd`, `setup-node.cmd`) using portable Node in `D:\devtools` |
 | `Dockerfile` | Multi-stage: build web → build server → slim runtime (non-root, health check) |
 | `docker-compose.yml` | Project `budget-me`: `db` (Postgres 16), `app`, `backup` (daily `pg_dump`) on an internal network |
 | `.env.example` | All production settings (DB password, sign-up, admin, cookies, proxy, quotas, backups) |
