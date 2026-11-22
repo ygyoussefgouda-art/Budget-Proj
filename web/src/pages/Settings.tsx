@@ -88,21 +88,23 @@ export default function Settings() {
   };
 
   /** Back to the sign-in screen and forget all cached data. */
-  const signedOut = () => {
-    clearKit(); // the offline kit (name, categories) leaves the phone too
-    removeLock(user.id); // and the app lock: signing in again starts without one
+  const signedOut = async () => {
+    removeLock(user.id); // the app lock: signing in again starts without one
     // Update the observed ['me'] query first (shows the login screen), then drop cached data.
     qc.setQueryData(['me'], null);
     qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
+    // Then the offline kit and the saved copy leave the phone (after the cache is already signed out,
+    // so a late save can't write the old account back).
+    await clearKit();
   };
   const logout = async () => {
     await api('/auth/logout', 'POST').catch(() => undefined);
-    signedOut();
+    await signedOut();
   };
   const logoutAll = async () => {
     if (!(await confirm(t('Sign out everywhere?'), t('Every phone and computer signed in to this account will be signed out, this one too.'), t('Sign out')))) return;
     await api('/auth/logout-all', 'POST').catch(() => undefined);
-    signedOut();
+    await signedOut();
   };
 
   return (

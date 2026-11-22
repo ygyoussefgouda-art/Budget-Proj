@@ -55,7 +55,9 @@ export const idbPersister: Persister = {
 export const KEEP_OFFLINE = new Set(['me', 'state', 'expenses', 'tags', 'recurring', 'reports', 'reports-compare', 'reports-weekdays', 'reports-tags', 'auth-config']);
 
 /** Forget the offline copy (sign-out, expired session, deleted account). */
-export const clearOfflineCache = () => idbPersister.removeClient();
+export const clearOfflineCache = async (): Promise<void> => {
+  await idbPersister.removeClient();
+};
 
 /**
  * Keep the offline copy for up to 7 days. (Also used as React Query's gcTime, which is a timer:

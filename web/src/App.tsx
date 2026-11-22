@@ -38,6 +38,9 @@ export default function App() {
       }
     },
     staleTime: Infinity,
+    // Always ask the server once on start: a saved offline copy must never stand in for a real session.
+    // (Offline, the check fails and the app shows the saved copy read-only.)
+    refetchOnMount: 'always',
     retry: false,
   });
 

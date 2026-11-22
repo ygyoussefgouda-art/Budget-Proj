@@ -30,9 +30,9 @@ watchGlobalErrors();
 // and forgets that account's cached data so the next person to sign in on this phone never sees it.
 const onError = (e: unknown) => {
   if (!(e instanceof ApiError && e.status === 401)) return;
-  clearKit();
   queryClient.setQueryData(['me'], null);
   queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
+  void clearKit();
 };
 
 const queryClient: QueryClient = new QueryClient({

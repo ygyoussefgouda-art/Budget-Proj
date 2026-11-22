@@ -133,11 +133,11 @@ export function readKit(): OfflineKit | null {
   }
 }
 /** Forget everything this account left on the phone for offline use (kit + the cached data). */
-export function clearKit() {
-  void clearOfflineCache();
+export function clearKit(): Promise<void> {
   try {
     localStorage.removeItem(KIT);
   } catch {
     /* ignore */
   }
+  return clearOfflineCache();
 }

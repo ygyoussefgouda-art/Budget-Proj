@@ -139,10 +139,10 @@ function LockScreen({ userId, onUnlock }: { userId: number; onUnlock: () => void
   const forgot = async () => {
     // Forgot the PIN: sign out; signing in again with the password starts without a lock.
     removeLock(user.id);
-    clearKit();
     await api('/auth/logout', 'POST').catch(() => undefined);
     qc.setQueryData(['me'], null);
     qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
+    await clearKit();
   };
 
   const secs = Math.ceil((waitUntil - now) / 1000);

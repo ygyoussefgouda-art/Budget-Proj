@@ -74,7 +74,7 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 
 ## Gotchas
 - 2026-11-22: React Query `gcTime` is a `setTimeout`: values above ~24.8 days (2^31 ms) overflow and fire at once, dropping cached data. Offline copy uses 7 days. Also store a JSON copy in IndexedDB: the raw dehydrated cache can't be structured-cloned.
-- 2026-11-22: Offline copy (IndexedDB `budget-me-cache`) holds the signed-in account's data on the phone; `clearKit()` also deletes it, so every sign-out path must call `clearKit`.
+- 2026-11-22: Offline copy (IndexedDB `budget-me-cache`) holds the signed-in account's data on the phone; `clearKit()` also deletes it, so every sign-out path must call `clearKit`. Order matters: first set `['me']` to null and remove queries, **then** `await clearKit()` (a late throttled save could otherwise write the signed-in copy back; seen on CI). The `me` query also uses `refetchOnMount: 'always'` so a saved copy never stands in for a real session.
 - 2026-11-21: `legacy-flutter/` exists only on the owner's PC and is git-ignored (`.gitignore`). The README mention was removed in 0.6.0.
 - 2026-11-21: `scripts/*.cmd` assume a portable Node at `D:\devtools` on the owner's Windows PC.
 - 2026-11-21: Rate limits key by IP with IPv6 grouped by /56 (`ipKey` in `server/src/app.ts`); behind a proxy set `TRUST_PROXY` correctly or every user shares one limit.
