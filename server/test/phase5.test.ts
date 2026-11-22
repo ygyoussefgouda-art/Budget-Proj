@@ -86,28 +86,19 @@ describe('who is an admin', () => {
 });
 
 describe('sign-up settings while the app runs', () => {
-  it('close sign-ups, then require an invite code; the code itself never goes to the log', async () => {
+  it('close sign-ups, then open them again; each change is logged', async () => {
     const o = await owner();
-    await o.put('/api/admin/settings').send({ allowSignup: false, inviteCode: null }).expect(200);
+    await o.put('/api/admin/settings').send({ allowSignup: false }).expect(200);
     expect((await request(mkApp()).get('/api/auth/config')).body).toMatchObject({ signupEnabled: false });
     expect((await request(mkApp()).post('/api/auth/signup').send({ username: 'late.one', password: 'late-pass-123' })).status).toBe(403);
 
-    await o.put('/api/admin/settings').send({ allowSignup: true, inviteCode: 'SECRET-42' }).expect(200);
-    expect((await request(mkApp()).get('/api/auth/config')).body).toMatchObject({ signupEnabled: true, inviteRequired: true });
-    expect((await request(mkApp()).post('/api/auth/signup').send({ username: 'late.two', password: 'late-pass-123' })).status).toBe(403);
-    await request(mkApp()).post('/api/auth/signup').send({ username: 'late.three', password: 'late-pass-123', inviteCode: 'SECRET-42' }).expect(201);
-    expect((await o.get('/api/admin/settings')).body).toEqual({ allowSignup: true, inviteCode: 'SECRET-42' });
-
-    await o.put('/api/admin/settings').send({ allowSignup: true, inviteCode: '' }).expect(200);
-    expect((await request(mkApp()).get('/api/auth/config')).body).toMatchObject({ signupEnabled: true, inviteRequired: false });
+    await o.put('/api/admin/settings').send({ allowSignup: true }).expect(200);
+    expect((await request(mkApp()).get('/api/auth/config')).body).toMatchObject({ signupEnabled: true });
+    await request(mkApp()).post('/api/auth/signup').send({ username: 'late.two', password: 'late-pass-123' }).expect(201);
+    expect((await o.get('/api/admin/settings')).body).toEqual({ allowSignup: true });
 
     const log = (await auditActions()).filter((x) => x.action === 'signup_settings_changed');
-    expect(log.map((x) => x.details)).toEqual([
-      { allowSignup: false, inviteCode: 'unchanged' },
-      { allowSignup: true, inviteCode: 'set' },
-      { allowSignup: true, inviteCode: 'cleared' },
-    ]);
-    expect(JSON.stringify(await auditActions())).not.toContain('SECRET-42');
+    expect(log.map((x) => x.details)).toEqual([{ allowSignup: false }, { allowSignup: true }]);
   });
 });
 

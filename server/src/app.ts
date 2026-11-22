@@ -38,8 +38,6 @@ export interface AppOptions {
   trustProxy?: string | number | boolean;
   /** Whether new people may create accounts. Default true. */
   allowSignup?: boolean;
-  /** If set, sign-up needs this invite code. */
-  inviteCode?: string;
   /** Sign-in attempts per IP per 15 minutes (default 20). */
   loginLimit?: number;
   /** New accounts per IP per hour (default 10). */
@@ -218,7 +216,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   );
 
   // .env defaults; an admin can change them in the app (stored in app_settings).
-  const signupDefaults = { allowSignup: opts.allowSignup ?? true, inviteCode: opts.inviteCode ?? '' };
+  const signupDefaults = { allowSignup: opts.allowSignup ?? true };
   setAdminUsernames(opts.adminUsernames ?? []);
   setSignupPolicy({ requireEmail: opts.requireEmail, strongPasswords: opts.strongPasswords });
   const mailer = opts.mailer ?? noMailer;
@@ -228,7 +226,6 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       const c = await signupConfig(db, signupDefaults);
       res.json({
         signupEnabled: c.allowed,
-        inviteRequired: c.allowed && !!c.inviteCode,
         emailRequired: signupPolicy().requireEmail,
         strongPasswords: signupPolicy().strongPasswords,
         // "Forgot password?" can email a code (otherwise: ask an admin).

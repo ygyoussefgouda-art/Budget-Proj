@@ -30,18 +30,18 @@ Short version:
 
 ```bash
 git clone https://github.com/ygyoussefgouda-art/Budget-Proj.git /opt/budget-me && cd /opt/budget-me
-cp .env.example .env && chmod 600 .env && nano .env   # strong POSTGRES_PASSWORD, SIGNUP_INVITE_CODE
+cp .env.example .env && chmod 600 .env && nano .env   # strong POSTGRES_PASSWORD
 docker compose up -d --build
 curl http://127.0.0.1:8090/api/health                 # -> {"ok":true}
 ```
 
 It is a standalone Compose project (`budget-me`) with its own network, Postgres and volume, so it shares nothing with the other app on your VPS. The app listens only on `127.0.0.1:8090`; put your HTTPS reverse proxy in front of it (ready-made configs: [deploy/nginx-budget-me.conf](deploy/nginx-budget-me.conf), [deploy/Caddyfile](deploy/Caddyfile)). Daily database backups go to `backups/`; update with `sh deploy/update.sh`.
 ### Accounts
-Everyone creates their own account on the sign-in screen with **Create account** (email + username + password; the password needs 8+ characters with a lowercase letter, an uppercase letter, a number and a special character, ticked off live as you type). Sign in with the username or the email. Each account has its own budget, which starts empty, and nobody can see anyone else's data. Passwords are stored as scrypt hashes, sessions expire after 14 idle days (30 at most), and sign-in and sign-up attempts are rate-limited. Set `SIGNUP_INVITE_CODE` so only people you give the code to can sign up. In Settings each user can change their password, sign out everywhere and delete their account.
+Everyone creates their own account on the sign-in screen with **Create account** (email + username + password; the password needs 8+ characters with a lowercase letter, an uppercase letter, a number and a special character, ticked off live as you type). Sign in with the username or the email. Each account has its own budget, which starts empty, and nobody can see anyone else's data. Passwords are stored as scrypt hashes, sessions expire after 14 idle days (30 at most), and sign-in and sign-up attempts are rate-limited. There is no invite code: anyone who can open the app can sign up until sign-ups are closed (`ALLOW_SIGNUP=false` or the Admin page). In Settings each user can change their password, sign out everywhere and delete their account.
 
 - Once everyone who should use the app has an account, set `ALLOW_SIGNUP=false` in `.env` and run `docker compose up -d`. The sign-in screen then shows only "Sign in".
 - `APP_PASSWORD` (optional) creates a built-in account with the username `owner`. Changing it and restarting signs that account out everywhere.
-- **Admin page** (Settings → Admin) for `owner` and the accounts in `ADMIN_USERNAMES`: list accounts (joined, last active, storage used), open/close sign-ups and set the invite code while the app runs, remove an account (type its username + your password), and make **one-time password reset codes** (valid 1 hour, stored hashed, needs your own password). Only the built-in `owner` can reset or remove another admin. Every admin action is kept in an activity log. Create your account first, then list it in `ADMIN_USERNAMES` (see [DEPLOY.md](DEPLOY.md#admin-page)).
+- **Admin page** (Settings → Admin) for `owner` and the accounts in `ADMIN_USERNAMES`: list accounts (joined, last active, storage used), open/close sign-ups while the app runs, remove an account (type its username + your password), and make **one-time password reset codes** (valid 1 hour, stored hashed, needs your own password). Only the built-in `owner` can reset or remove another admin. Every admin action is kept in an activity log. Create your account first, then list it in `ADMIN_USERNAMES` (see [DEPLOY.md](DEPLOY.md#admin-page)).
 - **Two-step sign-in** (Settings): password + a 6-digit code from any authenticator app (Google Authenticator, Aegis, 2FAS…), with 8 one-time backup codes. Recommended for admins; an admin can turn it off for someone who lost their phone.
 - **Forgot password?** on the sign-in screen: with email set up (any SMTP server, free options in [DEPLOY.md](DEPLOY.md#email-forgot-password-codes-free)), enter your email and get a one-time code; otherwise use a reset code from an admin. Then choose a new password; every session of that account is signed out. Older accounts can add an email in Settings.
 

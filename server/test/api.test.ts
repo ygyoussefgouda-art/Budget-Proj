@@ -82,7 +82,7 @@ describe('sign up', () => {
 
   it('can be turned off', async () => {
     const closed = request(mkApp({ allowSignup: false }));
-    expect((await closed.get('/api/auth/config')).body).toMatchObject({ signupEnabled: false, inviteRequired: false });
+    expect((await closed.get('/api/auth/config')).body).toMatchObject({ signupEnabled: false });
     expect((await closed.post('/api/auth/signup').send({ username: 'blocked', password: 'long-enough' })).status).toBe(403);
   });
 
@@ -437,15 +437,12 @@ describe('security hardening', () => {
     expect((await a.post('/api/auth/signup').send({ username: 'ninechars', password: '123456789' })).status).toBe(400);
   });
 
-  it('invite code, when set, is required to sign up', async () => {
-    const a = request(mkApp({ inviteCode: 'family-2026' }));
-    expect((await a.get('/api/auth/config')).body).toMatchObject({ signupEnabled: true, inviteRequired: true });
-    expect((await a.post('/api/auth/signup').send({ username: 'invited.no', password: 'long-enough-1' })).status).toBe(403);
+  it('sign-up needs no invite code (removed); a code sent by an old app is ignored', async () => {
+    const a = request(mkApp());
+    expect((await a.get('/api/auth/config')).body).not.toHaveProperty('inviteRequired');
+    expect((await a.post('/api/auth/signup').send({ username: 'no.code', password: 'long-enough-1' })).status).toBe(201);
     expect(
-      (await a.post('/api/auth/signup').send({ username: 'invited.no', password: 'long-enough-1', inviteCode: 'wrong' })).status,
-    ).toBe(403);
-    expect(
-      (await a.post('/api/auth/signup').send({ username: 'invited.yes', password: 'long-enough-1', inviteCode: 'family-2026' })).status,
+      (await request(mkApp()).post('/api/auth/signup').send({ username: 'old.client', password: 'long-enough-1', inviteCode: 'anything' })).status,
     ).toBe(201);
   });
 

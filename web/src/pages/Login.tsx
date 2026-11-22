@@ -16,7 +16,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface AuthConfig {
   signupEnabled: boolean;
-  inviteRequired?: boolean;
   emailRequired?: boolean;
   strongPasswords?: boolean;
   /** "Forgot password?" can email a code. */
@@ -74,7 +73,6 @@ export default function Login() {
   const config = useQuery({ queryKey: ['auth-config'], queryFn: () => api<AuthConfig>('/auth/config'), staleTime: Infinity });
   const cfg = config.data;
   const signupEnabled = cfg?.signupEnabled ?? true;
-  const inviteRequired = cfg?.inviteRequired ?? false;
   const emailRequired = cfg?.emailRequired ?? true;
   const strong = cfg?.strongPasswords ?? true;
 
@@ -82,7 +80,6 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [invite, setInvite] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -120,13 +117,12 @@ export default function Login() {
       }
       const pwErr = newPasswordError(password, name, strong);
       if (pwErr) return setErr(pwErr);
-      if (inviteRequired && !invite.trim()) return setErr(t('Enter the invite code.'));
     }
     setBusy(true);
     setErr(null);
     try {
       const body = signup
-        ? { username: name, password, ...(mail ? { email: mail } : {}), ...(inviteRequired ? { inviteCode: invite.trim() } : {}) }
+        ? { username: name, password, ...(mail ? { email: mail } : {}) }
         : { username: name, password };
       const r = await api<{ user?: unknown; twoFactor?: boolean; ticket?: string }>(signup ? '/auth/signup' : '/auth/login', 'POST', body);
       if (r.twoFactor && r.ticket) {
@@ -269,14 +265,6 @@ export default function Login() {
         >
           {signup && (strong ? <PasswordRules password={password} id="signup-pw-rules" /> : <span className="field-hint">{t('At least 10 characters.')}</span>)}
         </PasswordField>
-
-        {signup && inviteRequired && (
-          <label className="field">
-            <span className="field-label">{t('Invite code')}</span>
-            <input className="input" dir="ltr" autoComplete="off" value={invite} onChange={(e) => setInvite(e.target.value)} />
-            <span className="field-hint">{t('Ask the person who runs this app for the code.')}</span>
-          </label>
-        )}
 
         {notice && !err && <p className="small notice">{notice}</p>}
         <FormError text={err} />

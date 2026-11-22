@@ -101,19 +101,10 @@ export const schemas = {
       .refine((u) => !RESERVED_USERNAMES.has(u), 'is reserved, please choose another one'),
     email: email.optional(),
     password: newPassword,
-    inviteCode: z.string().max(200).optional(),
   }),
   changePassword: z.object({ current: z.string().min(1).max(200), next: newPassword }),
   deleteAccount: z.object({ password: z.string().min(1).max(200) }),
-  adminSettings: z.object({
-    allowSignup: z.boolean(),
-    inviteCode: z
-      .string()
-      .trim()
-      .max(100)
-      .nullable()
-      .transform((v) => v || ''),
-  }),
+  adminSettings: z.object({ allowSignup: z.boolean() }),
   adminDeleteUser: z.object({ confirmUsername: z.string().max(60), password: z.string().min(1).max(200) }),
   adminResetCode: z.object({ password: z.string().min(1).max(200) }),
   /** Big irreversible actions (erase all data, restore) confirm with the password. */

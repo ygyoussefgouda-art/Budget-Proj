@@ -21,7 +21,6 @@ function protectAdmins(req: Request, target: string) {
 
 export interface SignupDefaults {
   allowSignup: boolean;
-  inviteCode: string;
 }
 
 /** Sign-up settings in effect: what an admin set in the app, else the .env defaults. */
@@ -29,11 +28,7 @@ export async function signupConfig(db: Queryable, defaults: SignupDefaults) {
   const rows = (await db.query('SELECT key, value FROM app_settings')).rows;
   const get = (k: string) => rows.find((r) => r.key === k)?.value;
   const allow = get('allow_signup');
-  const code = get('invite_code');
-  return {
-    allowed: typeof allow === 'boolean' ? allow : defaults.allowSignup,
-    inviteCode: typeof code === 'string' ? code : defaults.inviteCode,
-  };
+  return { allowed: typeof allow === 'boolean' ? allow : defaults.allowSignup };
 }
 
 export async function audit(q: Queryable, req: Request, action: string, target: string | null, details: Record<string, unknown> = {}) {
@@ -94,7 +89,7 @@ export function adminRoutes(db: Db, defaults: SignupDefaults): Router {
     '/admin/settings',
     ah(async (_req, res) => {
       const c = await signupConfig(db, defaults);
-      res.json({ allowSignup: c.allowed, inviteCode: c.inviteCode });
+      res.json({ allowSignup: c.allowed });
     }),
   );
 
@@ -102,25 +97,15 @@ export function adminRoutes(db: Db, defaults: SignupDefaults): Router {
     '/admin/settings',
     ah(async (req, res) => {
       const b = schemas.adminSettings.parse(req.body);
-      const before = await signupConfig(db, defaults);
       await db.tx(async (q) => {
         await q.query(
           `INSERT INTO app_settings(key, value, updated_at) VALUES ('allow_signup', $1, now())
            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
           [JSON.stringify(b.allowSignup)],
         );
-        await q.query(
-          `INSERT INTO app_settings(key, value, updated_at) VALUES ('invite_code', $1, now())
-           ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-          [JSON.stringify(b.inviteCode)],
-        );
-        // The code itself is not written to the log, only that it changed.
-        await audit(q, req, 'signup_settings_changed', null, {
-          allowSignup: b.allowSignup,
-          inviteCode: b.inviteCode === before.inviteCode ? 'unchanged' : b.inviteCode ? 'set' : 'cleared',
-        });
+        await audit(q, req, 'signup_settings_changed', null, { allowSignup: b.allowSignup });
       });
-      res.json({ allowSignup: b.allowSignup, inviteCode: b.inviteCode });
+      res.json({ allowSignup: b.allowSignup });
     }),
   );
 

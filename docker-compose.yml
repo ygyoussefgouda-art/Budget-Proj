@@ -46,9 +46,8 @@ services:
       PGDATABASE: ${POSTGRES_DB:-budget_me}
       PGUSER: ${POSTGRES_USER:-budget_me}
       PGPASSWORD: ${POSTGRES_PASSWORD}
-      # Accounts: sign-up on/off, optional invite code, optional built-in "owner" account
+      # Accounts: sign-up on/off, optional built-in "owner" account
       ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
-      SIGNUP_INVITE_CODE: ${SIGNUP_INVITE_CODE:-}
       APP_PASSWORD: ${APP_PASSWORD:-}
       # Accounts that can open the Admin page (comma separated; "owner" always can)
       ADMIN_USERNAMES: ${ADMIN_USERNAMES:-}

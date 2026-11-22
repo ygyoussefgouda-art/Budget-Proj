@@ -271,24 +271,19 @@ export function loginHandler(db: Db, parse: (b: unknown) => { username?: string;
   });
 }
 
-/** Create a new account (starts empty) and sign it in. Can be turned off or put behind an invite code. */
+/** Create a new account (starts empty) and sign it in. Can be turned off. */
 export function signupHandler(
   db: Db,
-  parse: (b: unknown) => { username: string; email?: string; password: string; inviteCode?: string },
-  opts: () => Promise<{ allowed: boolean; inviteCode: string }>,
+  parse: (b: unknown) => { username: string; email?: string; password: string },
+  opts: () => Promise<{ allowed: boolean }>,
 ) {
   return ah(async (req: Request, res: Response) => {
     const o = await opts();
     if (!o.allowed) throw new HttpError(403, 'Creating new accounts is turned off on this server.', 'signup_disabled');
-    const { username, email, password, inviteCode } = parse(req.body);
+    const { username, email, password } = parse(req.body);
     if (policy.requireEmail && !email) throw new HttpError(400, 'Enter your email address.', 'email_required');
     checkNewPassword(password, username);
     if (isListedAdminName(username)) throw new HttpError(403, 'That username is reserved, please choose another one.', 'reserved');
-    if (o.inviteCode) {
-      const a = Buffer.from(sha256(inviteCode ?? ''));
-      const b = Buffer.from(sha256(o.inviteCode));
-      if (!timingSafeEqual(a, b)) throw new HttpError(403, 'That invite code is not right.', 'bad_invite');
-    }
     const hash = await hashPassword(password);
     if (email && (await db.query('SELECT 1 FROM users WHERE lower(email) = $1', [email])).rows.length) {
       throw new HttpError(409, 'An account with that email already exists. Sign in, or use "Forgot password?".', 'email_taken');

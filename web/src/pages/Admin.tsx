@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Copy, KeyRound, Shield, ShieldOff, Shuffle } from 'lucide-react';
+import { ArrowLeft, Copy, KeyRound, Shield, ShieldOff } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../api';
@@ -18,11 +18,6 @@ const day = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: '
 const size = (bytes: number) =>
   bytes < 1024 * 1024 ? t('{n} KB', { n: Math.round(bytes / 1024) }) : t('{n} MB', { n: (bytes / (1024 * 1024)).toFixed(1) });
 
-/** A random invite code that's easy to share (no 0/O or 1/I). */
-const randomInvite = () => {
-  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => abc[b % abc.length]).join('');
-};
 
 /** What an audit entry means, in words. */
 function auditText(e: AuditEntry) {
@@ -35,9 +30,7 @@ function auditText(e: AuditEntry) {
       return t('"{target}" chose a new password with a reset code', { target: e.target ?? '' });
     case 'signup_settings_changed': {
       const open = e.details.allowSignup ? t('sign-ups open') : t('sign-ups closed');
-      const code =
-        e.details.inviteCode === 'set' ? t('invite code changed') : e.details.inviteCode === 'cleared' ? t('invite code removed') : '';
-      return t('{actor} changed sign-up settings: {what}', { actor: e.actor, what: [open, code].filter(Boolean).join(', ') });
+      return t('{actor} changed sign-up settings: {what}', { actor: e.actor, what: open });
     }
     default:
       return `${e.actor}: ${e.action}`;
@@ -66,16 +59,12 @@ export default function Admin() {
 function SignupCard() {
   const { toast } = useOverlay();
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ['admin-settings'], queryFn: () => api<{ allowSignup: boolean; inviteCode: string }>('/admin/settings') });
+  const q = useQuery({ queryKey: ['admin-settings'], queryFn: () => api<{ allowSignup: boolean }>('/admin/settings') });
   const [open, setOpen] = useState(true);
-  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
-    if (q.data) {
-      setOpen(q.data.allowSignup);
-      setCode(q.data.inviteCode);
-    }
+    if (q.data) setOpen(q.data.allowSignup);
   }, [q.data]);
 
   const save = async (e: FormEvent) => {
@@ -83,7 +72,7 @@ function SignupCard() {
     setBusy(true);
     setErr(null);
     try {
-      await api('/admin/settings', 'PUT', { allowSignup: open, inviteCode: code.trim() || null });
+      await api('/admin/settings', 'PUT', { allowSignup: open });
       await qc.invalidateQueries({ queryKey: ['admin-settings'] });
       await qc.invalidateQueries({ queryKey: ['admin-audit'] });
       toast(t('Sign-up settings saved.'));
@@ -96,7 +85,7 @@ function SignupCard() {
   return (
     <Card>
       <SectionTitle>{t('Sign-ups')}</SectionTitle>
-      {/* No form until the real settings are loaded: saving the defaults would open sign-ups and drop the code. */}
+      {/* No form until the real settings are loaded: saving the default would open sign-ups. */}
       {q.isLoading && <p className="tiny mute">{t('Loading')}…</p>}
       {q.isError && <FormError text={(q.error as Error).message} />}
       {q.data && (
@@ -109,15 +98,7 @@ function SignupCard() {
             { value: false, label: t('Closed') },
           ]}
         />
-        <p className="tiny mute">{open ? t('Anyone who can open the app can create an account (with the invite code, if set).') : t('Nobody can create a new account. Existing accounts still sign in.')}</p>
-        {open && (
-          <Field label={t('Invite code (optional)')} hint={t('Leave empty to let anyone sign up.')}>
-            <div className="row gap">
-              <input className="input grow" dir="ltr" value={code} onChange={(e) => setCode(e.target.value)} maxLength={100} autoComplete="off" />
-              <IconButton icon={Shuffle} label={t('Make a random code')} onClick={() => setCode(randomInvite())} />
-            </div>
-          </Field>
-        )}
+        <p className="tiny mute">{open ? t('Anyone who can open the app can create an account.') : t('Nobody can create a new account. Existing accounts still sign in.')}</p>
         <FormError text={err} />
         <SaveButton label={t('Save')} busy={busy} />
       </form>

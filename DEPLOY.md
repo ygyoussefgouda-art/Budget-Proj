@@ -10,6 +10,18 @@ Internet ──HTTPS──▶ nginx/Caddy (443) ──▶ 127.0.0.1:8090 ──�
                                                               (budget-me network, private)
 ```
 
+## First launch: do it in this order
+
+With `APP_ONLY=true` (the default) a browser only sees the "Get the app" page, and that page has
+nothing to offer until a signed APK is in `downloads/android/`. On a brand-new server:
+
+1. Steps 0-6 below with **`APP_ONLY=false`** in `.env`, so you can open the site in a browser.
+2. Create your account, add it to `ADMIN_USERNAMES`, `docker compose up -d`.
+3. Make the signing key and add the GitHub secrets ("Android app" below), then push a tag `android-v1.2.1`.
+4. Check `https://<your site>/download/android` downloads the APK and it installs and signs in on a phone.
+5. Set `APP_ONLY=true`, `docker compose up -d`. Browsers now get the "Get the app" page.
+6. Set up the cron jobs, alerts and off-site backups ("Operations" below).
+
 ## 0. What you need
 
 - A VPS with Docker Engine + the Compose plugin (`docker compose version` works).
@@ -46,7 +58,6 @@ cd /opt/budget-me
 cp .env.example .env
 chmod 600 .env
 openssl rand -base64 32     # → paste as POSTGRES_PASSWORD
-openssl rand -hex 8         # → paste as SIGNUP_INVITE_CODE (recommended)
 nano .env
 ```
 
@@ -55,7 +66,7 @@ Checklist for `.env`:
 | Setting | Production value |
 |---|---|
 | `POSTGRES_PASSWORD` | random, 16+ chars (the app refuses to start with `change-me…`) |
-| `SIGNUP_INVITE_CODE` | set it, so strangers can't create accounts; share it with your users |
+| `ALLOW_SIGNUP` | `true` while people are joining (anyone who opens the app can sign up; there is no invite code), then `false` |
 | `ADMIN_USERNAMES` | your own username, after you've created your account (see "Admin page" below) |
 | `APP_PORT` | a free port (default `8090`) — must match your proxy config |
 | `APP_BIND` | `127.0.0.1` |
@@ -101,7 +112,7 @@ then `sudo systemctl reload caddy`.
 
 ## 6. Check it's secure
 
-Open `https://budget.example.com`, create your account (using the invite code), then:
+Open `https://budget.example.com`, create your account, then:
 
 ```sh
 curl -sI https://budget.example.com | grep -iE 'strict-transport|content-security|x-frame'
@@ -237,7 +248,7 @@ and `/opt/budget-me` on one. Backups leaving the server are always encrypted (st
 ## Admin page
 
 Admins see **Settings → Admin**: every account (joined, last active, storage used), sign-ups
-on/off and the invite code (these override `ALLOW_SIGNUP` / `SIGNUP_INVITE_CODE` once saved there),
+on/off (overrides `ALLOW_SIGNUP` once saved there),
 removing an account (type its username + your password), and **password reset codes**.
 Every admin action is written to an activity log on that page.
 **Turn on two-step sign-in for every admin account** (Settings → Two-step sign-in, any free authenticator app); the Admin page reminds you until it's on.

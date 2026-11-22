@@ -84,7 +84,6 @@ async function main() {
     publicDir: process.env.PUBLIC_DIR ?? path.join(root, 'public'),
     trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
     allowSignup,
-    inviteCode: process.env.SIGNUP_INVITE_CODE ?? '',
     hsts: process.env.HSTS === 'true',
     adminUsernames,
     loginLimit: positiveInt(process.env.LOGIN_RATE_LIMIT),
