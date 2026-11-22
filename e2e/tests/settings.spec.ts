@@ -64,8 +64,10 @@ test.describe('settings, language and navigation', () => {
   test('every tab opens at the top', async ({ page }) => {
     await setUpBudget(page);
     await tab(page, 'Home').click();
-    await page.evaluate(() => window.scrollTo(0, 800));
-    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+    // Home must be fully drawn (tall enough) before it can be scrolled; slow CI machines need a moment.
+    await expect
+      .poll(async () => page.evaluate(() => (window.scrollTo(0, 800), window.scrollY)))
+      .toBeGreaterThan(100);
     for (const name of ['Budget', 'Expenses', 'Loans', 'Savings', 'Home'] as const) {
       await tab(page, name).click();
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
