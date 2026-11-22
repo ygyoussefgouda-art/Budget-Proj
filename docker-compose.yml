@@ -99,6 +99,8 @@ services:
     environment:
       ALLOWED_SENDER_DOMAINS: ${MAIL_DOMAIN:-masrofy.online}
       POSTFIX_myhostname: ${MAIL_HOSTNAME:-mail.masrofy.online}
+      # Send over IPv4 only: the VPS has no IPv6 route out, and SPF/reverse DNS are set up for its IPv4 address.
+      POSTFIX_inet_protocols: ipv4
       # DKIM keys are generated once and kept in the "mailkeys" volume; publish the public key in DNS.
       DKIM_BACKEND: opendkim
       DKIM_AUTOGENERATE: "true"
