@@ -154,6 +154,32 @@ Without `SMTP_HOST` the app still works: **Forgot password?** then asks for a co
 
 Accounts made before 0.6.3 have no email: each person can add one in **Settings → Account**.
 
+## Android app (sideloaded, not on Google Play)
+
+The Android app is a thin shell around this site: every normal deploy updates its screens at once.
+A new APK is only needed when the native part changes (plugins, permissions, icon). Details:
+[docs/ANDROID_SELF_UPDATE.md](docs/ANDROID_SELF_UPDATE.md).
+
+**Where the APK lives:** `/opt/budget-me/downloads/android/` on the VPS (mounted read-only into the app):
+`latest.json` plus `budget-me-<version>.apk` (the last 3 are kept). People download it from
+**Settings → Get the Android app** in the browser, the link on the sign-in screen, or the short link
+`https://<your site>/download/android`. Installed apps check `/api/app/android/latest` and update themselves.
+
+**Building it (on GitHub, nothing to install at home):**
+1. Make the signing key once, on your own computer (keep it forever: losing it means everyone must reinstall):
+   `keytool -genkeypair -v -keystore budget-me-release.jks -alias budgetme -keyalg RSA -keysize 4096 -validity 10000`.
+   Store the `.jks` and its passwords in your password manager **and** an offline copy. Never commit it.
+2. GitHub → repository → Settings → Secrets and variables → Actions → add:
+   `ANDROID_KEYSTORE_BASE64` (the .jks, base64-encoded), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`budgetme`),
+   `ANDROID_KEY_PASSWORD`, `BUDGET_ME_URL` (`https://<your site>`), and to publish automatically: `VPS`
+   (`user@host`), `VPS_SSH_KEY` (a key that may only write to the downloads folder), `VPS_KNOWN_HOSTS`.
+3. Raise `versionCode` in `mobile/version.json`, commit, then push a tag: `git tag android-v0.7.0 && git push --tags`.
+   The **Android** workflow builds, signs, checks the certificate, writes `latest.json` and uploads both.
+   Without `VPS` secrets, download the files from the workflow run and copy them to the folder yourself
+   (APK first, then `latest.json`).
+
+Every push also builds a test (debug) APK, kept 14 days under the workflow run's artifacts.
+
 ## Admin page
 
 Admins see **Settings → Admin**: every account (joined, last active, storage used), sign-ups

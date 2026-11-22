@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon: "Add expense" opens Quick add (like the PWA shortcut). -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="add_expense"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_add_expense"
+        android:shortcutLongLabel="@string/shortcut_add_expense">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.budgetme.app"
+            android:targetClass="com.budgetme.app.MainActivity"
+            android:data="budgetme://add-expense" />
+    </shortcut>
+</shortcuts>

@@ -1,11 +1,27 @@
 import { FileSpreadsheet, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import { periodRange } from '../domain/calc';
 import { t, useI18n } from '../i18n';
+import { isNative, saveFile } from '../native';
 import { thisMonth, useApp } from '../state';
+import { useOverlay } from './Overlays';
 import { Field, Segmented } from './ui';
 
 type Kind = 'expenses' | 'loans' | 'savings';
+
+/** In the Android app a link can't download a file: fetch it and hand it to the share sheet instead. */
+async function nativeSave(e: MouseEvent<HTMLAnchorElement>, href: string, toast: (m: string) => void) {
+  if (!isNative()) return; // browsers download the link themselves
+  e.preventDefault();
+  try {
+    const res = await fetch(href, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(String(res.status));
+    const name = /filename="?([^";]+)/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? 'budget-me-export';
+    await saveFile(await res.blob(), name);
+  } catch {
+    toast(t('Export failed. Check your connection and try again.'));
+  }
+}
 
 /**
  * Download buttons (CSV and Excel) for an export. Plain links: the browser downloads the file
@@ -13,6 +29,7 @@ type Kind = 'expenses' | 'loans' | 'savings';
  */
 export function ExportLinks({ kind, filters }: { kind: Kind; filters: Record<string, string | undefined> }) {
   const { lang } = useI18n();
+  const { toast } = useOverlay();
   const url = (format: 'csv' | 'xlsx') => {
     const p = new URLSearchParams({ kind, format, lang });
     for (const [k, v] of Object.entries(filters)) if (v) p.set(k, v);
@@ -20,10 +37,10 @@ export function ExportLinks({ kind, filters }: { kind: Kind; filters: Record<str
   };
   return (
     <div className="stack">
-      <a className="btn tonal block" href={url('csv')} download>
+      <a className="btn tonal block" href={url('csv')} download onClick={(e) => nativeSave(e, url('csv'), toast)}>
         <FileText size={18} /> {t('Download CSV')}
       </a>
-      <a className="btn tonal block" href={url('xlsx')} download>
+      <a className="btn tonal block" href={url('xlsx')} download onClick={(e) => nativeSave(e, url('xlsx'), toast)}>
         <FileSpreadsheet size={18} /> {t('Download Excel (.xlsx)')}
       </a>
       <p className="tiny mute">{t('CSV opens in Excel, Google Sheets or Numbers; Arabic text shows correctly.')}</p>

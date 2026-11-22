@@ -106,6 +106,8 @@ interface AppCtx {
   catName: (id: number) => string;
   /** Re-fetch everything after a change. */
   refresh: () => Promise<void>;
+  /** When this month's data was last loaded from the server (ms), for "Last updated" offline. */
+  updatedAt: number;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -160,6 +162,7 @@ export function AppStateProvider({ user, children }: { user: User; children: Rea
     totals,
     catName,
     refresh,
+    updatedAt: q.dataUpdatedAt,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

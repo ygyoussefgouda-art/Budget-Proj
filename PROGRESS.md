@@ -3,7 +3,7 @@
 Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (say why).
 Update at the end of every session. Phases come from `HANDOFF.md` §4.
 
-**Current version:** alpha 0.6.3 · **Current phase:** email sign-up/reset done; next: 6, then 2-5, 7, 8 · **Last updated:** 2026-11-21
+**Current version:** alpha 0.6.5 · **Current phase:** 2-5 code done (device testing pending); next: 7, 8 · **Last updated:** 2026-11-21
 
 ## Phase 0: Hand-off setup
 - [-] Clone repo, branch `phase-0-handoff`: worked on `main` in the existing checkout; the owner commits/pushes only when they say so (see `MEMORY.md`)
@@ -37,44 +37,43 @@ Phase 1 test results: see the Log below.
 - [x] Also: reset codes die when the user changes their password; PIN check no longer counts twice in dev
 - [x] Sections B-D of the review → alpha 0.6.2 (see Log)
 
-## Phase 2: Android shell (Capacitor)
-- [ ] `mobile/` project, `appId` confirmed, remote URL mode, `allowNavigation` restricted
-- [ ] Offline fallback page for cold start without network
-- [ ] `web/src/native.ts` helper + `@capacitor/core` in web
-- [ ] Bridge verified with current CSP (document result in `MEMORY.md`)
-- [ ] App icon + splash from `web/public/icon-*.png`
-- [ ] Release keystore created and stored safely; fingerprint in `MEMORY.md`
-- [ ] Signed release APK builds locally and in CI
-- [ ] Installed on a real phone, signs in, all tabs work · PR merged
+## Phase 2: Android shell (Capacitor) (code in alpha 0.6.5)
+- [x] `mobile/` project (Capacitor 8, `appId` **com.budgetme.app**), remote URL mode from `BUDGET_ME_URL`, `allowNavigation` = that host only, HTTPS only, no cloud backup of app data
+- [x] Offline fallback page for cold start without network (`mobile/www/`, EN + AR)
+- [x] `web/src/native.ts` helper + `@capacitor/core` in web (plugins called by name)
+- [ ] Bridge verified on a phone with the current CSP (expected fine: Capacitor injects its bridge natively, not as a page script)
+- [ ] App icon + splash from `web/public/icon-*.png` (generated defaults for now)
+- [ ] Release keystore created by the owner, stored safely; fingerprint in `MEMORY.md`
+- [~] APK builds in CI: debug build on every push (`.github/workflows/android.yml`); signed release on tag `android-v*` once the secrets exist
+- [ ] Installed on a real phone, signs in, all tabs work
 
-Blocked on: production domain, final `appId`, keystore location (open questions in `MEMORY.md`). The owner's PC has only Java 8 (no JDK 21, no Android SDK), so build the APK in CI or install those first.
+## Phase 3: Self-update + download link (code in alpha 0.6.5)
+- [x] `downloads/` volume (`docker-compose.yml`, read-only, `DOWNLOADS_DIR`)
+- [x] `GET /api/app/android/latest`, `GET /api/app/android/apk/:file`, short link `/download/android` (all public: owner chose an open link) + tests (`server/test/appRelease.test.ts`)
+- [x] Native plugin (Java `BudgetNativePlugin`): download with progress, verify size + SHA-256 + package + higher versionCode, install via FileProvider, cleanup
+- [x] FileProvider `cache/updates/` + `REQUEST_INSTALL_PACKAGES`
+- [x] In-app check (launch, every 6 h, on resume, Settings), optional offer vs blocking screen (`mandatory`, `minVersionCode`, server `minNativeVersionCode`), progress, errors EN+AR (`web/src/update.ts`, `components/AndroidApp.tsx`, unit tests)
+- [x] "Get the Android app" card in browser Settings + link on the sign-in screen (E2E `android.spec.ts`)
+- [x] `mobile/scripts/release.sh` + CI `release` job (sign, check certificate, latest.json, upload APK then manifest, keep 3)
+- [ ] Device checklist from `docs/ANDROID_SELF_UPDATE.md` §8
 
-## Phase 3: Self-update + download link
-- [ ] `/opt/budget-me/downloads/android/` + volume mount
-- [ ] `GET /api/app/android/latest`, APK route (auth), optional token link + tests
-- [ ] Kotlin `ApkUpdater` plugin (download, verify SHA-256 + package + versionCode, install, cleanup)
-- [ ] FileProvider + `REQUEST_INSTALL_PACKAGES`
-- [ ] In-app check (launch / 6 h / Settings), optional vs mandatory, progress UI, error messages EN+AR
-- [ ] "Get the Android app" card in browser Settings + sign-in screen
-- [ ] `mobile/scripts/release.sh` + CI `android-release` job
-- [ ] Device checklist from `docs/ANDROID_SELF_UPDATE.md` §8 passed · PR merged
+## Phase 4: First-run permissions screen (code in alpha 0.6.5)
+- [x] Screen with per-permission rows + "Allow all" + "Skip for now" (`pages/Permissions.tsx`), shown once after the first sign-in in the app
+- [x] Notifications, camera, install-unknown-apps; gallery uses the Android photo picker (no permission)
+- [x] Permanently denied → "Open settings"; re-checked on resume
+- [x] Settings → Reminders → "App permissions" · EN+AR
+- [ ] Tried on a phone (allow / deny / permanently denied)
 
-## Phase 4: First-run permissions screen
-- [ ] Screen with per-permission rows + "Allow all" + "Skip for now"
-- [ ] Notifications, camera, install-unknown-apps; Photo Picker for gallery
-- [ ] Permanently-denied → open app settings; re-check on resume
-- [ ] Settings → "App permissions" entry · EN+AR/RTL · PR merged
-
-## Phase 5: Native features
-- [ ] Camera receipts (`@capacitor/camera`), web picker kept
-- [ ] Fingerprint/face unlock of the app lock (Android BiometricPrompt, PIN fallback). Native only, owner's choice 2026-11-21; no browser version
-- [ ] Local notifications: 80%/100% budget, recurring due, optional daily reminder
-- [ ] Save/share exports and backups
-- [ ] Native haptics, Android back button, "Add expense" shortcut · PR merged
-
+## Phase 5: Native features (code in alpha 0.6.5)
+- [x] Camera receipts: "Take a photo" / "From gallery" / "PDF or file" in the app; browser picker unchanged
+- [x] Fingerprint/face unlock of the app lock (BiometricPrompt via `BudgetNativePlugin`, PIN fallback, verified once when turned on). Native only, owner's choice 2026-11-21
+- [x] Local notifications: 80%/100% budget, recurring due, optional daily reminder (`web/src/notify.ts`, Settings → Reminders, unit tests)
+- [x] Save/share exports and backups (share sheet in the app, normal download in the browser)
+- [x] Native haptics, Android back button (closes sheets first), "Add expense" home-screen shortcut (`budgetme://add-expense`)
+- [ ] Tried on a phone
 ## Phase 6: Offline viewing
-- [ ] Persist React Query cache to IndexedDB per user; clear on sign-out
-- [ ] Read-only offline mode with "Last updated" bar · E2E offline test · PR merged
+- [x] Persist React Query cache to IndexedDB (`web/src/persist.ts`, official `@tanstack/react-query-persist-client`); cleared on sign-out, 401, forgot-PIN and account deletion (`clearKit`)
+- [x] Offline: the app opens from the saved copy with "Showing data from <time>" in the offline bar; new expenses still queue; E2E `e2e/tests/phase6.spec.ts` · committed (0.6.4)
 
 ## Phase 7: VPS operations
 - [ ] Encrypted offsite backups (`age` + rclone) + docs
@@ -93,5 +92,7 @@ Blocked on: production domain, final `appId`, keystore location (open questions 
 - 2026-11-21: Review of alpha 0.5.6 done; hand-off files written; gaps re-prioritised for a personal sideloaded Android app.
 - 2026-11-21: Phase 0 + Phase 1 done → alpha 0.6.0 (committed `e83525e`, CI green).
 - 2026-11-21: alpha 0.6.2 polish: erase/restore need the password; offline retries answered before caps (and "deleted" items not revived); receipt quota counts the Undo trash and locks; undo checks the quota; backup download is one snapshot; error logs drop DB row details; housekeeping clears expired sessions/codes and old audit entries (`AUDIT_KEEP_DAYS`); overpaid people don't lower loan totals; no duplicate category on retry; month-start change refreshes every report; no lock after camera/file picker; account deletion clears the offline queue; service worker precaches the build (opens offline after first visit) with a per-build cache; "new version" only for a newer server; focus handling in sheets/dialogs; Budget menu closes on tap outside; loading/error states; missing translations; RTL minus in KV rows; tutorial tips; `.gitignore` keystores; README/CODEMAP/CLAUDE fixes. New `server/test/security.test.ts` (10: cross-account, untested routes, offline, quota, housekeeping, headers, CSRF).
+- 2026-11-22: alpha 0.6.5 = Phases 2-5 in code: `mobile/` Capacitor shell + `BudgetNativePlugin` (self-update, fingerprint, app settings), download routes, update flow, permissions screen, camera receipts, reminders, share sheet, back button, shortcut; CI builds the APK. Crash "Reload" now drops the offline copy (bad saved data could crash again). Not yet built or run on a phone.
+- 2026-11-22: alpha 0.6.4 = Phase 6 offline viewing (copy kept 7 days, per app version, only the account's own screens).
 - 2026-11-22: alpha 0.6.3 (owner's request): sign-up needs an email; new passwords need 8+ chars with lower/upper/number/special (live checklist, "Show" button, no repeat field on sign-up); sign in with username or email; "Forgot password?" emails a one-time code (30 min, 5 tries, 3 mails/address/hour, same answer for unknown addresses) over any SMTP server (free: Gmail app password or Brevo); admin codes still work; Settings → add/change email (needs password). Migration `008_email`. New dependency nodemailer. New env vars `SMTP_HOST/PORT/USER/PASS`, `MAIL_FROM` (`MAIL_OUTBOX_DIR` dev/test only). Tests: `server/test/email.test.ts` (11), `e2e/tests/email.spec.ts` (3).
 - 2026-11-21: Full review written to `docs/REVIEW-2026-11-21.md`; its 8 "fix first" items fixed → alpha 0.6.1. No migration, no new env vars. Added pino (server). New env vars `LOG_LEVEL`, `MIN_NATIVE_VERSION_CODE`. No migration.

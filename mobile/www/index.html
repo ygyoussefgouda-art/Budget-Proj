@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+    <title>Budget me</title>
+    <link rel="stylesheet" href="fallback.css" />
+  </head>
+  <body>
+    <!-- Shown by the Android app when the server can't be reached and nothing is cached yet. -->
+    <main>
+      <div class="logo" aria-hidden="true">B</div>
+      <h1>Budget <span>me</span></h1>
+      <p lang="en">Can't reach the server. Check your internet connection, then try again.</p>
+      <p lang="ar" dir="rtl">مش قادرين نوصل للسيرفر. اتأكد من النت وجرّب تاني.</p>
+      <button id="retry" type="button">Try again · جرّب تاني</button>
+    </main>
+    <script src="fallback.js"></script>
+  </body>
+</html>

@@ -91,6 +91,7 @@ async function main() {
     signupLimit: positiveInt(process.env.SIGNUP_RATE_LIMIT),
     minNativeVersionCode: positiveInt(process.env.MIN_NATIVE_VERSION_CODE),
     mailer,
+    downloadsDir: process.env.DOWNLOADS_DIR || path.join(root, 'downloads'),
   });
   const port = Number(process.env.PORT ?? 3000);
   const server = app.listen(port, () => log.info({ port, version: APP_VERSION }, 'Budget me listening'));

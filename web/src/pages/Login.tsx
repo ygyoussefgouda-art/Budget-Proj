@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, EyeOff, Languages, Wallet } from 'lucide-react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { api } from '../api';
+import { GetAndroidAppLink } from '../components/AndroidApp';
 import { newPasswordError, PasswordRules } from '../components/PasswordRules';
 import { COLORS, FormError, Segmented } from '../components/ui';
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
@@ -253,6 +254,7 @@ export default function Login() {
             {t('Forgot password?')}
           </button>
         )}
+        <GetAndroidAppLink />
         {signupEnabled && (
           <p className="tiny mute center">
             {signup ? t('Already have an account?') : t('New here?')}{' '}

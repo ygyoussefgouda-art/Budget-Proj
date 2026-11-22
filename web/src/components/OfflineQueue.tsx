@@ -1,7 +1,7 @@
 import { CloudOff, RefreshCw } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { fmtMoney } from '../domain/money';
-import { t } from '../i18n';
+import { locale, t } from '../i18n';
 import { listQueued, queueExpense, removeQueued, syncQueued, type Queued, type QueuedBody } from '../offline';
 import { shortDate } from '../state';
 import { useOverlay } from './Overlays';
@@ -84,13 +84,24 @@ export function OfflineProvider({ userId, onSynced, children }: { userId: number
 }
 
 /** Thin bar while there is no connection. */
-export function OfflineBar() {
+export function OfflineBar({ updatedAt }: { updatedAt?: number }) {
   const o = useOffline();
   if (!o || o.online) return null;
+  const when = updatedAt
+    ? new Date(updatedAt).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : null;
   return (
     <div className="offline-bar" role="status">
       <CloudOff size={16} aria-hidden="true" />
-      <span>{t("You're offline. New expenses are saved on this phone and sync later.")}</span>
+      <span>
+        {t("You're offline. New expenses are saved on this phone and sync later.")}
+        {when && (
+          <>
+            {' '}
+            <span className="offline-updated">{t('Showing data from {time}; other changes wait until you are back online.', { time: when })}</span>
+          </>
+        )}
+      </span>
     </div>
   );
 }

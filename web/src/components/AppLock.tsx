@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { Delete, Lock } from 'lucide-react';
+import { Delete, Fingerprint, Lock } from 'lucide-react';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { t } from '../i18n';
 import { clearKit } from '../offline';
-import { clearFailures, markActive, pauseLockForPicker, pinMatches, readFailures, readLock, recordFailure, removeLock, shouldLock } from '../pin';
+import { BudgetNative, isNative } from '../native';
+import { bioEnabled, clearFailures, markActive, pauseLockForPicker, pinMatches, readFailures, readLock, recordFailure, removeLock, shouldLock } from '../pin';
 import { COLORS } from './ui';
 
 /**
@@ -68,6 +69,24 @@ function LockScreen({ userId, onUnlock }: { userId: number; onUnlock: () => void
   const [now, setNow] = useState(Date.now());
   const waitUntil = readFailures(user.id).until;
   const waiting = waitUntil > now;
+
+  // Fingerprint / face first (Android app, if turned on); cancelling or failing shows the PIN pad.
+  const askBio = useCallback(async () => {
+    if (!isNative() || !bioEnabled(user.id)) return;
+    try {
+      const r = await BudgetNative.biometricVerify({ title: t('Unlock Budget me'), cancel: t('Use PIN') });
+      if (r.verified) {
+        clearFailures(user.id);
+        onUnlock();
+      }
+    } catch {
+      /* not available right now: the PIN pad is there */
+    }
+  }, [onUnlock, userId]);
+  useEffect(() => {
+    if (!waiting) void askBio();
+    // only once, when the lock screen opens
+  }, []);
 
   useEffect(() => {
     if (!waiting) return;
@@ -155,6 +174,11 @@ function LockScreen({ userId, onUnlock }: { userId: number; onUnlock: () => void
           <Delete size={22} />
         </button>
       </div>
+      {isNative() && bioEnabled(user.id) && !waiting && (
+        <button type="button" className="btn tonal small" onClick={() => void askBio()}>
+          <Fingerprint size={18} aria-hidden="true" /> {t('Use fingerprint')}
+        </button>
+      )}
       <button type="button" className="btn text small" onClick={forgot}>
         {t('Forgot your PIN? Sign out')}
       </button>

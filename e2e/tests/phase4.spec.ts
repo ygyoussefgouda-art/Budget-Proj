@@ -55,6 +55,8 @@ test.describe('phase 4: offline, shortcut, swipe, app lock', () => {
     await page.reload();
     await expect(tab(page, 'Home')).toBeVisible();
 
+    // No saved copy of the data (e.g. it expired): the small offline entry screen still lets you log expenses.
+    await page.evaluate(() => new Promise((r) => { const d = indexedDB.deleteDatabase('budget-me-cache'); d.onsuccess = d.onerror = d.onblocked = () => r(null); }));
     await context.setOffline(true);
     await page.reload();
     await expect(page.getByText("You're offline. You can still log expenses; they are sent as soon as you're back online.")).toBeVisible();

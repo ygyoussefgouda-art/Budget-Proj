@@ -22,6 +22,7 @@ import { noMailer, type Mailer } from './mail.js';
 import type { Db } from './db.js';
 import { ah, errorHandler, HttpError } from './http.js';
 import { APP_VERSION, log, requestId, requestLogger } from './log.js';
+import { appReleaseRoutes, readAndroidManifest } from './appRelease.js';
 import { receiptRoutes } from './receipts.js';
 import { recurringRoutes } from './recurring.js';
 import { exportRoutes } from './export.js';
@@ -57,6 +58,8 @@ export interface AppOptions {
   strongPasswords?: boolean;
   /** Sends "Forgot password?" codes. Without it, only admins can make reset codes. */
   mailer?: Mailer;
+  /** Folder with android/latest.json and the APKs (DOWNLOADS_DIR). */
+  downloadsDir?: string;
   /** "Forgot password?" emails per network per 15 minutes (default 5). */
   forgotLimit?: number;
   /** Failed sign-ins per account from all networks together per 15 minutes (default 200). */
@@ -170,6 +173,9 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     res.json({ web: APP_VERSION, api: APP_VERSION, minNativeVersionCode: opts.minNativeVersionCode ?? 0 });
   });
 
+  // Android app: newest version + APK download (open link, owner's choice).
+  api.use(appReleaseRoutes(opts.downloadsDir));
+
   // Crash reports from the web app (also before sign-in, e.g. a crash on the login screen).
   // Small, rate-limited, and only the listed text fields are written to the log.
   api.post(
@@ -267,6 +273,13 @@ export function createApp(db: Db, opts: AppOptions = {}) {
 
   app.use('/api', api);
   app.use('/api', errorHandler);
+
+  // Short link for the newest Android app, e.g. to type on a new phone: https://<site>/download/android
+  app.get('/download/android', (_req, res) => {
+    const m = opts.downloadsDir ? readAndroidManifest(opts.downloadsDir) : null;
+    res.setHeader('Cache-Control', 'no-store');
+    res.redirect(302, m ? `/api/app/android/apk/${m.apk}` : '/');
+  });
 
   const pub = opts.publicDir;
   if (pub && existsSync(path.join(pub, 'index.html'))) {

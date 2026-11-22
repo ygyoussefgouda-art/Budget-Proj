@@ -24,4 +24,6 @@ mobile/android/build/
 mobile/android/.gradle/
 mobile/android/local.properties
 # Downloads served from the VPS (APKs)
-downloads/
+/downloads/
+# Android release output
+mobile/dist/

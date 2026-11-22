@@ -46,6 +46,8 @@ export default defineConfig({
       APP_PASSWORD: 'e2e-owner-pass-123',
       // Emails ("Forgot password?" codes) are written here instead of being sent; tests read them.
       MAIL_OUTBOX_DIR: path.join(here, 'mail-outbox'),
+      // A fake Android release (latest.json + tiny APK) for the download tests.
+      DOWNLOADS_DIR: path.join(here, 'fixtures', 'downloads'),
       LOGIN_RATE_LIMIT: '1000',
       SIGNUP_RATE_LIMIT: '1000',
     },

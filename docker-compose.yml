@@ -67,6 +67,10 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      # Android app downloads: downloads/android/latest.json + budget-me-<version>.apk (see DEPLOY.md)
+      DOWNLOADS_DIR: /app/downloads
+    volumes:
+      - ./downloads:/app/downloads:ro
     ports:
       # Localhost only: your existing reverse proxy (nginx/Caddy) forwards HTTPS traffic here.
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8090}:3000"

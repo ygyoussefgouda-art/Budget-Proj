@@ -1,4 +1,4 @@
-# Budget me · Version alpha 0.6.3
+# Budget me · Version alpha 0.6.5
 
 > **Alpha:** this is an early test version. Features and screens may change between updates, so download a backup now and then (Settings → Download backup).
 
@@ -13,6 +13,7 @@ server/     Node API + SQL migrations + API tests
 Dockerfile  builds web + server into one small image
 docker-compose.yml  app + Postgres, isolated from anything else on the server
 e2e/        Playwright tests in a phone-sized browser
+mobile/     Android app (Capacitor shell around the live site)
 deploy/     VPS scripts and reverse-proxy configs
 docs/       specs for upcoming work (Android app self-update)
 ```
@@ -42,6 +43,12 @@ Everyone creates their own account on the sign-in screen with **Create account**
 - **Forgot password?** on the sign-in screen: with email set up (any SMTP server, free options in [DEPLOY.md](DEPLOY.md#email-forgot-password-codes-free)), enter your email and get a one-time code; otherwise use a reset code from an admin. Then choose a new password; every session of that account is signed out. Older accounts can add an email in Settings.
 
 Every table has a `user_id` and sessions are stored in Postgres. Run **one** app container: rate limits and a few guards are kept in memory per container (migrations do take a database lock, so a second container won't break the schema, but its limits would be separate).
+
+## Android app
+
+A sideloaded Android app (not on Google Play) lives in [`mobile/`](mobile): a Capacitor shell that shows the live site, so every deploy updates its screens. On top of the web app it adds receipt photos with the camera, fingerprint/face unlock for the app lock (the PIN stays as the fallback), reminders as phone notifications (budget at 80%/100%, recurring expenses due, an optional daily reminder), saving exports and backups through the share sheet, the Android back button and an "Add expense" home-screen shortcut. A first-run screen asks for the permissions those features need ("Allow all" or one by one, never required).
+
+People get it from **Settings → Get the Android app** in the browser (or `https://<your site>/download/android`); after that it **updates itself**: it checks the server, downloads the new APK, verifies its SHA-256, package and version, and opens Android's installer. GitHub Actions builds it ([.github/workflows/android.yml](.github/workflows/android.yml)): a test APK on every push, a signed release on a tag `android-v1.2.3` once the signing key is added as secrets. Setup: [DEPLOY.md](DEPLOY.md#android-app-sideloaded-not-on-google-play) and [docs/ANDROID_SELF_UPDATE.md](docs/ANDROID_SELF_UPDATE.md).
 
 ## Develop locally
 
@@ -89,7 +96,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs the API, web and E2E tests, a d
 | Reports | Spending per #tag; this month against last month per category ("Food +20%") with the biggest changes; average spending per weekday (Sat–Fri) for this month, the last 3 months or a year; yearly totals, spending vs savings chart, month-by-month table |
 | Settings | Language (English / Arabic), light or dark theme, month start day, currency label, app lock (optional 4–6 digit PIN kept only on this phone), change password, sign out everywhere, delete account, replay the tutorial, Admin page (admins only), Contact us (report a bug or suggest a feature by email to youssefgoudawork@gmail.com), export to CSV / Excel (expenses, loans or savings, any date range; Arabic headers when the app is in Arabic), backup download and restore, sign out, erase all data |
 
-**On the phone:** swipe a row left to delete it (with Undo) or right to edit it, with a light vibration where supported; the buttons stay for keyboard and screen-reader users. With no connection, new expenses are saved on the phone ("Waiting to sync") and sent automatically when you are back online, never twice; the app can even be opened offline to log them. After installing, long-press the app icon for an **Add expense** shortcut.
+**On the phone:** swipe a row left to delete it (with Undo) or right to edit it, with a light vibration where supported; the buttons stay for keyboard and screen-reader users. With no connection, the app opens with the data it last loaded ("Showing data from …", kept on the phone for 7 days and deleted on sign-out), new expenses are saved on the phone ("Waiting to sync") and sent automatically when you are back online, never twice. After installing, long-press the app icon for an **Add expense** shortcut.
 
 **When something goes wrong:** if a screen crashes, the app shows "Something went wrong" with a **Reload** button (and the version) instead of a blank page, and sends a short crash report to the server log. When a new version is deployed, the app shows "A new version is ready" with **Reload** / **Later** instead of switching under your fingers. Server errors show a short reference ("ref. 1a2b3c4d") that matches a line in `docker compose logs app`. The server logs one JSON line per request (never bodies, passwords, cookies or codes); `GET /api/version` tells which version is running.
 

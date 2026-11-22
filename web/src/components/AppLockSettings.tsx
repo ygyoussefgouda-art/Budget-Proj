@@ -1,7 +1,8 @@
-import { Lock } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { Fingerprint, Lock } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { t } from '../i18n';
-import { makeLock, PIN_RE, pinMatches, readLock, removeLock, saveLock, type LockConfig } from '../pin';
+import { BudgetNative, isNative } from '../native';
+import { bioEnabled, makeLock, PIN_RE, pinMatches, readLock, removeLock, saveLock, setBio, type LockConfig } from '../pin';
 import { useApp } from '../state';
 import { Sheet, useOverlay } from './Overlays';
 import { Card, Field, FormError, SaveButton, SectionTitle } from './ui';
@@ -40,6 +41,7 @@ export default function AppLockSettings() {
               ))}
             </select>
           </Field>
+          <BiometricToggle />
           <button className="btn tonal block" onClick={() => setSheet('change')}>
             {t('Change PIN')}
           </button>
@@ -69,6 +71,41 @@ export default function AppLockSettings() {
         )}
       </Sheet>
     </Card>
+  );
+}
+
+/** Android app: unlock with fingerprint / face. Shown only when the phone can do it. */
+function BiometricToggle() {
+  const { user } = useApp();
+  const { toast } = useOverlay();
+  const [on, setOn] = useState(() => bioEnabled(user.id));
+  const [status, setStatus] = useState<'ok' | 'none_enrolled' | 'no_hardware' | 'unavailable' | null>(null);
+  useEffect(() => {
+    if (isNative()) void BudgetNative.biometricStatus().then((s) => setStatus(s.reason)).catch(() => setStatus('unavailable'));
+  }, []);
+  if (!isNative() || status === null || status === 'no_hardware' || status === 'unavailable') return null;
+  const toggle = async (next: boolean) => {
+    if (next) {
+      // Prove it works once before relying on it.
+      const r = await BudgetNative.biometricVerify({ title: t('Turn on fingerprint unlock'), cancel: t('Cancel') }).catch(() => ({ verified: false }));
+      if (!r.verified) return;
+    }
+    setBio(user.id, next);
+    setOn(next);
+    toast(next ? t('Fingerprint unlock is on.') : t('Fingerprint unlock is off.'));
+  };
+  return (
+    <div className="toggle-row">
+      <label className="row gap grow" htmlFor="bio-toggle">
+        <Fingerprint size={18} aria-hidden="true" />
+        <span className="small">{t('Unlock with fingerprint or face')}</span>
+      </label>
+      {status === 'none_enrolled' ? (
+        <span className="tiny mute">{t('Set one up in Android settings first.')}</span>
+      ) : (
+        <input id="bio-toggle" type="checkbox" className="switch" checked={on} onChange={(e) => void toggle(e.target.checked)} />
+      )}
+    </div>
   );
 }
 

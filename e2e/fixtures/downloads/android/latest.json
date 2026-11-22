@@ -1,0 +1,12 @@
+{
+  "appId": "com.budgetme.app",
+  "versionCode": 2,
+  "versionName": "0.6.5",
+  "minVersionCode": 0,
+  "mandatory": false,
+  "apk": "budget-me-0.6.5.apk",
+  "size": 4100,
+  "sha256": "59958b344921a5d39ade1e8f80e90027c0974d965461d87f0b73e938b3e89949",
+  "releasedAt": "2026-11-22T10:00:00Z",
+  "notes": { "en": ["Test build for the E2E tests"], "ar": ["نسخة تجربة للاختبارات"] }
+}

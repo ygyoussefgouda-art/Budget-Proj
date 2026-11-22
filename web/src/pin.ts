@@ -77,7 +77,13 @@ export const saveLock = (uid: number, cfg: LockConfig) => set(key(uid), JSON.str
 export function removeLock(uid: number) {
   set(key(uid), null);
   set(failKey(uid), null);
+  set(bioKey(uid), null);
 }
+
+/** Android app only: unlock with fingerprint / face instead of typing the PIN (the PIN stays the fallback). */
+const bioKey = (uid: number) => `bm-lock-bio:${uid}`;
+export const bioEnabled = (uid: number) => get(bioKey(uid)) === '1';
+export const setBio = (uid: number, on: boolean) => set(bioKey(uid), on ? '1' : null);
 
 export function readFailures(uid: number): { count: number; until: number } {
   try {

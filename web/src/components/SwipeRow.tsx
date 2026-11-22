@@ -2,12 +2,14 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { SWIPE_TRIGGER, swipeAction } from '../domain/gestures';
 import { t } from '../i18n';
+import { haptic } from '../native';
 
 const MAX = 140;
 
+/** Light haptic tap: native haptics in the Android app, vibrate() in browsers that support it. */
 const buzz = (ms: number) => {
   try {
-    navigator.vibrate?.(ms); // light haptic tap where the phone supports it
+    haptic(ms > 15 ? 'MEDIUM' : 'LIGHT');
   } catch {
     /* not supported */
   }

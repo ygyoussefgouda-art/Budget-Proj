@@ -1,6 +1,6 @@
 # CODEMAP.md: where things live
 
-Snapshot of alpha 0.6.3 (2026-11-22). Update when files are added, moved or change purpose.
+Snapshot of alpha 0.6.5 (2026-11-22). Update when files are added, moved or change purpose.
 Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 
 ## Top level
@@ -9,7 +9,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `web/` | React PWA (mobile-first UI) |
 | `server/` | Express API, SQL migrations, API tests |
 | `e2e/` | Playwright tests in a phone-sized browser against the real app |
-| `mobile/` **(planned)** | Capacitor Android shell, Kotlin `ApkUpdater` plugin, release script |
+| `mobile/` | Capacitor 8 Android shell (remote URL mode), `BudgetNativePlugin.java`, release script |
 | `deploy/` | VPS ops: `Caddyfile`, `nginx-budget-me.conf`, `update.sh`, `backup-now.sh`, `restore.sh` |
 | `design/` | Design notes + reference images |
 | `scripts/` | Windows dev helpers (`dev-server.cmd`, `n.cmd`, `setup-node.cmd`) using portable Node in `D:\devtools` |
@@ -18,6 +18,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `.env.example` | All production settings (DB password, sign-up, admin, cookies, proxy, quotas, backups) |
 | `DEPLOY.md` | Step-by-step VPS guide (firewall, secrets, HTTPS, backups, updates, admin page) |
 | `.github/workflows/ci.yml` | CI: server typecheck+tests, web tests+build, npm audit, E2E, Docker build |
+| `.github/workflows/android.yml` | Android: debug APK on push, signed release + publish on tag `android-v*` |
 | `.github/dependabot.yml` | Weekly dependency PRs |
 | `docs/ANDROID_SELF_UPDATE.md` | Spec: APK hosting, download link, self-update (Phase 3) |
 | `docs/REVIEW-2026-11-21.md` | Whole-repo review: open gaps by priority (section A fixed in 0.6.1) |
@@ -47,7 +48,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `dates.ts` | UTC calendar-date helpers |
 | `limits.ts` | Per-account caps |
 | `seed.ts` | Example data from `Student_Budget.xlsx` (`SEED_EXAMPLE_DATA=true`) |
-| `appRelease.ts` **(planned)** | `/api/app/android/latest`, APK download, optional token link |
+| `appRelease.ts` | `/api/app/android/latest` + `/api/app/android/apk/:file` (public, name-checked) from `DOWNLOADS_DIR/android` |
 
 ### Migrations (`server/migrations/`)
 `001_init` users, sessions, categories, month_budgets, category_plans, expenses, goals, goal_entries, loan_entries ·
@@ -76,41 +77,45 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `App.tsx` | Auth gate, app lock, offline fallback, bottom tabs, routes (`/`, `/budget`, `/expenses`, `/loans`, `/savings`, `/savings/:id`, `/reports`, `/settings`, `/admin`) |
 | `api.ts` | `fetch` wrapper: `/api` prefix, CSRF header, `X-Local-Date`, `ApiError` (adds "ref. xxxxxxxx" on server crashes); receipt upload |
 | `state.tsx` | The month `/state` query, app context (`useApp`), month/date helpers |
-| `offline.ts` | IndexedDB queue for offline expenses, `clientId`, sync, offline kit |
+| `offline.ts` | IndexedDB queue for offline expenses, `clientId`, sync, offline kit (`clearKit` also drops the offline copy) |
+| `persist.ts` | Offline viewing: IndexedDB persister for the React Query cache (7 days, per version), `KEEP_OFFLINE` keys |
 | `pin.ts` | App-lock PIN: PBKDF2 hash in localStorage, lockout backoff |
 | `receipt.ts` | Shrinks photos before upload |
 | `i18n.tsx` / `i18n-ar.ts` | `t()` with English keys; Arabic dictionary; direction |
 | `theme.ts` | Light/dark/system theme |
 | `version.ts` | Version label text |
 | `styles.css` | All styles, CSS variables for themes |
-| `native.ts` **(planned)** | `isNative()` + Capacitor wrappers (camera, biometrics, notifications, haptics, updater) |
-| `update.ts` **(planned)** | Android update check / download / install flow |
+| `native.ts` | `isNative()`, `BudgetNative` + Capacitor plugins by name (camera, notifications, haptics, app, filesystem, share), `haptic`, `saveFile`, `nativeReceiptPhoto` |
+| `notify.ts` | Local notifications: budget 80/100%, recurring due, daily reminder (`remindersToSend` is unit-tested) |
+| `update.ts` | Android update check (6 h), `updateNeed` (optional / required), download + install flow (unit-tested) |
 
 `pages/`: `Dashboard`, `Budget`, `Expenses` (largest), `Loans`, `Savings` (+ GoalDetail), `Reports`, `Settings`, `Admin`, `Login`.
-**(planned)** `Permissions` (first-run permissions screen).
+`Permissions` (first-run permissions screen, Android app only).
 
 `components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `BudgetForms`,
 `charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour), `AppLock` +
 `AppLockSettings`, `OfflineApp` + `OfflineQueue`, `ExportLinks`, `MonthStartPicker`, `ContactCard` (contact email constant),
 `PasswordRules` (live new-password checklist, `newPasswordError`), `ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).
-**(planned)** `UpdateCard` (Android updates), `GetAndroidApp`.
+`AndroidApp` (`NativeLayer`: back button / shortcut / resume; `UpdateGate`, `UpdateOffer`, `UpdateCard`, `GetAndroidAppCard`/`Link`), `RemindersCard`.
 
 `domain/`: `calc.ts` (workbook formulas, pure) + `calc.test.ts`, `money.ts` (minor units, Arabic digits),
 `gestures.ts` (swipe thresholds) + `phone.test.ts`.
 
 ## E2E (`e2e/`)
-`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety`, `email` specs (emails read from `e2e/mail-outbox`), `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
+`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety`, `email`, `phase6` specs (emails read from `e2e/mail-outbox`), `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
 
-## Mobile (`mobile/`) **(planned)**
+## Mobile (`mobile/`)
 | Path | Purpose |
 |---|---|
 | `capacitor.config.ts` | `appId`, `server.url` from `BUDGET_ME_URL`, `allowNavigation`, fallback `www/` |
 | `www/` | Offline/"can't reach server" fallback page |
 | `android/` | Generated Android project; `AndroidManifest.xml` permissions, FileProvider, shortcut |
-| `android/app/src/main/java/.../ApkUpdaterPlugin.kt` | Self-update plugin |
+| `android/app/src/main/java/com/budgetme/app/BudgetNativePlugin.java` | Self-update, fingerprint unlock, open app settings |
+| `android/app/src/main/res/xml/` | `shortcuts.xml` (Add expense), `file_paths.xml` (FileProvider), `data_extraction_rules.xml` (no backups) |
+| `www/` | Fallback page when the server can't be reached (EN + AR) |
 | `scripts/release.sh` | Build, sign, checksum, upload APK + `latest.json` |
 | `version.json` | `versionCode` / `versionName` source of truth |
 
 ## On the VPS
-`/opt/budget-me/` (repo checkout + `.env`), `backups/` (daily dumps), `downloads/android/` **(planned)**
+`/opt/budget-me/` (repo checkout + `.env`), `backups/` (daily dumps), `downloads/android/`
 (`latest.json` + last 3 APKs). Reverse proxy → `127.0.0.1:8090`.

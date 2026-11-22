@@ -1,5 +1,7 @@
 # Android app: distribution, download link and self-update
 
+> **Status (alpha 0.6.5):** server routes, web update flow, release script and CI job are built; the APK still has to be built on GitHub and tried on a real phone (checklist in §8).
+
 Budget me is a **personal app that is not on Google Play**. The signed APK is hosted on the owner's
 Linux VPS next to the web app and database. This document is the spec for how the APK is built,
 published, downloaded, and how an installed app updates itself.
@@ -65,7 +67,7 @@ Mount into the app container read-only, for example in `docker-compose.yml`:
 | Route | Auth | Returns |
 |---|---|---|
 | `GET /api/app/android/latest` | none | `latest.json` without internal fields, plus `downloadUrl` |
-| `GET /api/app/android/apk/:file` | **signed-in session** (default) | the APK, `Content-Type: application/vnd.android.package-archive`, `Content-Disposition: attachment`, `Cache-Control: no-store`. `:file` must match `^budget-me-\d+\.\d+\.\d+\.apk$` and exist in the folder (no path traversal) |
+| `GET /api/app/android/apk/:file` | none (**owner chose an open link**, 2026-11-21) | the APK, `Content-Type: application/vnd.android.package-archive`, `Content-Disposition: attachment`, `Cache-Control: no-store`. `:file` must match `^budget-me-\d+\.\d+\.\d+\.apk$` and exist in the folder (no path traversal) |
 | `GET /download/android?k=<token>` *(optional)* | secret token from `.env` (`APK_DOWNLOAD_TOKEN`) | 302 to the latest APK. For the **first install** on a new phone, when the user can't sign in from the browser yet. Rate-limited. Token can be rotated in `.env`. |
 
 Notes:
@@ -76,7 +78,7 @@ Notes:
 
 ## 4. In-app update flow (native only)
 
-Add a small **local Capacitor plugin written in Kotlin** inside `mobile/android/app/src/main/java/.../ApkUpdaterPlugin.kt`
+Add a small **local Capacitor plugin** (built: Java, `mobile/android/app/src/main/java/com/budgetme/app/BudgetNativePlugin.java`, which also does fingerprint unlock and opens app settings)
 (about 150 lines; keeps third-party code out of the update path). Methods:
 
 | Method | Does |
@@ -129,7 +131,7 @@ Script `mobile/scripts/release.sh` (also used by CI):
 
 GitHub Actions job `android-release` (on tag `android-v*` or manual dispatch):
 `setup-java@v4 (21)` → Android SDK → `npm ci` in `mobile/` → `npx cap sync android` → decode keystore from
-the `ANDROID_KEYSTORE_BASE64` secret → build → steps 3–6 over SSH with the `VPS_DEPLOY_KEY` secret.
+the `ANDROID_KEYSTORE_BASE64` secret → build → steps 3–6 over SSH with the `VPS_SSH_KEY` + `VPS` secrets (built: `.github/workflows/android.yml`).
 Upload the APK as a workflow artifact too.
 
 Rollback: re-point `latest.json` to an older APK **only** if its `versionCode` is raised (Android won't

@@ -48,6 +48,12 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - **Notifications**: local notifications only, no Firebase/FCM.
 - **APK download**: open link (owner's answer 2026-11-21).
 
+## Android app as built (0.6.5)
+- 2026-11-22: Native code is one **Java** plugin, `BudgetNativePlugin` (self-update, fingerprint unlock, open app settings), not Kotlin: no Kotlin Gradle plugin to set up, and no third-party code in the update path. Registered in `MainActivity` before `super.onCreate`.
+- 2026-11-22: The web app calls Capacitor plugins **by name** (`registerPlugin('Camera')` etc. in `web/src/native.ts`); only `@capacitor/core` is a web dependency. The plugin packages live in `mobile/package.json`.
+- 2026-11-22: `allowBackup=false` + data-extraction rules: the PIN hash, offline copy and queued expenses never go to Google backups.
+- 2026-11-22: Not verified on a device yet: the APK has only been built by CI. Things to check first: bridge with our CSP, update install, BiometricPrompt, notification permission on Android 13+.
+
 ## Owner answers (2026-11-21)
 - Android `appId` = **`com.budgetme.app`** (never change it: it is the update identity).
 - APK download = **open link** (no sign-in needed). Manifest and APK are public; integrity comes from SHA-256 + Android signature checks.
@@ -62,6 +68,8 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - GitHub Actions allowed to SSH-deploy to the VPS: ?
 
 ## Gotchas
+- 2026-11-22: React Query `gcTime` is a `setTimeout`: values above ~24.8 days (2^31 ms) overflow and fire at once, dropping cached data. Offline copy uses 7 days. Also store a JSON copy in IndexedDB: the raw dehydrated cache can't be structured-cloned.
+- 2026-11-22: Offline copy (IndexedDB `budget-me-cache`) holds the signed-in account's data on the phone; `clearKit()` also deletes it, so every sign-out path must call `clearKit`.
 - 2026-11-21: `legacy-flutter/` exists only on the owner's PC and is git-ignored (`.gitignore`). The README mention was removed in 0.6.0.
 - 2026-11-21: `scripts/*.cmd` assume a portable Node at `D:\devtools` on the owner's Windows PC.
 - 2026-11-21: Rate limits key by IP with IPv6 grouped by /56 (`ipKey` in `server/src/app.ts`); behind a proxy set `TRUST_PROXY` correctly or every user shares one limit.
@@ -73,5 +81,7 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-21: Android refuses to install an update with a lower `versionCode` or a different signing key. Losing the keystore = users must uninstall.
 
 ## Dependencies added (with reason)
+- 2026-11-22: `@capacitor/core` (web) and Capacitor 8 packages in `mobile/` (android, app, camera, filesystem, haptics, local-notifications, share, splash-screen, status-bar): the HANDOFF's chosen native shell; all official Capacitor plugins. `androidx.biometric` (Android): Google's library behind BiometricPrompt.
+- 2026-11-22: `@tanstack/react-query-persist-client` (web): official add-on of React Query for the Phase 6 offline copy; we wrote the IndexedDB persister ourselves (no idb library).
 - 2026-11-22: `nodemailer` (server): sends "Forgot password?" codes over any SMTP server, so the owner can use a free provider (Gmail app password / Brevo free plan); the most used Node mail library, no paid service.
 - 2026-11-21: `pino` ^9 (server): structured JSON logging asked for by HANDOFF Phase 1; small, fast, widely used, no transports needed (Docker collects stdout).

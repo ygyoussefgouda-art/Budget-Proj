@@ -7,13 +7,15 @@ test.describe('0.6.0: crash screen, version and update prompt', () => {
     // Break the data the app draws from, so rendering throws.
     await page.route('**/api/state**', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"categories":42}' }));
     const report = page.waitForRequest((r) => r.url().endsWith('/api/client-errors') && r.method() === 'POST');
+    // Drop the offline copy, so the app really asks the server (and gets the broken data).
+    await page.evaluate(() => new Promise((r) => { const d = indexedDB.deleteDatabase('budget-me-cache'); d.onsuccess = d.onerror = d.onblocked = () => r(null); }));
     await page.reload();
 
     const alert = page.getByRole('alert');
     await expect(alert.getByRole('heading', { name: 'Something went wrong' })).toBeVisible();
-    await expect(alert).toContainText('Version alpha 0.6.3');
+    await expect(alert).toContainText('Version alpha 0.6.5');
     const body = (await report).postDataJSON();
-    expect(body).toMatchObject({ kind: 'render', version: '0.6.3' });
+    expect(body).toMatchObject({ kind: 'render', version: '0.6.5' });
     expect(body.message).toBeTruthy();
 
     // Fixed data + Reload = the app is back.
@@ -25,7 +27,7 @@ test.describe('0.6.0: crash screen, version and update prompt', () => {
   test('GET /api/version is public', async ({ request }) => {
     const r = await request.get('/api/version');
     expect(r.ok()).toBe(true);
-    expect(await r.json()).toEqual({ web: '0.6.3', api: '0.6.3', minNativeVersionCode: 0 });
+    expect(await r.json()).toEqual({ web: '0.6.5', api: '0.6.5', minNativeVersionCode: 0 });
   });
 
   test('when the server has a newer version, the app offers "Reload" (and "Later" hides it)', async ({ page }) => {

@@ -5,6 +5,7 @@
  * per clientId, so a send that is retried (flaky connection, two tabs) never duplicates anything.
  * Receipts are not queued (photos are too big and need the server to check them).
  */
+import { clearOfflineCache } from './persist';
 import { api, ApiError } from './api';
 
 export interface QueuedBody {
@@ -131,7 +132,9 @@ export function readKit(): OfflineKit | null {
     return null;
   }
 }
+/** Forget everything this account left on the phone for offline use (kit + the cached data). */
 export function clearKit() {
+  void clearOfflineCache();
   try {
     localStorage.removeItem(KIT);
   } catch {

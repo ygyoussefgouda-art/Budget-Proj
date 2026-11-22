@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Home, PieChart, PiggyBank, ReceiptText, HandCoins } from 'lucide-react';
-import { useEffect, useLayoutEffect, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, type ReactNode } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { api, ApiError } from './api';
 import { AppLock } from './components/AppLock';
 import OfflineApp from './components/OfflineApp';
 import { OfflineBar, OfflineProvider } from './components/OfflineQueue';
 import Tutorial from './components/Tutorial';
+import { useReminders } from './notify';
+import { FirstRunPermissions } from './pages/Permissions';
 import { budgetAlerts } from './domain/calc';
 import Admin from './pages/Admin';
 import Budget from './pages/Budget';
@@ -20,6 +22,9 @@ import Settings from './pages/Settings';
 import { t } from './i18n';
 import { isNetworkError, readKit, saveKit } from './offline';
 import { AppStateProvider, useApp, type User } from './state';
+import type { DueItem } from './domain/calc';
+
+const NO_DUE: DueItem[] = [];
 
 export default function App() {
   const me = useQuery({
@@ -37,7 +42,8 @@ export default function App() {
   });
 
   if (me.isLoading) return <Splash />;
-  if (me.isError) {
+  // Offline with a saved copy: show the app from it (read-only), not the offline entry screen.
+  if (me.isError && !me.data) {
     // Opened with no connection: still let the user log expenses (they sync later).
     const kit = isNetworkError(me.error) ? readKit() : null;
     if (kit)
@@ -85,16 +91,18 @@ function ScrollToTop() {
 }
 
 function Shell() {
-  const { data, error, loading, summary, refresh } = useApp();
+  const { data, error, loading, summary, refresh, updatedAt, user, month, catName } = useApp();
   // Badge on the Budget tab: categories at 80%+ of their budget (red when one is at 100% or over).
-  const alerts = summary ? budgetAlerts(summary.rows) : [];
+  const alerts = useMemo(() => (summary ? budgetAlerts(summary.rows) : []), [summary]);
+  // Android app: the same alerts (and due recurring expenses) as notifications on the phone.
+  useReminders(user.id, alerts, data?.recurringDue ?? NO_DUE, month, catName);
   const alertBadge = alerts.length ? { n: alerts.length, red: alerts.some((a) => a.level !== 'warn') } : undefined;
   if (loading && !data) return <Splash />;
   if (error && !data) return <Splash text={error.message} retry={() => void refresh()} />;
   return (
     <div className="shell">
       <ScrollToTop />
-      <OfflineBar />
+      <OfflineBar updatedAt={updatedAt} />
       <main className="content">
         <Routes>
           <Route path="/" element={<Dashboard />} />
@@ -110,6 +118,7 @@ function Shell() {
         </Routes>
       </main>
       <Tutorial />
+      <FirstRunPermissions userId={user.id} />
       <nav className="bottom-nav" aria-label={t('Main')}>
         <Tab to="/" icon={Home} label={t('Home')} end />
         <Tab to="/budget" icon={PieChart} label={t('Budget')} badge={alertBadge} />

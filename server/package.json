@@ -1,6 +1,6 @@
 {
   "name": "budget-me-server",
-  "version": "0.6.3-alpha",
+  "version": "0.6.5-alpha",
   "private": true,
   "type": "module",
   "engines": {

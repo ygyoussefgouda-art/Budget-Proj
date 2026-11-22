@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, FileText, Paperclip, Repeat, Search, X } from 'lucide-react';
+import { Camera, Download, FileText, Image as ImageIcon, Paperclip, Repeat, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api, receiptUrl, saveWithConfirm, uploadReceipt } from '../api';
@@ -28,6 +28,7 @@ import {
   tint,
 } from '../components/ui';
 import { convert, parseTags, periodRange, splitShares, type Expense } from '../domain/calc';
+import { isNative, nativeReceiptPhoto } from '../native';
 import { fmtMoney, parseMoney, parseRate, plain } from '../domain/money';
 import { t } from '../i18n';
 import { isNetworkError } from '../offline';
@@ -590,6 +591,19 @@ export function ExpenseForm({ edit, onDone, quick = false }: { edit?: Expense; o
             </button>
             <button type="button" className="btn text small danger-text" onClick={() => setRemoveExisting(true)}>
               {t('Remove')}
+            </button>
+          </div>
+        ) : isNative() ? (
+          // In the Android app: the camera, Android's photo picker (no storage permission), or a file.
+          <div className="attach-row">
+            <button type="button" className="attach-btn" onClick={async () => pick((await nativeReceiptPhoto('CAMERA')) ?? undefined)}>
+              <Camera size={18} /> {t('Take a photo')}
+            </button>
+            <button type="button" className="attach-btn" onClick={async () => pick((await nativeReceiptPhoto('PHOTOS')) ?? undefined)}>
+              <ImageIcon size={18} /> {t('From gallery')}
+            </button>
+            <button type="button" className="attach-btn" onClick={() => fileInput.current?.click()}>
+              <Paperclip size={18} /> {t('PDF or file')}
             </button>
           </div>
         ) : (

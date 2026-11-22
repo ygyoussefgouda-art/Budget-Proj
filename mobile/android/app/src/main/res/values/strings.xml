@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Budget me</string>
+    <string name="title_activity_main">Budget me</string>
+    <string name="package_name">com.budgetme.app</string>
+    <string name="custom_url_scheme">com.budgetme.app</string>
+    <string name="shortcut_add_expense">Add expense</string>
+</resources>

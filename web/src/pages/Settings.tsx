@@ -11,8 +11,11 @@ import { restartTutorial } from '../components/Tutorial';
 import { Card, Field, FormError, IconButton, PageHeader, SaveButton, SectionTitle, Segmented } from '../components/ui';
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
 import { clearKit, clearQueue } from '../offline';
+import { saveFile } from '../native';
 import { removeLock } from '../pin';
 import AppLockSettings from '../components/AppLockSettings';
+import { GetAndroidAppCard, UpdateCard } from '../components/AndroidApp';
+import RemindersCard from '../components/RemindersCard';
 import ContactCard from '../components/ContactCard';
 import { CURRENCIES, useApp } from '../state';
 import { getThemePref, setThemePref, type ThemePref } from '../theme';
@@ -41,12 +44,8 @@ export default function Settings() {
     try {
       const data = await api('/backup');
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `budget-me-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      // Browser: a download. Android app: the share sheet (save to Files, Drive...).
+      await saveFile(blob, `budget-me-backup-${new Date().toISOString().slice(0, 10)}.json`);
     } catch (e) {
       toast(t('Export failed: {error}', { error: (e as Error).message }));
     }
@@ -178,6 +177,7 @@ export default function Settings() {
       </Card>
 
       <AppLockSettings />
+      <RemindersCard />
 
       <Card>
         <SectionTitle>{t('Account')}</SectionTitle>
@@ -257,6 +257,9 @@ export default function Settings() {
           </div>
         </Card>
       )}
+
+      <UpdateCard />
+      <GetAndroidAppCard />
 
       <ContactCard />
 

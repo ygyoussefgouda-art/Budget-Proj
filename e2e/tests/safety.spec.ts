@@ -24,7 +24,8 @@ test.describe('0.6.1 safety fixes', () => {
     await expect(page.getByText(/You're offline/)).toHaveCount(0);
     for (const d of '2468') await lock.getByRole('button', { name: d, exact: true }).click();
     await expect(lock).toHaveCount(0);
-    await expect(page.getByText("You're offline. You can still log expenses; they are sent as soon as you're back online.")).toBeVisible();
+    // Unlocked: the app opens from the saved copy (offline viewing, 0.6.4).
+    await expect(page.getByText(/Showing data from/)).toBeVisible();
     await context.setOffline(false);
   });
 

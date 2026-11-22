@@ -2,7 +2,14 @@ import { RotateCw, TriangleAlert } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { reportClientError } from '../errors';
 import { t } from '../i18n';
+import { clearOfflineCache } from '../persist';
 import { APP_NAME, APP_VERSION, VERSION_KEY } from '../version';
+
+/** Reload without the offline copy: if bad saved data caused the crash, it must not come back. */
+async function reloadFresh() {
+  await Promise.race([clearOfflineCache(), new Promise((r) => setTimeout(r, 1500))]);
+  window.location.reload();
+}
 
 interface State {
   failed: boolean;
@@ -30,7 +37,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
         <TriangleAlert size={40} aria-hidden="true" />
         <h1>{t('Something went wrong')}</h1>
         <p>{t('The app hit a problem and stopped. Your data is safe on the server. Reload to continue.')}</p>
-        <button className="btn primary" onClick={() => window.location.reload()}>
+        <button className="btn primary" onClick={() => void reloadFresh()}>
           <RotateCw size={18} aria-hidden="true" /> {t('Reload')}
         </button>
         <p className="mute small">
