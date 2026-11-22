@@ -32,7 +32,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Budget me's own native features, kept small and free of third-party code:
+ * Masrofy's own native features, kept small and free of third-party code:
  *  - self-update: download the APK named in latest.json, check size + SHA-256 + package name +
  *    a higher versionCode, then hand it to Android's installer (docs/ANDROID_SELF_UPDATE.md);
  *  - fingerprint / face unlock for the app lock (the PIN stays as the fallback);
@@ -104,7 +104,7 @@ public class BudgetNativePlugin extends Plugin {
     public void updateWidget(PluginCall call) {
         BudgetWidget.save(
             getContext(),
-            call.getString("title", "Budget me"),
+            call.getString("title", "Masrofy"),
             call.getString("value", ""),
             call.getString("sub", ""),
             call.getString("add", "")
@@ -178,7 +178,7 @@ public class BudgetNativePlugin extends Plugin {
                 for (byte b : md.digest()) hex.append(String.format(Locale.ROOT, "%02x", b));
                 if (!hex.toString().equalsIgnoreCase(sha256)) throw new UpdateError("checksum", "The download was damaged. Try again.");
                 PackageInfo info = getContext().getPackageManager().getPackageArchiveInfo(out.getPath(), 0);
-                if (info == null || !getContext().getPackageName().equals(info.packageName)) throw new UpdateError("package", "This file is not a Budget me update.");
+                if (info == null || !getContext().getPackageName().equals(info.packageName)) throw new UpdateError("package", "This file is not a Masrofy update.");
                 long code = Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
                 if (code <= installedVersionCode()) throw new UpdateError("version", "This version is already installed.");
                 JSObject r = new JSObject();
@@ -250,7 +250,7 @@ public class BudgetNativePlugin extends Plugin {
 
     @PluginMethod
     public void biometricVerify(final PluginCall call) {
-        final String title = call.getString("title", "Budget me");
+        final String title = call.getString("title", "Masrofy");
         final String subtitle = call.getString("subtitle", "");
         final String cancel = call.getString("cancel", "Use PIN");
         getActivity().runOnUiThread(() -> {

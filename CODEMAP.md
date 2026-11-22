@@ -11,7 +11,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `e2e/` | Playwright tests in a phone-sized browser against the real app |
 | `mobile/` | Capacitor 8 Android shell (remote URL mode), `BudgetNativePlugin.java`, release script |
 | `deploy/` | VPS ops: `Caddyfile`, `nginx-budget-me.conf`, `update.sh`, `backup-now.sh`, `restore.sh`, `backup-offsite.sh` (age + rclone), `restore-test.sh`, `check-health.sh` (alerts), `rollback.sh`, `lib.sh` (`load_env`, `alert`) |
-| `design/` | Design notes, reference images, `screenshots/` (presentation pictures + `overview.png`) |
+| `design/` | Design notes, reference images, `screenshots/` (presentation pictures + `overview.png`), `critique/` (Impeccable design reviews: Home, whole app) |
 | `scripts/` | `screenshots.mjs` (demo data + presentation screenshots), Windows dev helpers (`dev-server.cmd`, `n.cmd`, `setup-node.cmd`) using portable Node in `D:\devtools` |
 | `Dockerfile` | Multi-stage: build web → build server → slim runtime (non-root, health check) |
 | `docker-compose.yml` | Project `budget-me`: `db` (Postgres 16), `app`, `backup` (daily `pg_dump`) on an internal network |
@@ -32,7 +32,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `app.ts` | `createApp()`: request logger, Helmet/CSP, `no-store` on `/api`, rate limiters (`ipKey`), Origin + CSRF header check, JSON limits, public routes (`/health`, `/version`, `/client-errors`, `/auth/*`), then `requireAuth`, then all routers; serves the SPA with cache headers |
 | `totp.ts` | TOTP (RFC 6238) + base32 + backup codes, node:crypto only |
 | `twoFactor.ts` | Two-step sign-in: login ticket → `/auth/login/2fa`, `/auth/2fa/setup` / `enable` / `disable` |
-| `mail.ts` | `mailerFromEnv` (SMTP via nodemailer, or `MAIL_OUTBOX_DIR` files for dev/tests), reset-code email text (EN + AR), `sendInBackground` |
+| `mail.ts` | `mailerFromEnv` (SMTP via nodemailer: the local `mail` Postfix service by default, plain only to local hosts via `isLocalMailHost`; or `MAIL_OUTBOX_DIR` files for dev/tests), sender `DEFAULT_FROM` (Masrofy <no-reply@masrofy.online>), reset-code email text (EN + AR), `sendInBackground` |
 | `log.ts` | pino logger (`log`), `APP_VERSION` (from package.json), `requestLogger` (request id + access line), `requestId(res)` |
 | `auth.ts` | Login, signup, logout, logout-all, change password, delete account, `requireAuth`, sessions, owner account, admin usernames |
 | `admin.ts` | Admin page API: users, sign-up settings, delete user, one-time reset codes, audit log; `/auth/reset` handler |
@@ -98,7 +98,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `pages/`: `Dashboard`, `Budget`, `Expenses` (largest), `Loans`, `Savings` (+ GoalDetail), `Reports`, `Settings`, `Admin`, `Login`.
 `Permissions` (first-run permissions screen, Android app only).
 
-`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `CategoryIcon` (category icon/colour badge + picker), `PullToRefresh`, `BudgetForms`,
+`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Brand` (the "Masrofy"/"مصروفي" logo text), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `CategoryIcon` (category icon/colour badge + picker), `PullToRefresh`, `BudgetForms`,
 `charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour), `AppLock` +
 `AppLockSettings`, `OfflineApp` + `OfflineQueue`, `ExportLinks`, `MonthStartPicker`, `ContactCard` (contact email constant),
 `PasswordRules` (live new-password checklist, `newPasswordError`), `ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).

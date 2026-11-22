@@ -1,5 +1,6 @@
-# Budget me: production stack for a VPS.
-# Its own Compose project ("budget-me"): own network, own Postgres, own volume.
+# Masrofy: production stack for a VPS.
+# Its own Compose project ("budget-me", the technical name kept from before the rename, so the running
+# stack, its volumes and paths stay the same): own network, own Postgres, own volumes, own mail sender.
 # Nothing here touches other apps on the server; Postgres is never published.
 #
 #   cp .env.example .env && nano .env      # set the secrets (see DEPLOY.md)
@@ -60,12 +61,15 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MIN_NATIVE_VERSION_CODE: ${MIN_NATIVE_VERSION_CODE:-0}
       AUDIT_KEEP_DAYS: ${AUDIT_KEEP_DAYS:-365}
-      # Email for "Forgot password?" codes (empty SMTP_HOST = off)
-      SMTP_HOST: ${SMTP_HOST:-}
+      # Email for "Forgot password?" codes. Default: the "mail" service below (Postfix on the private network,
+      # sending from no-reply@masrofy.online). To use another SMTP server instead, set SMTP_HOST/PORT/USER/PASS
+      # and SMTP_REQUIRE_TLS=true in .env. SMTP_REQUIRE_TLS=false only ever applies to the local "mail" service.
+      SMTP_HOST: ${SMTP_HOST:-mail}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      MAIL_FROM: ${MAIL_FROM:-}
+      SMTP_REQUIRE_TLS: ${SMTP_REQUIRE_TLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-Masrofy <no-reply@masrofy.online>}
       # Android app downloads: downloads/android/latest.json + budget-me-<version>.apk (see DEPLOY.md)
       DOWNLOADS_DIR: /app/downloads
       # Only the Android app may use Budget me; browsers get a "Get the app" page (false = website too)
@@ -82,6 +86,27 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     mem_limit: 512m
+    pids_limit: 200
+    logging: *logging
+    networks: [internal]
+
+  # Outgoing mail ("mailer daemon"): Postfix that sends the app's emails from no-reply@masrofy.online,
+  # signed with DKIM. Send-only: it publishes no port, only accepts mail from the private network, and only
+  # for MAIL_DOMAIN. Deliverability needs DNS records (SPF, DKIM, DMARC) and a reverse-DNS name; see DEPLOY.md.
+  mail:
+    image: boky/postfix:v5.2.1
+    restart: unless-stopped
+    environment:
+      ALLOWED_SENDER_DOMAINS: ${MAIL_DOMAIN:-masrofy.online}
+      POSTFIX_myhostname: ${MAIL_HOSTNAME:-mail.masrofy.online}
+      # DKIM keys are generated once and kept in the "mailkeys" volume; publish the public key in DNS.
+      DKIM_BACKEND: opendkim
+      DKIM_AUTOGENERATE: "true"
+      DKIM_SELECTOR: mail
+    volumes:
+      - mailkeys:/etc/opendkim/keys
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
     pids_limit: 200
     logging: *logging
     networks: [internal]
@@ -125,6 +150,7 @@ services:
 
 volumes:
   pgdata:
+  mailkeys: # DKIM signing keys for the mail service: back this up; losing it means new DNS records
 
 networks:
   internal:

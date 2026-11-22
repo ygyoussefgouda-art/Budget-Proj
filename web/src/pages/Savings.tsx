@@ -26,7 +26,7 @@ import {
   tint,
 } from '../components/ui';
 import { goalForecast, goalMonthly, goalProgress, monthsToGoal, netSaved, remaining, type Goal, type GoalEntry } from '../domain/calc';
-import { parseMoney, plain, plainOrEmpty } from '../domain/money';
+import { parseMoney, plain, plainOrEmpty, wholeUnits } from '../domain/money';
 import { t } from '../i18n';
 import { defaultDate, monthLabel, shortDate, thisMonth, useApp } from '../state';
 
@@ -57,13 +57,13 @@ function ForecastLines({ g, balance, planned, compact = false }: { g: Goal; bala
       {!compact && fc.pace > 0 && (
         <div className="tiny mute">
           {fc.periods === 1
-            ? t('Based on {amount} saved this month.', { amount: fmt(fc.pace) })
-            : t('Based on {amount} a month, the average of the last {n} months.', { amount: fmt(fc.pace), n: fc.periods })}
+            ? t('Based on {amount} saved this month.', { amount: fmt(wholeUnits(fc.pace)) })
+            : t('Based on {amount} a month, the average of the last {n} months.', { amount: fmt(wholeUnits(fc.pace)), n: fc.periods })}
         </div>
       )}
       {fc.behind && (
         <div className="behind" style={{ color: COLORS.highlight }}>
-          {t('Behind plan: saving about {pace} a month, planned {planned}.', { pace: fmt(Math.max(0, fc.pace)), planned: fmt(planned) })}
+          {t('Behind plan: saving about {pace} a month, planned {planned}.', { pace: fmt(wholeUnits(Math.max(0, fc.pace))), planned: fmt(planned) })}
         </div>
       )}
     </div>
@@ -148,6 +148,9 @@ export function GoalDetail() {
       <div className="page">
         <PageHeader title={t('Goal')} left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/savings')} flip />} />
         <Empty text={t('This goal no longer exists.')} />
+        <button type="button" className="btn tonal block" onClick={() => nav('/savings')}>
+          {t('Back to Savings')}
+        </button>
       </div>
     );
   }

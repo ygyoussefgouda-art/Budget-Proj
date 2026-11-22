@@ -400,8 +400,8 @@ export const AR: Record<string, string> = {
   'Turn on App lock to ask for a PIN when the app is opened again. In the Android app you can unlock it with your fingerprint.':
     'شغّل قفل التطبيق عشان يطلب رقم سري لما تفتحه تاني. وفي أبلكيشن أندرويد تقدر تفتحه بصباعك.',
   'On your phone': 'على موبايلك',
-  'Budget me works in the browser and as an Android app, even when the connection drops.':
-    'Budget me شغال في المتصفح وكأبلكيشن أندرويد، حتى لو النت فصل.',
+  'Masrofy is an Android app that keeps working even when the connection drops.':
+    'مصروفي أبلكيشن أندرويد بيفضل شغال حتى لو النت فصل.',
   'No internet? You can still look at your budget, and new expenses wait on your phone until you are back online.':
     'مفيش نت؟ تقدر تشوف ميزانيتك عادي، والمصاريف الجديدة بتستنى على موبايلك لحد ما النت يرجع.',
   'Turn on Reminders in Settings to get a nudge to log your spending. Nothing is sent from the server.':
@@ -774,8 +774,8 @@ export const AR: Record<string, string> = {
   'You need an authenticator app on your phone, for example Google Authenticator, Microsoft Authenticator, Aegis or 2FAS (all free).':
     'محتاج تطبيق مصادقة على موبايلك، زي Google Authenticator أو Microsoft Authenticator أو Aegis أو 2FAS (كلهم ببلاش).',
   Continue: 'كمّل',
-  '1. Add Budget me to your authenticator app: tap the button on this phone, or type the key in the app.':
-    '1. ضيف Budget me لتطبيق المصادقة: دوس الزرار على الموبايل ده، أو اكتب المفتاح في التطبيق.',
+  '1. Add Masrofy to your authenticator app: tap the button on this phone, or type the key in the app.':
+    '1. ضيف مصروفي لتطبيق المصادقة: دوس الزرار على الموبايل ده، أو اكتب المفتاح في التطبيق.',
   'Open in authenticator app': 'افتح في تطبيق المصادقة',
   'Setup key': 'مفتاح الإعداد',
   'Copy key': 'انسخ المفتاح',
@@ -797,8 +797,8 @@ export const AR: Record<string, string> = {
     'لو الموبايل ضاع: "{name}" هيقدر يدخل بالباسورد بس (وهيخرج من كل الأجهزة دلوقتي).',
   'Two-step sign-in is off for "{name}".': 'الدخول بخطوتين اتقفل لـ "{name}".',
   'Enter the code from your authenticator app.': 'اكتب الكود من تطبيق المصادقة.',
-  'Open your authenticator app and enter the 6-digit code for Budget me. Lost your phone? Use one of your backup codes.':
-    'افتح تطبيق المصادقة واكتب الكود (6 أرقام) بتاع Budget me. موبايلك ضاع؟ استخدم كود من أكواد الاحتياط.',
+  'Open your authenticator app and enter the 6-digit code for Masrofy. Lost your phone? Use one of your backup codes.':
+    'افتح تطبيق المصادقة واكتب الكود (6 أرقام) بتاع مصروفي. موبايلك ضاع؟ استخدم كود من أكواد الاحتياط.',
   Code: 'الكود',
   'Turn it off in your own Settings instead.': 'اقفله من الإعدادات بتاعتك.',
   'That code is not right. Try the newest code from your app.': 'الكود ده مش صح. جرّب أحدث كود في التطبيق.',
@@ -810,13 +810,13 @@ export const AR: Record<string, string> = {
 
   // 0.6.5: Android app (updates, permissions, fingerprint, reminders, camera)
   'Downloading the update': 'التحديث بيتحمّل',
-  'Allow Budget me to install updates: turn on "Allow from this source", then come back.':
-    'اسمح لـ Budget me يسطّب التحديثات: شغّل "السماح من هذا المصدر"، وبعدين ارجع.',
+  'Allow Masrofy to install updates: turn on "Allow from this source", then come back.':
+    'اسمح لـ مصروفي يسطّب التحديثات: شغّل "السماح من هذا المصدر"، وبعدين ارجع.',
   'Downloading… {pct}%': 'بيتحمّل… {pct}%',
   'Android will now ask: "Do you want to update this app?" Tap Update.': 'أندرويد هيسألك: "عايز تحدّث التطبيق ده؟" دوس تحديث.',
   Update: 'حدّث',
   'Update the app to continue': 'حدّث الأبلكيشن عشان تكمّل',
-  'Version {v} is needed to keep using Budget me.': 'محتاج نسخة {v} عشان تكمّل تستخدم Budget me.',
+  'Version {v} is needed to keep using Masrofy.': 'محتاج نسخة {v} عشان تكمّل تستخدم مصروفي.',
   'A newer app is needed, but it is not ready to download yet. Try again later.': 'محتاج نسخة أحدث، بس لسه مش جاهزة للتحميل. جرّب تاني بعدين.',
   'Version {v} is available': 'نسخة {v} متاحة',
   'App updates': 'تحديثات الأبلكيشن',
@@ -830,7 +830,7 @@ export const AR: Record<string, string> = {
   'Version {v} · {size} MB · {date}': 'نسخة {v} · {size} م.ب · {date}',
   'Tap Download.': 'دوس تحميل.',
   'Open the file. If Android asks, allow your browser to install unknown apps.': 'افتح الملف. لو أندرويد سأل، اسمح للمتصفح يسطّب تطبيقات غير معروفة.',
-  'Open Budget me and sign in. The app then asks for the permissions it needs.': 'افتح Budget me وادخل. الأبلكيشن هيطلب الأذونات اللي محتاجها.',
+  'Open Masrofy and sign in. The app then asks for the permissions it needs.': 'افتح مصروفي وادخل. الأبلكيشن هيطلب الأذونات اللي محتاجها.',
   Download: 'تحميل',
   'Not on Google Play: this app is installed straight from this server. It updates itself.':
     'مش على جوجل بلاي: الأبلكيشن بيتسطّب من السيرفر ده على طول، وبيحدّث نفسه.',
@@ -838,11 +838,11 @@ export const AR: Record<string, string> = {
   'No connection. Try again when you are online.': 'مفيش نت. جرّب تاني لما النت يرجع.',
   'Download failed. Check your connection and storage, then try again.': 'التحميل فشل. اتأكد من النت والمساحة وجرّب تاني.',
   'The download was damaged. Try again.': 'الملف اتحمّل بايظ. جرّب تاني.',
-  'This file is not a Budget me update.': 'الملف ده مش تحديث لـ Budget me.',
+  'This file is not a Masrofy update.': 'الملف ده مش تحديث لـ مصروفي.',
   'This version is already installed.': 'النسخة دي متسطّبة فعلاً.',
   'Could not open the installer.': 'مقدرناش نفتح شاشة التسطيب.',
   'The server could not send the update. Try again later.': 'السيرفر مقدرش يبعت التحديث. جرّب تاني بعدين.',
-  'Unlock Budget me': 'افتح Budget me',
+  'Unlock Masrofy': 'افتح مصروفي',
   'Use PIN': 'استخدم الـ PIN',
   'Use fingerprint': 'استخدم البصمة',
   'Turn on fingerprint unlock': 'شغّل الفتح بالبصمة',
@@ -860,25 +860,25 @@ export const AR: Record<string, string> = {
   'App permissions': 'أذونات الأبلكيشن',
   '{name} is at {pct}% of its budget': '{name} وصلت {pct}% من ميزانيتها',
   '{name} reached its budget': '{name} وصلت لميزانيتها',
-  'Open Budget me to see this month.': 'افتح Budget me وشوف الشهر ده.',
+  'Open Masrofy to see this month.': 'افتح مصروفي وشوف الشهر ده.',
   'Recurring expense due: {name}': 'مصروف متكرر جه ميعاده: {name}',
-  'Tap Add or Skip in Budget me.': 'دوس ضيف أو تخطّى في Budget me.',
+  'Tap Add or Skip in Masrofy.': 'دوس ضيف أو تخطّى في مصروفي.',
   "Log today's expenses": 'سجّل مصاريف النهارده',
   'A minute now keeps your budget right.': 'دقيقة دلوقتي بتخلّي ميزانيتك مظبوطة.',
   'Take a photo': 'صوّر',
   'From gallery': 'من المعرض',
   'PDF or file': 'PDF أو ملف',
   'Set up permissions': 'ظبّط الأذونات',
-  'Budget me only asks for what its features use. You can change any of these later in Settings.':
-    'Budget me بيطلب بس اللي مميزاته محتاجاه. تقدر تغيّر أي حاجة بعدين من الإعدادات.',
+  'Masrofy only asks for what its features use. You can change any of these later in Settings.':
+    'مصروفي بيطلب بس اللي مميزاته محتاجاه. تقدر تغيّر أي حاجة بعدين من الإعدادات.',
   Notifications: 'الإشعارات',
   'Budget alerts at 80% and 100%, recurring expenses that are due, and new app versions.':
     'تنبيهات الميزانية عند 80% و100%، المصاريف المتكررة اللي جه ميعادها، والنسخ الجديدة.',
   Camera: 'الكاميرا',
   'Take a photo of a receipt and attach it to an expense.': 'صوّر الإيصال وضيفه على المصروف.',
   'Install updates': 'تسطيب التحديثات',
-  'Lets Budget me install its own updates (Android calls this "Install unknown apps").':
-    'بيخلّي Budget me يسطّب تحديثاته بنفسه (أندرويد بيسمّيها "تثبيت تطبيقات غير معروفة").',
+  'Lets Masrofy install its own updates (Android calls this "Install unknown apps").':
+    'بيخلّي مصروفي يسطّب تحديثاته بنفسه (أندرويد بيسمّيها "تثبيت تطبيقات غير معروفة").',
   Allowed: 'مسموح',
   'Open settings': 'افتح الإعدادات',
   Allow: 'اسمح',
@@ -947,7 +947,7 @@ export const AR: Record<string, string> = {
   Unknown: 'غير معروف',
   '{n} KB': '{n} ك.ب',
   '{n} MB': '{n} م.ب',
-  'This is not a Budget me backup.': 'الملف ده مش نسخة احتياطية من Budget me.',
+  'This is not a Masrofy backup.': 'الملف ده مش نسخة احتياطية من مصروفي.',
   'This expense was saved and then deleted.': 'المصروف ده اتحفظ وبعدين اتمسح.',
   'The Export button saves the expenses you are looking at as Excel or CSV.': 'زرار التصدير بيحفظ المصاريف اللي قدامك كملف Excel أو CSV.',
   'Under Account you can change your password, sign out on every device, or delete your account.':
@@ -994,19 +994,25 @@ export const AR: Record<string, string> = {
   'Every 2 weeks: how much money is left': 'كل أسبوعين: فاضل معاك كام',
   'Last evening of the month: a summary': 'آخر يوم في الشهر بالليل: ملخص',
   'Money check': 'شيك على فلوسك',
-  'Your month in Budget me': 'شهرك في Budget me',
+  'Your month in Masrofy': 'شهرك في مصروفي',
   'You have {left} left this month: about {perDay} a day for {n} days.': 'فاضل معاك {left} الشهر ده: حوالي {perDay} في اليوم لمدة {n} يوم.',
   'You are {amount} over your income this month.': 'إنت عدّيت دخلك بـ {amount} الشهر ده.',
   'You spent {spent} and saved {saved}. {left} is left over.': 'صرفت {spent} وحوّشت {saved}. وفاضل {left}.',
   'You spent {spent} and saved {saved}. You went {over} over your income.': 'صرفت {spent} وحوّشت {saved}. وعدّيت دخلك بـ {over}.',
-  'Your month ends today. Open Budget me to see how it went.': 'شهرك بيخلص النهارده. افتح Budget me وشوف عملت إيه.',
-  'Open Budget me to see how much you have left this month.': 'افتح Budget me وشوف فاضل معاك كام الشهر ده.',
-  'Open Budget me to see your month.': 'افتح Budget me وشوف شهرك.',
-  'Open Budget me to sign in.': 'افتح Budget me وادخل على حسابك.',
+  'Your month ends today. Open Masrofy to see how it went.': 'شهرك بيخلص النهارده. افتح مصروفي وشوف عملت إيه.',
+  'Open Masrofy to see how much you have left this month.': 'افتح مصروفي وشوف فاضل معاك كام الشهر ده.',
+  'Open Masrofy to see your month.': 'افتح مصروفي وشوف شهرك.',
+  'Open Masrofy to sign in.': 'افتح مصروفي وادخل على حسابك.',
   'Left today': 'تقدر تصرف النهارده',
   'over this month': 'زيادة الشهر ده',
   '{amount} left · last day': 'فاضل {amount} · آخر يوم',
   '{amount} left · {n} days to go': 'فاضل {amount} · باقي {n} يوم',
+  // 1.3.0: the new name, and "Forgot password?" by username or email
+  Masrofy: 'مصروفي',
+  "Enter your username or email. We email a code to the address on your account. It works once, for 30 minutes.":
+    'اكتب اسم المستخدم أو الإيميل. هنبعت كود على الإيميل المسجّل في حسابك. الكود بيشتغل مرة واحدة، لمدة 30 دقيقة.',
+  'If that account exists, a code is on its way to the email registered on it. Check your inbox (and spam).':
+    'لو الحساب ده موجود، الكود في الطريق للإيميل المسجّل عليه. بص في الوارد (والسبام).',
   // tutorial tips for 1.2.0
   'Same thing again? Open an expense and tap "Log again today".': 'نفس الحاجة تاني؟ افتح المصروف ودوس "سجّله تاني النهارده".',
   'Amounts can be sums: type 45+30 or 120/3 and the app works it out.': 'المبالغ ممكن تكون حسبة: اكتب 45+30 أو 120/3 والتطبيق هيحسبها.',
@@ -1017,8 +1023,8 @@ export const AR: Record<string, string> = {
   'Every 2 weeks the app tells you how much is left, and on the last evening of the month you get a summary.':
     'كل أسبوعين التطبيق بيقولك فاضل معاك كام، وآخر يوم في الشهر بالليل بيجيلك ملخص.',
   'Pull down at the top of any page to load the latest numbers.': 'اسحب لتحت من أول أي صفحة عشان تجيب آخر الأرقام.',
-  'In the Android app, add the Budget me widget to your home screen: what you can spend today, and a + button.':
-    'في أبلكيشن أندرويد، حط ويدجت Budget me على الشاشة الرئيسية: تقدر تصرف كام النهارده، وزرار +.',
+  'In the Android app, add the Masrofy widget to your home screen: what you can spend today, and a + button.':
+    'في أبلكيشن أندرويد، حط ويدجت مصروفي على الشاشة الرئيسية: تقدر تصرف كام النهارده، وزرار +.',
   // category icons and colours
   Food: 'أكل',
   Coffee: 'قهوة',
@@ -1052,4 +1058,22 @@ export const AR: Record<string, string> = {
   Teal: 'تركواز',
   Pink: 'بمبي',
   Grey: 'رمادي',
+  // 1.3.0 design critique fixes (Home)
+  'No plan': 'مفيش خطة',
+  "Start with this month's income": 'ابدأ بدخل الشهر ده',
+  'Enter what you get for {month}. Masrofy then shows what is left and how much you can spend each day.':
+    'اكتب دخلك في {month}. وبعدها مصروفي هيوريك فاضل قد إيه وتقدر تصرف كام في اليوم.',
+  'Set your income': 'حط دخلك',
+  '{n} days left in this budget month': 'فاضل {n} يوم في شهر الميزانية ده',
+  'day left': 'يوم فاضل',
+  'days left': 'أيام فاضلة',
+  'of your saving plan': 'من خطة التحويش',
+  'of the plan used': 'من الخطة اتصرف',
+  'All {n} categories are within budget.': 'كل الـ {n} بنود جوه الميزانية.',
+  '{n} of {total} categories need a look.': '{n} من {total} بنود محتاجة تبص عليها.',
+  'See all': 'شوف الكل',
+  'Open the Budget tab': 'افتح صفحة الميزانية',
+  'Compare with last month, see your year': 'قارن بالشهر اللي فات وشوف سنتك',
+  'Back to Savings': 'ارجع للتحويش',
+  '#trip #friends': '#سفر #صحاب',
 };

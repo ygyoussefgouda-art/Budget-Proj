@@ -7,11 +7,10 @@ import {
   ChevronRight,
   HandCoins,
   PiggyBank,
-  ShoppingBag,
   Undo2,
   type LucideIcon,
 } from 'lucide-react';
-import { alertLevel, budgetAlerts, rowBar, rowLeft, rowMet, rowStatus, type BudgetRow, type Txn } from '../domain/calc';
+import { alertLevel, budgetAlerts, rowBar, rowLeft, rowMet, rowStatus, rowUnplanned, type BudgetRow, type Txn } from '../domain/calc';
 import { t } from '../i18n';
 import { monthLabel, periodLabel, shiftMonth, shortDate, useApp } from '../state';
 import { CategoryIcon } from './CategoryIcon';
@@ -49,7 +48,16 @@ export function BudgetRowTile({ r, onClick }: { r: BudgetRow; onClick?: () => vo
   const cat = r.catId === null ? undefined : data?.categories.find((c) => c.id === r.catId);
   // Spending rows: amber from 80% of the budget, red at 100% and over (same colours as the alert banner).
   const alert = alertLevel(r);
-  const color = alert === 'over' || alert === 'full' ? COLORS.red : alert === 'warn' ? COLORS.amber : r.isGoal ? (rowMet(r) ? COLORS.accent : COLORS.amber) : COLORS.accent;
+  const color =
+    alert === 'over' || alert === 'full'
+      ? COLORS.red
+      : alert === 'warn'
+        ? COLORS.amber
+        : rowUnplanned(r)
+          ? COLORS.mute
+          : r.isGoal && r.planned > 0 && !rowMet(r)
+            ? COLORS.amber
+            : COLORS.accent;
   const left = rowLeft(r);
   const body = (
     <>
@@ -86,14 +94,14 @@ export function BudgetRowTile({ r, onClick }: { r: BudgetRow; onClick?: () => vo
  * Banner on Home and Budget: categories that used 80% of their budget or more (red at 100%).
  * Hidden when everything is fine.
  */
-export function BudgetAlerts({ rows }: { rows: BudgetRow[] }) {
+export function BudgetAlerts({ rows, onOpen }: { rows: BudgetRow[]; onOpen?: () => void }) {
   const { fmt } = useApp();
   const alerts = budgetAlerts(rows);
   if (!alerts.length) return null;
   const red = alerts.some((a) => a.level !== 'warn');
   const color = red ? COLORS.red : COLORS.amber;
   return (
-    <div className={`alert-banner ${red ? 'is-red' : 'is-amber'}`} role="status">
+    <div className={`alert-banner ${red ? 'is-red' : 'is-amber'} ${onOpen ? 'has-open' : ''}`} role="status">
       <AlertTriangle size={18} style={{ color, flex: 'none' }} aria-hidden="true" />
       <div className="grow">
         <strong className="small block">
@@ -112,12 +120,18 @@ export function BudgetAlerts({ rows }: { rows: BudgetRow[] }) {
           {alerts.length > 4 && <li className="mute">{t('and {n} more', { n: alerts.length - 4 })}</li>}
         </ul>
       </div>
+      {/* The whole banner is the tap target (the button stretches over it, see .alert-open) */}
+      {onOpen && (
+        <button type="button" className="alert-open" onClick={onOpen} aria-label={t('Open the Budget tab')}>
+          <ChevronRight size={18} className="flip-rtl" aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
 }
 
 const TXN: Record<string, { icon: LucideIcon; color: string }> = {
-  expense: { icon: ShoppingBag, color: COLORS.accent },
+  expense: { icon: ArrowUpRight, color: COLORS.red }, // not drawn: expenses use their category icon
   deposit: { icon: PiggyBank, color: COLORS.blue },
   withdrawal: { icon: Undo2, color: COLORS.amber },
   borrow: { icon: ArrowDownLeft, color: COLORS.purple },
@@ -148,15 +162,21 @@ function txnText(x: Txn) {
 }
 
 export function TxnTile({ t: x }: { t: Txn }) {
-  const { fmt } = useApp();
+  const { fmt, data } = useApp();
   const pos = x.amount > 0;
   const { icon: Icon, color } = TXN[x.kind] ?? TXN.expense;
   const text = txnText(x);
+  // Expenses look the same as in the Expenses list: the category's own icon and colour (or its first letter).
+  const cat = x.kind === 'expense' ? (data?.categories.find((c) => c.name === x.sub) ?? { name: x.sub }) : null;
   return (
     <div className="txn">
-      <span className="badge" style={{ background: color, borderRadius: '50%' }}>
-        <Icon size={19} color="#fff" />
-      </span>
+      {cat ? (
+        <CategoryIcon cat={cat} fallbackColor={COLORS.red} />
+      ) : (
+        <span className="badge" style={{ background: color, borderRadius: '50%' }} aria-hidden="true">
+          <Icon size={19} color="#fff" />
+        </span>
+      )}
       <div className="txn-main">
         <div className="txn-title">{text.title}</div>
         <div className="tiny mute">

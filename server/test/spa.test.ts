@@ -12,8 +12,8 @@ import { migrate } from '../src/migrate.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 let db: Db;
 let pub: string;
-const INDEX = '<!doctype html><title>Budget me test page</title>';
-const GET_APP = '<!doctype html><title>Get the Budget me app</title>';
+const INDEX = '<!doctype html><title>Masrofy test page</title>';
+const GET_APP = '<!doctype html><title>Get the Masrofy app</title>';
 const mkApp = (appOnly = false) => createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false, publicDir: pub, appOnly });
 const APP_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 7 Build/AP2A; wv) AppleWebKit/537.36 Chrome/131.0 Mobile Safari/537.36 BudgetMeApp';
 const BROWSER_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/131.0 Mobile Safari/537.36';
@@ -57,7 +57,7 @@ describe('web app serving', () => {
   it('unknown /api paths stay JSON errors and never fall through to the page', async () => {
     const r = await request(mkApp()).get('/api/no-such-thing');
     expect(r.status).toBeGreaterThanOrEqual(400);
-    expect(r.text).not.toContain('Budget me test page');
+    expect(r.text).not.toContain('Masrofy test page');
   });
 
   it('hidden files and path tricks never leak files', async () => {

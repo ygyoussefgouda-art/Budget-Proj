@@ -83,7 +83,7 @@ test.describe('settings, language and navigation', () => {
     await expect(page.locator('.stage-badge').first()).toHaveText('MK1');
     const footer = page.locator('footer.app-footer');
     await expect(footer).toContainText('Developed by Youssef Gouda');
-    await expect(footer).toContainText('Budget me MK1 · Version 1.2.1');
+    await expect(footer).toContainText('Masrofy MK1 · Version 1.3.0');
     await expect(page.getByText(/alpha/i)).toHaveCount(0);
   });
 

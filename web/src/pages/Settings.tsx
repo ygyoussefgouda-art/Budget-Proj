@@ -231,9 +231,6 @@ export default function Settings() {
           <button className="btn outline block" onClick={logoutAll}>
             <MonitorSmartphone size={18} /> {t('Sign out everywhere')}
           </button>
-          <button className="btn text danger-text block" onClick={() => setSheet('delete')}>
-            <UserX size={18} /> {t('Delete my account')}
-          </button>
         </div>
       </Card>
 
@@ -267,9 +264,15 @@ export default function Settings() {
 
       <Card>
         <SectionTitle>{t('Danger zone')}</SectionTitle>
-        <button className="btn outline danger-text block" onClick={erase}>
-          <Trash2 size={18} /> {t('Erase all data')}
-        </button>
+        {/* Both can't be undone, so they live together here, away from everyday buttons like Sign out. */}
+        <div className="stack" style={{ marginTop: 0 }}>
+          <button className="btn outline danger-text block" onClick={erase}>
+            <Trash2 size={18} /> {t('Erase all data')}
+          </button>
+          <button className="btn outline danger-text block" onClick={() => setSheet('delete')}>
+            <UserX size={18} /> {t('Delete my account')}
+          </button>
+        </div>
       </Card>
 
       {user.isAdmin && (
@@ -304,7 +307,7 @@ export default function Settings() {
       <footer className="app-footer">
         <p>{t('Developed by {name}', { name: DEVELOPER })}</p>
         <p className="mute">
-          {APP_NAME} {t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}
+          {t(APP_NAME)} {t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}
         </p>
       </footer>
     </div>

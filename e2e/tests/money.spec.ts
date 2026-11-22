@@ -46,10 +46,13 @@ test.describe('budget, expenses and receipts', () => {
     expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(100);
     await page.keyboard.press('Escape');
 
-    // Budget usage reflects it
-    await tab(page, 'Home').click();
+    // Budget usage reflects it (the full list is on the Budget tab; Home shows the sum behind "budget left")
+    await tab(page, 'Budget').click();
     await expect(page.locator('.budget-row', { hasText: 'Food' })).toContainText('55 EGP of 1,500 EGP');
+    await tab(page, 'Home').click();
     await expect(page.getByText('Your budget left').locator('..')).toContainText('4,945 EGP');
+    await expect(page.locator('.hero-sum')).toContainText('Spent');
+    await expect(page.locator('.hero-sum')).toContainText('− 55 EGP');
 
     // Edit: change the amount and remove the receipt
     await tab(page, 'Expenses').click();

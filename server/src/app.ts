@@ -133,7 +133,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   app.use(cookieParser());
 
   // ---------- APP_ONLY: the Android app only (owner's choice) ----------
-  // Browsers get the "Get the Budget me app" page and the API answers them 403. This keeps people on the
+  // Browsers get the "Get the Masrofy app" page and the API answers them 403. This keeps people on the
   // app; it is not a security boundary (anyone can fake a user agent): accounts are still protected by
   // their passwords, sessions, CSRF checks and rate limits as before.
   if (opts.appOnly) {
@@ -142,12 +142,12 @@ export function createApp(db: Db, opts: AppOptions = {}) {
       if (isAppRequest(req) || APP_ONLY_OPEN.test(req.path)) return next();
       if (req.path === '/api' || req.path.startsWith('/api/')) {
         res.setHeader('Cache-Control', 'no-store');
-        return void res.status(403).json({ error: 'Budget me is only available in the app.', code: 'app_only' });
+        return void res.status(403).json({ error: 'Masrofy is only available in the app.', code: 'app_only' });
       }
       const page = opts.publicDir ? path.join(opts.publicDir, 'get-app.html') : '';
       res.setHeader('Cache-Control', 'no-cache');
       if (page && existsSync(page)) return void res.status(200).sendFile(page);
-      res.status(403).type('text/plain').send('Budget me is only available in the Android app.');
+      res.status(403).type('text/plain').send('Masrofy is only available in the Android app.');
     });
   }
 
@@ -263,7 +263,10 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     '/auth/forgot',
     limiter(15, opts.forgotLimit ?? 5, 'Too many requests. Try again in 15 minutes.'),
     limiter(60, 3, 'A code was sent recently. Check your inbox (and spam), or try again in an hour.', {
-      keyGenerator: (req: Request) => `f:${String((req.body as { email?: unknown })?.email ?? '').trim().toLowerCase().slice(0, 254)}`,
+      keyGenerator: (req: Request) => {
+        const b = req.body as { login?: unknown; email?: unknown } | undefined;
+        return `f:${String(b?.login ?? b?.email ?? '').trim().toLowerCase().slice(0, 254)}`;
+      },
     }),
     forgotPasswordHandler(db, mailer),
   );

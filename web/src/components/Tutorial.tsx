@@ -156,13 +156,13 @@ const STEPS: Step[] = [
   {
     icon: Smartphone,
     title: 'On your phone',
-    text: 'Budget me works in the browser and as an Android app, even when the connection drops.',
+    text: 'Masrofy is an Android app that keeps working even when the connection drops.',
     tips: [
       'No internet? You can still look at your budget, and new expenses wait on your phone until you are back online.',
       'Turn on Reminders in Settings to get a nudge to log your spending. Nothing is sent from the server.',
       'Every 2 weeks the app tells you how much is left, and on the last evening of the month you get a summary.',
       'Pull down at the top of any page to load the latest numbers.',
-      'In the Android app, add the Budget me widget to your home screen: what you can spend today, and a + button.',
+      'In the Android app, add the Masrofy widget to your home screen: what you can spend today, and a + button.',
       'The Android app updates itself: you get a message when a new version is ready. You can also tap "Check for updates" in Settings.',
       'In the Android app, exports and backups open the share sheet, so you can save them to Files or Drive.',
       'Added the app to your home screen? Long-press its icon for an "Add expense" shortcut.',
@@ -253,7 +253,7 @@ export default function Tutorial() {
           {t('Step {n} of {total}', { n: i + 1, total: STEPS.length })}
         </div>
         <h2 id="tut-title" className="tutorial-title">
-          {t(s.title, { app: APP_NAME })}
+          {t(s.title, { app: t(APP_NAME) })}
         </h2>
         <p>{t(s.text)}</p>
         {s.picker && (

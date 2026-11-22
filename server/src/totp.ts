@@ -75,7 +75,7 @@ export function verifyTotp(secretB32: string, code: string, nowMs: number, lastS
 }
 
 /** The link authenticator apps understand (also what a QR code would contain). */
-export const otpauthUri = (account: string, secretB32: string, issuer = 'Budget me') =>
+export const otpauthUri = (account: string, secretB32: string, issuer = 'Masrofy') =>
   `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secretB32}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=${STEP_SECONDS}`;
 
 /** One-time backup codes for a lost phone: 8 codes like K7M2-QX9P. */

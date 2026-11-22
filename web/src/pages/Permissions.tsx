@@ -31,7 +31,7 @@ interface Row {
 const ROWS: Row[] = [
   { key: 'notifications', icon: Bell, title: 'Notifications', why: 'Budget alerts at 80% and 100%, recurring expenses that are due, and new app versions.' },
   { key: 'camera', icon: CameraIcon, title: 'Camera', why: 'Take a photo of a receipt and attach it to an expense.' },
-  { key: 'install', icon: Download, title: 'Install updates', why: 'Lets Budget me install its own updates (Android calls this "Install unknown apps").' },
+  { key: 'install', icon: Download, title: 'Install updates', why: 'Lets Masrofy install its own updates (Android calls this "Install unknown apps").' },
 ];
 
 /**
@@ -84,7 +84,7 @@ export function PermissionsScreen({ userId, onClose }: { userId: number; onClose
     <div className="perm-page" role="dialog" aria-modal="true" aria-labelledby="perm-title">
       <ShieldCheck size={34} style={{ color: 'var(--accent)' }} aria-hidden="true" />
       <h1 id="perm-title">{t('Set up permissions')}</h1>
-      <p className="small mute">{t('Budget me only asks for what its features use. You can change any of these later in Settings.')}</p>
+      <p className="small mute">{t('Masrofy only asks for what its features use. You can change any of these later in Settings.')}</p>
       <div className="card" style={{ marginTop: 14 }}>
         {ROWS.map((r) => {
           const s = st[r.key];

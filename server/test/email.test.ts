@@ -105,6 +105,32 @@ describe('"Forgot password?" by email', () => {
     expect(JSON.stringify(stored)).not.toContain(code.replace('-', ''));
   });
 
+  it('by username too: the code goes to the email registered on that account (Masrofy branding)', async () => {
+    const name = fresh();
+    const email = `${name}@example.com`;
+    await request(mkApp()).post('/api/auth/signup').send({ username: name, email, password: GOOD }).expect(201);
+    const r = await request(mkApp()).post('/api/auth/forgot').send({ login: name.toUpperCase() }).expect(200);
+    expect(r.body).toEqual({ ok: true });
+    const code = await codeFor(email);
+    const mail = outbox.find((m) => m.to === email)!;
+    expect(mail.subject).toBe(`Masrofy: your password reset code ${code}`);
+    expect(mail.text).toContain('مصروفي');
+    expect(mail.text).toContain('Your Masrofy password reset code');
+    expect(mail.text.toLowerCase()).not.toContain(['budget', 'me'].join(' ')); // the old name is gone
+    await request(mkApp()).post('/api/auth/reset').send({ username: name, code, password: 'New-Pass-2026' }).expect(200);
+    await request(mkApp()).post('/api/auth/login').send({ username: name, password: 'New-Pass-2026' }).expect(200);
+  });
+
+  it('an account without an email gets the same answer and no email; an empty request is refused', async () => {
+    const name = fresh();
+    await request(mkApp({ requireEmail: false })).post('/api/auth/signup').send({ username: name, password: GOOD }).expect(201);
+    const r = await request(mkApp()).post('/api/auth/forgot').send({ login: name }).expect(200);
+    expect(r.body).toEqual({ ok: true });
+    await new Promise((res) => setTimeout(res, 100));
+    expect(outbox).toHaveLength(0);
+    expect((await request(mkApp()).post('/api/auth/forgot').send({ login: '   ' })).status).toBe(400);
+  });
+
   it('answers the same for an unknown address and sends nothing', async () => {
     const r = await request(mkApp()).post('/api/auth/forgot').send({ email: 'nobody-here@example.com' }).expect(200);
     expect(r.body).toEqual({ ok: true });
@@ -165,5 +191,35 @@ describe('change email', () => {
     await a.post('/api/auth/signup').send({ username: name, email: `${name}@example.com`, password: GOOD }).expect(201);
     expect((await a.post('/api/auth/password').send({ current: GOOD, next: 'onlylowercase' })).status).toBe(400);
     await a.post('/api/auth/password').send({ current: GOOD, next: 'Another-Pass-9' }).expect(200);
+  });
+});
+
+describe('mail setup', () => {
+  it('no SMTP host: email is off; the default sender is Masrofy <no-reply@masrofy.online>', async () => {
+    const { mailerFromEnv, DEFAULT_FROM } = await import('../src/mail.js');
+    expect(mailerFromEnv({}).enabled).toBe(false);
+    expect(DEFAULT_FROM).toBe('Masrofy <no-reply@masrofy.online>');
+    const { mkdtempSync, readdirSync, readFileSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const dir = mkdtempSync(path.join(tmpdir(), 'bm-outbox-'));
+    try {
+      const m = mailerFromEnv({ MAIL_OUTBOX_DIR: dir });
+      await m.send({ to: 'a@example.com', subject: 's', text: 't' });
+      const saved = JSON.parse(readFileSync(path.join(dir, readdirSync(dir)[0]), 'utf8'));
+      expect(saved.from).toBe('Masrofy <no-reply@masrofy.online>');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+describe('the local mail server hop', () => {
+  it('plain SMTP is only allowed to a server on this machine or its Docker network', async () => {
+    const { isLocalMailHost, mailerFromEnv } = await import('../src/mail.js');
+    for (const h of ['mail', 'postfix', 'localhost', '127.0.0.1', '::1']) expect(isLocalMailHost(h), h).toBe(true);
+    for (const h of ['smtp.gmail.com', 'smtp-relay.brevo.com', '203.0.113.5', 'mail.masrofy.online', '', undefined]) {
+      expect(isLocalMailHost(h), String(h)).toBe(false);
+    }
+    expect(mailerFromEnv({ SMTP_HOST: 'off' }).enabled).toBe(false);
+    expect(mailerFromEnv({ SMTP_HOST: 'mail', SMTP_REQUIRE_TLS: 'false' }).enabled).toBe(true);
   });
 });

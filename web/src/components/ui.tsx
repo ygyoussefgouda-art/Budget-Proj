@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Plus, Trash2, type LucideIcon } from 'lucide-react';
 import { evalMoney, fmtMoney, hasMaths, plain } from '../domain/money';
 import { t } from '../i18n';
@@ -57,7 +57,7 @@ export function Pill({ children, color }: { children: ReactNode; color: string }
 export function SectionTitle({ children, trailing }: { children: ReactNode; trailing?: ReactNode }) {
   return (
     <div className="section-title">
-      <h3>{children}</h3>
+      <h2>{children}</h2>
       {trailing}
     </div>
   );
@@ -117,12 +117,34 @@ export function IconBadge({ icon: Icon, color, size = 40, round = false }: { ico
   );
 }
 
-export function StatTile({ label, value, color, icon, progress, sub }: { label: string; value: string; color: string; icon: LucideIcon; progress?: number; sub?: string }) {
+export function StatTile({
+  label,
+  value,
+  color,
+  icon,
+  progress,
+  progressLabel,
+  sub,
+}: {
+  label: string;
+  value: string;
+  color: string;
+  icon: LucideIcon;
+  progress?: number;
+  /** What the ring's % is of ("of your saving plan"); shown under the number. */
+  progressLabel?: string;
+  sub?: string;
+}) {
   return (
     <div className="card stat-tile">
       <div className="row between start">
         <RingIcon icon={icon} color={color} progress={progress} />
-        {progress !== undefined && <span style={{ color, fontWeight: 700, fontSize: 13 }}>{Math.round(progress * 100)}%</span>}
+        {progress !== undefined && (
+          <span className="ring-pct">
+            <strong style={{ color }}>{Math.round(progress * 100)}%</strong>
+            {progressLabel && <span className="ring-pct-label">{progressLabel}</span>}
+          </span>
+        )}
       </div>
       <div className="stat-label">{label}</div>
       <div className="stat-value">{value}</div>
@@ -294,8 +316,16 @@ export function DeleteButton({ label, onClick }: { label: string; onClick: () =>
 
 /** Floating round button above the bottom bar (e.g. quick add). `title` is the spoken / tooltip name. */
 export function Fab({ label, title, onClick, icon: Icon }: { label: string; title: string; onClick: () => void; icon: LucideIcon }) {
+  // Shrinks to a round icon once the page is scrolled, so it covers less of the content under it.
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setCompact(window.scrollY > 120);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   return (
-    <button type="button" className="fab" onClick={onClick} aria-label={title} title={title}>
+    <button type="button" className={`fab ${compact ? 'is-compact' : ''}`} onClick={onClick} aria-label={title} title={title}>
       <Icon size={20} strokeWidth={2.5} />
       <span>{label}</span>
     </button>

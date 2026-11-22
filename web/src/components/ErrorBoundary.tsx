@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           <RotateCw size={18} aria-hidden="true" /> {t('Reload')}
         </button>
         <p className="mute small">
-          {APP_NAME} {t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}
+          {t(APP_NAME)} {t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}
         </p>
       </div>
     );

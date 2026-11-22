@@ -94,9 +94,9 @@ async function main() {
     downloadsDir: process.env.DOWNLOADS_DIR || path.join(root, 'downloads'),
     appOnly: process.env.APP_ONLY === 'true',
   });
-  if (process.env.APP_ONLY === 'true') log.info('APP_ONLY: only the Android app can use Budget me; browsers see the "Get the app" page.');
+  if (process.env.APP_ONLY === 'true') log.info('APP_ONLY: only the Android app can use Masrofy; browsers see the "Get the app" page.');
   const port = Number(process.env.PORT ?? 3000);
-  const server = app.listen(port, () => log.info({ port, version: APP_VERSION }, 'Budget me listening'));
+  const server = app.listen(port, () => log.info({ port, version: APP_VERSION }, 'Masrofy listening'));
   // Deleted items are kept briefly for "Undo"; expired items, sessions and codes are cleared every few minutes.
   const auditKeepDays = positiveInt(process.env.AUDIT_KEEP_DAYS) ?? 365;
   setInterval(() => housekeeping(db, auditKeepDays).catch((err) => log.error({ err }, 'housekeeping failed')), 5 * 60_000).unref();

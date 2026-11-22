@@ -74,7 +74,7 @@ function LockScreen({ userId, onUnlock }: { userId: number; onUnlock: () => void
   const askBio = useCallback(async () => {
     if (!isNative() || !bioEnabled(user.id)) return;
     try {
-      const r = await BudgetNative.biometricVerify({ title: t('Unlock Budget me'), cancel: t('Use PIN') });
+      const r = await BudgetNative.biometricVerify({ title: t('Unlock Masrofy'), cancel: t('Use PIN') });
       if (r.verified) {
         clearFailures(user.id);
         onUnlock();

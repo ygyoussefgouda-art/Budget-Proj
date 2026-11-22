@@ -95,7 +95,7 @@ function TurnOn({ onDone }: { onDone: () => void }) {
   if (step === 'app' && setup) {
     return (
       <form onSubmit={enable} className="form">
-        <p className="small">{t('1. Add Budget me to your authenticator app: tap the button on this phone, or type the key in the app.')}</p>
+        <p className="small">{t('1. Add Masrofy to your authenticator app: tap the button on this phone, or type the key in the app.')}</p>
         <a className="btn tonal block" href={setup.uri}>
           <KeyRound size={18} /> {t('Open in authenticator app')}
         </a>

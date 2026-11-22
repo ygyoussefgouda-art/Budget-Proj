@@ -1,4 +1,5 @@
 import { CloudOff } from 'lucide-react';
+import Brand from './Brand';
 import { useEffect, useState, type FormEvent } from 'react';
 import { parseMoney } from '../domain/money';
 import { t } from '../i18n';
@@ -24,11 +25,7 @@ export default function OfflineApp({ kit, retry }: { kit: OfflineKit; retry: () 
         <main className="content">
           <div className="page">
             <PageHeader
-              title={
-                <span dir="ltr">
-                  Budget <span style={{ color: COLORS.accent }}>me</span>
-                </span>
-              }
+              title={<Brand />}
             />
             <OfflineBar />
             <Card>

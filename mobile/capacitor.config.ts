@@ -12,7 +12,7 @@ const host = url ? new URL(url).host : undefined;
 const config: CapacitorConfig = {
   // The update identity of the app: never change it after the first install (owner's choice, 2026-11-21).
   appId: 'com.budgetme.app',
-  appName: 'Budget me',
+  appName: 'Masrofy',
   // Fallback page shown when the server can't be reached on a cold start (see www/index.html).
   webDir: 'www',
   server: url

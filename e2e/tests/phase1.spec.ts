@@ -34,6 +34,21 @@ test.describe('phase 1: quick add, daily allowance, undo, recurring, same as las
     await expect(f.getByLabel(/What for/)).toHaveValue('Koshary');
   });
 
+  test('a new account sees a first step on Home, never a false "Goal met"', async ({ page }) => {
+    await tab(page, 'Home').click();
+    await expect(page.getByRole('heading', { name: "Start with this month's income" })).toBeVisible();
+    await expect(page.getByText('Goal met')).toHaveCount(0);
+    await expect(page.getByText('Saved this month')).toHaveCount(0); // no wall of zero tiles
+    await page.getByRole('button', { name: 'Set your income' }).click();
+    const s = sheet(page, /Income & plans/);
+    await s.getByLabel(/Income for/).fill('3000');
+    await s.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByText('Your budget left').locator('..')).toContainText('3,000 EGP');
+    await tab(page, 'Budget').click();
+    await expect(page.getByText('Goal met')).toHaveCount(0); // Savings / Loan rows with no plan say "No plan"
+    await expect(page.getByText('No plan').first()).toBeVisible();
+  });
+
   test('Home shows how much can be spent per day', async ({ page }) => {
     await setUpBudget(page);
     await tab(page, 'Home').click();

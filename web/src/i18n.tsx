@@ -66,7 +66,7 @@ export function tServer(msg: string): string {
   if (AR[msg]) return AR[msg];
   for (const [re, ar] of SERVER_PATTERNS) {
     const m = msg.match(re);
-    // A captured part can itself be a known message ("Restore failed...: This is not a Budget me backup.").
+    // A captured part can itself be a known message ("Restore failed...: This is not a Masrofy backup.").
     if (m) return ar.replace(/\$(\d)/g, (_, i) => AR[m[Number(i)] ?? ''] ?? m[Number(i)] ?? '');
   }
   return msg;
@@ -86,6 +86,7 @@ function apply(lang: Lang) {
   current = lang;
   document.documentElement.setAttribute('lang', lang);
   document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+  document.title = lang === 'ar' ? 'مصروفي' : 'Masrofy'; // the tab / recent-apps name follows the language
 }
 
 interface I18nCtx {

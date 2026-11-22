@@ -7,6 +7,7 @@ import { PairBars } from '../components/charts';
 import { MonthCompare, TagSpending, WeekdaySpending } from '../components/ReportCards';
 import { Card, COLORS, IconButton, KV, PageHeader, SectionTitle } from '../components/ui';
 import { isRtl, locale, t } from '../i18n';
+import { wholeUnits } from '../domain/money';
 import { useApp } from '../state';
 
 interface MonthTotals { month: string; hasBudget: boolean; income: number; spent: number; saved: number; repaid: number }
@@ -64,7 +65,7 @@ export default function Reports() {
         <KV k={t('Spent on expenses')} v={fmt(spent)} color={COLORS.red} bold />
         <KV k={t('Net saved')} v={fmt(saved)} color={COLORS.accent} bold />
         <KV k={t('Loans repaid')} v={fmt(repaid)} color={COLORS.amber} bold />
-        <KV k={t('Average monthly spending')} v={fmt(active === 0 ? 0 : Math.floor(spent / active))} bold />
+        <KV k={t('Average monthly spending')} v={fmt(active === 0 ? 0 : wholeUnits(Math.floor(spent / active)))} bold />
       </Card>
 
       <Card>

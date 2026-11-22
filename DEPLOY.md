@@ -145,25 +145,43 @@ sh deploy/update.sh
 It backs up the database, pulls the latest code, rebuilds, restarts and waits until the
 app is healthy. Database migrations run automatically on start.
 
-## Email ("Forgot password?" codes), free
+## Email ("Forgot password?" codes) from no-reply@masrofy.online
 
-New accounts sign up with an email. With email set up, **Forgot password?** emails a one-time code
-(valid 30 minutes, 5 wrong tries, 3 emails per address per hour; the screen never says whether an address
-has an account). Any SMTP server works; two free ones:
+New accounts sign up with an email. **Forgot password?** asks for the **username or email**, and emails a
+one-time code to the address registered on that account (valid 30 minutes, 5 wrong tries, 3 emails per
+account per hour; the screen never says whether an account exists).
 
-**Gmail** (free, about 500 emails a day):
-1. On the Google account that sends the mail, turn on 2-Step Verification.
-2. Google Account → Security → **App passwords** → create one ("Budget me"). You get 16 letters.
-3. In `.env`: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_USER=you@gmail.com`,
-   `SMTP_PASS=<the 16 letters, no spaces>`, `MAIL_FROM=Budget me <you@gmail.com>`.
+**The built-in mail server (default).** `docker compose up -d` also starts the `mail` service: Postfix that
+sends as `Masrofy <no-reply@masrofy.online>`, signs every email with DKIM, publishes no port and only accepts
+mail from the app. Sending straight from a VPS only reaches inboxes (not spam) with these set up once:
 
-**Brevo** (free plan, 300 emails a day): create an account, add and verify your sender address, then
-SMTP & API → SMTP: `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587`, `SMTP_USER=<your SMTP login>`,
-`SMTP_PASS=<SMTP key>`, `MAIL_FROM=Budget me <the verified address>`.
+1. **Port 25 outbound.** Many VPS providers block it on new servers. Test from the VPS:
+   `nc -vz gmail-smtp-in.l.google.com 25`. If it times out, ask the provider to unblock outgoing port 25.
+2. **Reverse DNS (PTR).** In the VPS provider's panel, set the server IP's reverse DNS to `mail.masrofy.online`.
+3. **DNS records** at your domain's DNS host (replace `203.0.113.5` with the VPS IP):
+   | Type | Name | Value |
+   |---|---|---|
+   | A | `mail` | `203.0.113.5` |
+   | TXT | `@` | `v=spf1 ip4:203.0.113.5 -all` |
+   | TXT | `mail._domainkey` | the DKIM key (step 4) |
+   | TXT | `_dmarc` | `v=DMARC1; p=quarantine; rua=mailto:you@your-own-address` |
+   (If the domain already has an SPF record, add `ip4:203.0.113.5` to it instead of making a second one.)
+4. **DKIM key.** The mail service makes one on first start and keeps it in the `mailkeys` volume:
+   `docker compose exec mail sh -c 'cat /etc/opendkim/keys/*.txt'`. Copy the quoted `v=DKIM1; ... p=...` parts
+   (joined into one line) into the `mail._domainkey` TXT record. Keep the volume: a new key means a new record.
+5. **Check.** Tap **Forgot password?** in the app with your own account, then open the email in Gmail:
+   ⋮ → *Show original* should say `SPF: PASS`, `DKIM: PASS`, `DMARC: PASS`.
+   Problems: `docker compose logs mail` (delivery) and `docker compose logs app | grep email` (the app's side).
 
-Then `docker compose up -d`. Check: on the sign-in screen tap **Forgot password?** and send a code to your own
-address. If it doesn't arrive, look in spam and in `docker compose logs app | grep email`.
-Without `SMTP_HOST` the app still works: **Forgot password?** then asks for a code from an admin.
+The domain and host name come from `MAIL_DOMAIN` and `MAIL_HOSTNAME` in `.env` (defaults `masrofy.online`,
+`mail.masrofy.online`). Replies to no-reply@ are not received: this server only sends.
+
+**Another SMTP server instead** (e.g. Brevo's free plan, 300 emails a day; or Gmail with an app password):
+set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_REQUIRE_TLS=true` and `MAIL_FROM` in `.env`.
+Codes are only ever sent over an encrypted connection to such servers; `SMTP_REQUIRE_TLS=false` is honoured
+only for the built-in `mail` service on the private Docker network.
+
+`SMTP_HOST=off` turns email off: **Forgot password?** then asks for a code from an admin.
 
 Accounts made before 0.6.3 have no email: each person can add one in **Settings → Account**.
 

@@ -25,7 +25,7 @@ async function codeFromEmail(to: string): Promise<string> {
 }
 
 test.describe('0.6.3: email', () => {
-  test('forgot password: a code by email, a new password, sign in with the email', async ({ page }) => {
+  test('forgot password by username: the code goes to the registered email; new password; sign in with the email', async ({ page }) => {
     const name = await signUpAndSkipTutorial(page);
     const email = emailFor(name);
     await tab(page, 'Home').click();
@@ -34,10 +34,10 @@ test.describe('0.6.3: email', () => {
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
 
     await page.getByRole('button', { name: 'Forgot password?' }).click();
-    await page.getByLabel('Email').fill(email.toUpperCase());
+    await page.getByLabel('Username or email').fill(name.toUpperCase()); // the username, not the email
     await page.getByRole('button', { name: 'Email me a code' }).click();
-    await expect(page.getByText(/a code is on its way/)).toBeVisible();
-    const code = await codeFromEmail(email);
+    await expect(page.getByText(/a code is on its way to the email registered on it/)).toBeVisible();
+    const code = await codeFromEmail(email); // arrives at the account's email
 
     await page.getByLabel('Reset code').fill(code);
     await page.getByLabel(/^New password/).fill('weakpassword');
@@ -54,12 +54,15 @@ test.describe('0.6.3: email', () => {
     await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
   });
 
-  test('an unknown address gets the same answer (nothing is revealed)', async ({ page }) => {
+  test('an unknown username or address gets the same answer (nothing is revealed)', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Forgot password?' }).click();
-    await page.getByLabel('Email').fill('nobody.at.all@example.com');
-    await page.getByRole('button', { name: 'Email me a code' }).click();
-    await expect(page.getByText(/If an account uses nobody.at.all@example.com, a code is on its way/)).toBeVisible();
+    for (const who of ['nobody.at.all@example.com', 'no.such.person']) {
+      await page.getByRole('button', { name: 'Forgot password?' }).click();
+      await page.getByLabel('Username or email').fill(who);
+      await page.getByRole('button', { name: 'Email me a code' }).click();
+      await expect(page.getByText('If that account exists, a code is on its way to the email registered on it. Check your inbox (and spam).')).toBeVisible();
+      await page.getByRole('button', { name: 'Back to sign in' }).click();
+    }
   });
 
   test('change the email in Settings (needs the password)', async ({ page }) => {

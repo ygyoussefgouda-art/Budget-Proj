@@ -50,8 +50,8 @@ const dayDiff = (a: Date, b: Date) => Math.round((Date.UTC(b.getFullYear(), b.ge
 export function monthEndNote(x: MonthEndInput, now = new Date()): Note | null {
   const at = atTime(x.last, 20);
   if (at.getTime() <= now.getTime()) return null;
-  const title = t('Your month in Budget me');
-  if (x.locked) return { at, title, body: t('Your month ends today. Open Budget me to see how it went.') };
+  const title = t('Your month in Masrofy');
+  if (x.locked) return { at, title, body: t('Your month ends today. Open Masrofy to see how it went.') };
   const body =
     x.left >= 0
       ? t('You spent {spent} and saved {saved}. {left} is left over.', { spent: x.fmt(x.spent), saved: x.fmt(x.saved), left: x.fmt(x.left) })
@@ -70,7 +70,7 @@ export function fortnightNote(x: MonthEndInput, now = new Date()): Note | null {
     const at = atTime(x.from, 19, days);
     if (at.getTime() <= now.getTime() || at.getTime() >= end.getTime()) continue;
     const title = t('Money check');
-    if (x.locked) return { at, title, body: t('Open Budget me to see how much you have left this month.') };
+    if (x.locked) return { at, title, body: t('Open Masrofy to see how much you have left this month.') };
     if (x.left < 0) return { at, title, body: t('You are {amount} over your income this month.', { amount: x.fmt(-x.left) }) };
     const daysLeft = dayDiff(at, end) + 1; // that day included
     return {
@@ -140,7 +140,7 @@ export function remindersToSend(
       out.push({
         key,
         title: level === 'warn' ? t('{name} is at {pct}% of its budget', { name: a.name, pct: a.pct ?? 80 }) : t('{name} reached its budget', { name: a.name }),
-        body: t('Open Budget me to see this month.'),
+        body: t('Open Masrofy to see this month.'),
       });
     }
   }
@@ -148,7 +148,7 @@ export function remindersToSend(
     for (const d of due) {
       const key = `r:${d.ruleId}:${d.date}`;
       if (sent.has(key)) continue;
-      out.push({ key, title: t('Recurring expense due: {name}', { name: d.description || catName(d.categoryId) }), body: t('Tap Add or Skip in Budget me.') });
+      out.push({ key, title: t('Recurring expense due: {name}', { name: d.description || catName(d.categoryId) }), body: t('Tap Add or Skip in Masrofy.') });
     }
   }
   return out;

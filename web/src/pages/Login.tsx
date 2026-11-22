@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import Brand from '../components/Brand';
 import { Eye, EyeOff, Languages, Wallet } from 'lucide-react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +7,7 @@ import { api } from '../api';
 import { GetAndroidAppLink } from '../components/AndroidApp';
 import Splash from '../components/Splash';
 import { newPasswordError, PasswordRules } from '../components/PasswordRules';
-import { COLORS, FormError, Segmented } from '../components/ui';
+import { FormError, Segmented } from '../components/ui';
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
 import { APP_VERSION, MARK, VERSION_KEY } from '../version';
 
@@ -143,7 +144,7 @@ export default function Login() {
 
   if (ticket) {
     return (
-      <div className="login">
+      <main className="login">
         <SecondStep
           ticket={ticket}
           onDone={signedIn}
@@ -153,13 +154,13 @@ export default function Login() {
             setErr(null);
           }}
         />
-      </div>
+      </main>
     );
   }
 
   if (resetting) {
     return (
-      <div className="login">
+      <main className="login">
         <ResetPassword
           initial={username || email}
           byEmail={cfg?.emailReset ?? false}
@@ -174,12 +175,12 @@ export default function Login() {
             setNotice(t('Password changed. Sign in with your new password.'));
           }}
         />
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="login">
+    <main className="login">
       <form className="login-card" onSubmit={submit} noValidate>
         <div className="row between">
           <span className="login-logo">
@@ -197,9 +198,7 @@ export default function Login() {
           </label>
         </div>
         <h1 className="brand">
-          <span dir="ltr">
-            Budget <span style={{ color: COLORS.accent }}>me</span>
-          </span>
+          <Brand />
           <span className="stage-badge" title={t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}>
             {MARK}
           </span>
@@ -286,7 +285,7 @@ export default function Login() {
           </p>
         )}
       </form>
-    </div>
+    </main>
   );
 }
 
@@ -317,15 +316,17 @@ function ResetPassword({
 
   const sendCode = async (e?: FormEvent) => {
     e?.preventDefault();
-    const mail = login.trim().toLowerCase();
-    if (!EMAIL_RE.test(mail)) return setErr(t('Enter the email address of your account.'));
+    // Username or email: the code goes to the email registered on that account.
+    const who = login.trim().toLowerCase();
+    if (!who) return setErr(t('Enter your username or email.'));
+    if (who.includes('@') && !EMAIL_RE.test(who)) return setErr(t('That email address does not look right.'));
     setBusy(true);
     setErr(null);
     try {
-      await api('/auth/forgot', 'POST', { email: mail });
-      setLogin(mail);
+      await api('/auth/forgot', 'POST', { login: who });
+      setLogin(who);
       setStep('code');
-      setInfo(t('If an account uses {email}, a code is on its way. Check your inbox (and spam).', { email: mail }));
+      setInfo(t('If that account exists, a code is on its way to the email registered on it. Check your inbox (and spam).'));
     } catch (x) {
       setErr((x as Error).message);
     }
@@ -354,15 +355,15 @@ function ResetPassword({
     return (
       <form className="login-card" onSubmit={sendCode} noValidate>
         <h1>{t('Reset your password')}</h1>
-        <p className="small mute">{t('Enter the email you signed up with. We send you a code that works once, for 30 minutes.')}</p>
+        <p className="small mute">{t("Enter your username or email. We email a code to the address on your account. It works once, for 30 minutes.")}</p>
         <label className="field">
-          <span className="field-label">{t('Email')}</span>
+          <span className="field-label">{t('Username or email')}</span>
           <input
             className="input"
             dir="ltr"
-            type="email"
+            type="text"
             inputMode="email"
-            autoComplete="email"
+            autoComplete="username"
             autoCapitalize="none"
             value={login}
             autoFocus
@@ -446,7 +447,7 @@ function SecondStep({ ticket, onDone, onCancel }: { ticket: string; onDone: (r: 
   return (
     <form className="login-card" onSubmit={submit} noValidate>
       <h1>{t('Two-step sign-in')}</h1>
-      <p className="small mute">{t('Open your authenticator app and enter the 6-digit code for Budget me. Lost your phone? Use one of your backup codes.')}</p>
+      <p className="small mute">{t('Open your authenticator app and enter the 6-digit code for Masrofy. Lost your phone? Use one of your backup codes.')}</p>
       <label className="field">
         <span className="field-label">{t('Code')}</span>
         <input

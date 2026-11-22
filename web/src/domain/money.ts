@@ -132,4 +132,10 @@ export function fmtMoney(minor: number, cur: string): string {
   return `${neg ? '−' : ''}${s}${cur ? ` ${cur}` : ''}`;
 }
 
-export const num2 = (v: number) => (Number.isInteger(v) ? String(v) : String(v));
+/**
+ * Whole units for computed figures (averages, paces, per-day amounts): "2,167 EGP" reads better than
+ * "2,166.67 EGP" and nobody plans to the piastre. Rounds towards zero, so it never promises more than there is.
+ */
+export const wholeUnits = (minor: number) => Math.trunc(minor / 100) * 100;
+
+export const num2 =(v: number) => (Number.isInteger(v) ? String(v) : String(v));

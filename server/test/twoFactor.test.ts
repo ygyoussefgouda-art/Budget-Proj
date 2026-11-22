@@ -62,7 +62,7 @@ describe('two-step sign-in', () => {
     const { a } = await newUser();
     expect((await a.post('/api/auth/2fa/setup').send({ password: 'wrong-pass-12' })).status).toBe(403);
     const s = (await a.post('/api/auth/2fa/setup').send({ password: PASS }).expect(200)).body;
-    expect(s.uri).toMatch(/^otpauth:\/\/totp\/Budget%20me:tfa\.user\d+\?secret=[A-Z2-7]+&issuer=Budget%20me/);
+    expect(s.uri).toMatch(/^otpauth:\/\/totp\/Masrofy:tfa\.user\d+\?secret=[A-Z2-7]+&issuer=Masrofy/);
     expect((await a.get('/api/auth/me')).body.user.twoFactor).toBe(false);
     expect((await a.post('/api/auth/2fa/enable').send({ code: '000000' })).status).toBe(400);
     const r = await a.post('/api/auth/2fa/enable').send({ code: codeNow(s.secret) }).expect(200);

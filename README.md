@@ -1,13 +1,13 @@
-# Budget me · MK1 (version 1.2.1)
+# Masrofy (مصروفي) · MK1 (version 1.3.0)
 
-![Budget me MK1: Home, Budget, Expenses, Savings, Reports, light mode and Arabic](design/screenshots/overview.png)
+*Your money, planned.*
 
-> **MK1** is the first full release (after the 0.x alphas). Developed by Youssef Gouda. Download a backup now and then (Settings → Download backup).
+![Masrofy MK1: Home, Budget, Expenses, Savings, Reports, light mode and Arabic](design/screenshots/overview.png)
 
-A mobile web app for managing a budget: monthly budget, expenses, savings goals, loans and yearly reports.
-It is built with **React** (Vite, TypeScript) and a **Node.js API** (Express, TypeScript) on **PostgreSQL**, and runs in **Docker**.
+> **MK1** is the first full release (after the 0.x alphas). Developed by Youssef Gouda, with Mohamed Gouda. Formerly "Budget me": the technical names (`budget-me`, `com.budgetme.app`) stay as they were so installed apps and the running server keep working.
 
-Open it on your phone and choose **Add to Home screen**. It installs like an app (PWA): full screen, with its own icon and no browser bar. It is not distributed through any app store.
+An Android app for managing a budget: monthly budget, expenses, savings goals, loans and yearly reports, in English and Egyptian Arabic.
+It is built with **React** (Vite, TypeScript) and a **Node.js API** (Express, TypeScript) on **PostgreSQL**, runs in **Docker** on a VPS, and reaches phones as a sideloaded **Android app** (Capacitor). It is not distributed through any app store. Emails (password reset codes) go out from `no-reply@masrofy.online` through the app's own mail server.
 
 ```
 web/        React app (mobile-first UI, installable PWA)

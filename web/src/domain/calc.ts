@@ -95,7 +95,10 @@ export const rowLeft = (r: BudgetRow) => r.planned - r.actual;
 export const rowBar = (r: BudgetRow) =>
   r.planned === 0 ? (r.actual > 0 && !r.isGoal ? 1 : 0) : Math.min(1, Math.max(0, r.actual / r.planned));
 export const rowOver = (r: BudgetRow) => !r.isGoal && r.actual > r.planned;
-export const rowMet = (r: BudgetRow) => r.isGoal && r.actual >= r.planned;
+/** A savings/loan plan reached. Nothing planned is not a goal met (a new account would show false success). */
+export const rowMet = (r: BudgetRow) => r.isGoal && r.planned > 0 && r.actual >= r.planned;
+/** No plan and nothing spent or saved yet: neutral, neither "OK" nor "Goal met". */
+export const rowUnplanned = (r: BudgetRow) => r.planned === 0 && r.actual === 0;
 
 /**
  * Budget alert for a spending category: 'warn' from 80% of its budget, 'full' at exactly 100%,
@@ -110,7 +113,8 @@ export function alertLevel(r: BudgetRow): AlertLevel | null {
   return null;
 }
 export const rowStatus = (r: BudgetRow) => {
-  if (r.isGoal) return rowMet(r) ? 'Goal met' : 'Behind';
+  if (rowUnplanned(r)) return 'No plan';
+  if (r.isGoal) return r.planned === 0 ? 'Done' : rowMet(r) ? 'Goal met' : 'Behind';
   const a = alertLevel(r);
   return a === 'over' ? 'Over budget' : a === 'full' ? 'Used up' : a === 'warn' ? 'Almost used up' : 'OK';
 };

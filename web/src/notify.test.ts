@@ -60,7 +60,7 @@ describe('reminders (local notifications)', () => {
     expect(widgetText({ perDay: 2000, days: 10, left: 20000, fmt }, false)).toEqual({ title: 'Left today', value: '20 EGP', sub: '200 EGP left · 10 days to go', add: 'Add expense' });
     expect(widgetText({ perDay: 2000, days: 1, left: 2000, fmt }, false).sub).toBe('20 EGP left · last day');
     expect(widgetText({ perDay: -100, days: 3, left: -300, fmt }, false)).toMatchObject({ title: 'Over budget', value: '3 EGP' });
-    expect(widgetText(null, false)).toMatchObject({ title: 'Budget me', value: '' });
+    expect(widgetText(null, false)).toMatchObject({ title: 'Masrofy', value: '' });
   });
 
   it('respects the settings', () => {

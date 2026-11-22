@@ -245,9 +245,13 @@ export function forgotPasswordHandler(db: Db, mailer: Mailer) {
     if (!mailer.enabled) {
       throw new HttpError(503, 'Email is not set up on this server. Ask the person who runs the app for a reset code.', 'no_email');
     }
-    const { email } = schemas.forgotPassword.parse(req.body);
-    const u = (await db.query('SELECT id, username, email FROM users WHERE lower(email) = $1', [email])).rows[0];
-    if (u) {
+    // Username or email; the code always goes to the email registered on that account. The answer is the
+    // same whether or not the account exists (or has an email), so this can't be used to find accounts.
+    const { login } = schemas.forgotPassword.parse(req.body);
+    const u = (
+      await db.query('SELECT id, username, email FROM users WHERE lower(email) = $1 OR lower(username) = $1 LIMIT 1', [login])
+    ).rows[0];
+    if (u?.email) {
       const code = newResetCode();
       await db.tx(async (q) => {
         await q.query('DELETE FROM password_resets WHERE user_id = $1 AND used_at IS NULL', [u.id]); // only the newest code works

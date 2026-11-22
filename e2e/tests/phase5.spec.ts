@@ -6,7 +6,7 @@ const OWNER_PASSWORD = 'e2e-owner-pass-123'; // set for the test server in playw
 async function openAdminAsOwner(page: Page) {
   await signIn(page, 'owner', OWNER_PASSWORD);
   // First sign-in on this (fresh) browser: the tutorial opens; skip it.
-  await expect(page.getByRole('dialog', { name: /Welcome to Budget me/ })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: /Welcome to Masrofy/ })).toBeVisible();
   await page.getByRole('button', { name: 'Skip' }).click();
   await tab(page, 'Home').click();
   await page.getByRole('button', { name: 'Settings' }).click();

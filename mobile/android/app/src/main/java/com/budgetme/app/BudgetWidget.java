@@ -47,7 +47,7 @@ public class BudgetWidget extends AppWidgetProvider {
         SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         String value = p.getString("value", "");
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.budget_widget);
-        v.setTextViewText(R.id.widget_title, p.getString("title", "Budget me"));
+        v.setTextViewText(R.id.widget_title, p.getString("title", "Masrofy"));
         v.setTextViewText(R.id.widget_value, value);
         v.setViewVisibility(R.id.widget_value, value.isEmpty() ? View.GONE : View.VISIBLE);
         v.setTextViewText(R.id.widget_sub, p.getString("sub", ctx.getString(R.string.widget_open)));

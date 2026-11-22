@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { t } from '../i18n';
+import Brand from './Brand';
 
 /** Logo, name, tagline and the hopping dots (same markup as the copy in index.html). */
 function BootContent() {
   return (
     <>
       <img className="boot-logo" src="/icon.svg" alt="" width={80} height={80} />
-      <div className="boot-name" dir="ltr">
-        Budget <span className="boot-me">me</span>
+      <div className="boot-name">
+        <Brand />
       </div>
       <p className="boot-tagline">{t('Your money, planned')}</p>
       <div className="boot-dots">

@@ -10,7 +10,7 @@ export const isAndroid = () => Capacitor.getPlatform() === 'android';
 
 type PermissionState = 'granted' | 'denied' | 'prompt' | 'prompt-with-rationale';
 
-// ---------- Budget me's own plugin (mobile/android/.../BudgetNativePlugin.java) ----------
+// ---------- Masrofy's own plugin (mobile/android/.../BudgetNativePlugin.java) ----------
 interface BudgetNativePlugin {
   getInstalledVersion(): Promise<{ versionCode: number; versionName: string }>;
   canInstall(): Promise<{ value: boolean }>;

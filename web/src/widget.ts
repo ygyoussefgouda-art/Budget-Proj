@@ -18,7 +18,7 @@ export function widgetText(
   locked: boolean,
 ): WidgetText {
   const add = t('Add expense');
-  if (!x || locked) return { title: 'Budget me', value: '', sub: locked ? t('Open Budget me to see your month.') : t('Open Budget me to sign in.'), add };
+  if (!x || locked) return { title: t('Masrofy'), value: '', sub: locked ? t('Open Masrofy to see your month.') : t('Open Masrofy to sign in.'), add };
   if (x.perDay < 0) return { title: t('Over budget'), value: x.fmt(-x.left), sub: t('over this month'), add };
   return {
     title: t('Left today'),

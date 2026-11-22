@@ -18,6 +18,7 @@ import {
   monthsToGoal,
   outstanding,
   remaining,
+  rowMet,
   rowStatus,
   uniMonthly,
   type Category,
@@ -72,6 +73,14 @@ describe('workbook formulas', () => {
     expect(rowStatus(s.rows[3])).toBe('Over budget'); // planned 0, spent 1
     expect(s.netSaved).toBe(50000);
     expect(rowStatus(s.rows[4])).toBe('Goal met');
+  });
+
+  it('nothing planned and nothing done is neutral, not a goal met (new account)', () => {
+    const empty = { catId: null, name: 'Savings', planned: 0, actual: 0, isGoal: true };
+    expect(rowMet(empty)).toBe(false);
+    expect(rowStatus(empty)).toBe('No plan');
+    expect(rowStatus({ ...empty, catId: 1, isGoal: false })).toBe('No plan');
+    expect(rowStatus({ ...empty, actual: 500 })).toBe('Done'); // saved without a plan
   });
 
   it('savings goal maths', () => {

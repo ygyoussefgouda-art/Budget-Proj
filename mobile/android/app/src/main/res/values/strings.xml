@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Budget me</string>
-    <string name="title_activity_main">Budget me</string>
+    <string name="app_name">Masrofy</string>
+    <string name="title_activity_main">Masrofy</string>
     <string name="package_name">com.budgetme.app</string>
     <string name="custom_url_scheme">com.budgetme.app</string>
     <string name="shortcut_add_expense">Add expense</string>
     <string name="widget_description">How much you can spend today, and a button to add an expense.</string>
-    <string name="widget_open">Open Budget me</string>
+    <string name="widget_open">Open Masrofy</string>
 </resources>

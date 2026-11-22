@@ -124,7 +124,14 @@ export const schemas = {
     code: z.string().trim().min(6).max(40),
     password: newPassword,
   }),
-  forgotPassword: z.object({ email }),
+  /** "Forgot password?": the username or the account's email; the code goes to the email on the account. */
+  forgotPassword: z
+    .object({
+      login: z.string().trim().toLowerCase().min(1).max(254).optional(),
+      email: z.string().trim().toLowerCase().max(254).optional(), // older app versions send { email }
+    })
+    .transform((b) => ({ login: b.login || b.email || '' }))
+    .refine((b) => b.login.length > 0, 'Enter your username or email.'),
   setEmail: z.object({ email, password: z.string().min(1).max(200) }),
   settings: z
     .object({

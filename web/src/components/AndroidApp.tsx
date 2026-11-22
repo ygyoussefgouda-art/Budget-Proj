@@ -17,7 +17,7 @@ const ERRORS: Record<string, string> = {
   network: 'Download failed. Check your connection and storage, then try again.',
   checksum: 'The download was damaged. Try again.',
   size: 'The download was damaged. Try again.',
-  package: 'This file is not a Budget me update.',
+  package: 'This file is not a Masrofy update.',
   version: 'This version is already installed.',
   install: 'Could not open the installer.',
   http: 'The server could not send the update. Try again later.',
@@ -73,7 +73,7 @@ function UpdateActions({ allowLater, onLater }: { allowLater: boolean; onLater?:
   return (
     <div className="stack">
       {s.status === 'needs-permission' && (
-        <p className="small">{t('Allow Budget me to install updates: turn on "Allow from this source", then come back.')}</p>
+        <p className="small">{t('Allow Masrofy to install updates: turn on "Allow from this source", then come back.')}</p>
       )}
       {s.status === 'downloading' && (
         <>
@@ -111,7 +111,7 @@ export function UpdateGate() {
         <h1 id="gate-title">{t('Update the app to continue')}</h1>
         {s.release ? (
           <>
-            <p className="small">{t('Version {v} is needed to keep using Budget me.', { v: s.release.versionName })}</p>
+            <p className="small">{t('Version {v} is needed to keep using Masrofy.', { v: s.release.versionName })}</p>
             <ul className="small notes">{notesFor(s.release).map((n) => <li key={n}>{n}</li>)}</ul>
             <UpdateActions allowLater={false} />
           </>
@@ -208,7 +208,7 @@ export function GetAndroidAppCard() {
       <ol className="small steps">
         <li>{t('Tap Download.')}</li>
         <li>{t('Open the file. If Android asks, allow your browser to install unknown apps.')}</li>
-        <li>{t('Open Budget me and sign in. The app then asks for the permissions it needs.')}</li>
+        <li>{t('Open Masrofy and sign in. The app then asks for the permissions it needs.')}</li>
       </ol>
       <a className="btn primary block" href={r.downloadUrl} download>
         <Download size={18} /> {t('Download')}

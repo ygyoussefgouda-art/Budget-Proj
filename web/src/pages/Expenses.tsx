@@ -557,7 +557,7 @@ export function ExpenseForm({
       {!quick && (
         <>
           <Field label={t('Tags (optional)')} hint={t('Up to 5, like #trip #friends. Tap one below to add it.')}>
-            <input className="input" dir="auto" value={tagText} onChange={(e) => setTagText(e.target.value)} placeholder="#trip #friends" autoCapitalize="none" />
+            <input className="input" dir="auto" value={tagText} onChange={(e) => setTagText(e.target.value)} placeholder={t('#trip #friends')} autoCapitalize="none" />
           </Field>
           {tagChips.length > 0 && (
             <div className="chips wrap suggestion-chips" role="group" aria-label={t('Your tags')}>

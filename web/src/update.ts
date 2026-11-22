@@ -93,7 +93,7 @@ export async function checkForUpdate(force = false): Promise<void> {
 }
 
 /**
- * Update button: make sure the app may install updates ("Install unknown apps" for Budget me),
+ * Update button: make sure the app may install updates ("Install unknown apps" for Masrofy),
  * download with progress, check it (the native side verifies size, SHA-256, package and version),
  * then open Android's installer. Data, sign-in and PIN stay: same package, same signing key.
  */

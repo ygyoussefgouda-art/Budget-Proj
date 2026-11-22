@@ -1,4 +1,8 @@
-# CLAUDE.md: Budget me
+# CLAUDE.md: Masrofy (مصروفي), formerly "Budget me"
+
+User-facing name: **Masrofy** (Arabic **مصروفي**), logo "Masrof" + green "y" (`web/src/components/Brand.tsx`).
+Technical ids keep the old name on purpose: `budget-me` (Docker project, paths, CSRF header value), `com.budgetme.app`
+(Android appId, never change), `BudgetMeApp` (user-agent marker). Don't rename those.
 
 Personal budget app: **React (Vite, TS) PWA + Node/Express API (TS) + PostgreSQL**, deployed with Docker
 Compose on the owner's Linux VPS. Being turned into a **sideloaded Android app (Capacitor)** with self-update.

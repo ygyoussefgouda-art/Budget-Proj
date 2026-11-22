@@ -20,7 +20,7 @@ export async function signUp(page: Page, username = newUsername()) {
   await page.getByLabel('Username').fill(username);
   await page.getByLabel(/^Password/).fill(PASSWORD);
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: /Welcome to Budget me/ })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: /Welcome to Masrofy/ })).toBeVisible();
   return username;
 }
 

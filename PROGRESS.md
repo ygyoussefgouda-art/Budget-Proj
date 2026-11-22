@@ -3,7 +3,7 @@
 Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (say why).
 Update at the end of every session. Phases come from `HANDOFF.md` §4.
 
-**Current version:** MK1 (1.2.1) · **Current phase:** all HANDOFF phases built; left: things only the owner can do (phone test, signing key, VPS setup, LICENSE) · **Last updated:** 2026-11-22
+**Current version:** Masrofy MK1 (1.3.0) · **Current phase:** all HANDOFF phases built; left: things only the owner can do (phone test, signing key, VPS setup, LICENSE) · **Last updated:** 2026-11-22
 
 ## Phase 0: Hand-off setup
 - [-] Clone repo, branch `phase-0-handoff`: worked on `main` in the existing checkout; the owner commits/pushes only when they say so (see `MEMORY.md`)
@@ -94,6 +94,15 @@ Phase 1 test results: see the Log below.
 - 2026-11-21: Review of alpha 0.5.6 done; hand-off files written; gaps re-prioritised for a personal sideloaded Android app.
 - 2026-11-21: Phase 0 + Phase 1 done → alpha 0.6.0 (committed `e83525e`, CI green).
 - 2026-11-21: alpha 0.6.2 polish: erase/restore need the password; offline retries answered before caps (and "deleted" items not revived); receipt quota counts the Undo trash and locks; undo checks the quota; backup download is one snapshot; error logs drop DB row details; housekeeping clears expired sessions/codes and old audit entries (`AUDIT_KEEP_DAYS`); overpaid people don't lower loan totals; no duplicate category on retry; month-start change refreshes every report; no lock after camera/file picker; account deletion clears the offline queue; service worker precaches the build (opens offline after first visit) with a per-build cache; "new version" only for a newer server; focus handling in sheets/dialogs; Budget menu closes on tap outside; loading/error states; missing translations; RTL minus in KV rows; tutorial tips; `.gitignore` keystores; README/CODEMAP/CLAUDE fixes. New `server/test/security.test.ts` (10: cross-account, untested routes, offline, quota, housekeeping, headers, CSRF).
+- 2026-11-22: **1.3.0 design fixes** (whole-app critique, `design/critique/whole-app-2026-11-22.md`, 25/40 before). Main changes:
+  - Home's top card shows the sum: income − spent − saved − repaid. It has "N days left", a first step for new accounts, and whole pounds a day.
+  - Home no longer copies the Budget list: a glance card plus a Reports card; the alert banner can be tapped.
+  - No "Goal met" on 0 of 0 (now "No plan").
+  - The save button stays pinned in long sheets; list rows no longer sit in a box inside a box; delete buttons are quieter.
+  - Recent transactions use category icons; Loans colours are fixed; "Delete my account" moved to Danger zone.
+  - Light-mode contrast (amber, red, mute) now passes AA; headings go h1 → h2; 44 px link targets.
+  - Still open: listed in that report's "Not done".
+- 2026-11-22: **1.3.0**: renamed to **Masrofy** (Arabic مصروفي; logo "Masrof" + green "y"), technical ids unchanged. "Forgot password?" takes the username or email and emails the code to the address registered on the account. New `mail` service (Postfix, boky/postfix v5.2.1) sends from no-reply@masrofy.online with DKIM; DNS steps in DEPLOY.md. Android versionCode 5.
 - 2026-11-22: **1.2.1**: app only. With `APP_ONLY=true` (production default) browsers get a "Get the app" page (English + Arabic) and only the Android app can use Budget me. Android versionCode 4 (the app now marks its requests).
 - 2026-11-22: **1.2.0**: log again, maths in amounts, save buzz, pull to refresh, remembered Expenses filters, category icons and colours, Undo for whole goals and people, month-end summary and 2-weekly money check (Android), home-screen widget (Android), budget rollover and merge repeats (both off by default, sliding switches in Settings → Budget options). Also: language order English · عربي · System, no MK1 badge in the Home header, tutorial tips for all of it. Migration 010. Android versionCode 3. The widget's Java is only compiled by the GitHub Android build.
 - 2026-11-22: **1.1.0**: loading screen (logo, name, tagline, hopping dots; also in index.html before the app loads) that fades into Home; signing in always opens Home; rate-limit key uses the library's IPv6 helper (no more startup warning). Android versionCode 2. Server 144, web 30, E2E 58 green; audit 0.
