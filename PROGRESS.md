@@ -3,7 +3,7 @@
 Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (say why).
 Update at the end of every session. Phases come from `HANDOFF.md` §4.
 
-**Current version:** alpha 0.6.2 · **Current phase:** 1 done + review fixes + polish; next: email sign-up/reset (0.6.3), then 6, 2-5, 7, 8 · **Last updated:** 2026-11-21
+**Current version:** alpha 0.6.3 · **Current phase:** email sign-up/reset done; next: 6, then 2-5, 7, 8 · **Last updated:** 2026-11-21
 
 ## Phase 0: Hand-off setup
 - [-] Clone repo, branch `phase-0-handoff`: worked on `main` in the existing checkout; the owner commits/pushes only when they say so (see `MEMORY.md`)
@@ -85,7 +85,7 @@ Blocked on: production domain, final `appId`, keystore location (open questions 
 
 ## Phase 8: Hardening & cleanup (optional)
 - [ ] TOTP 2FA for admins
-- [ ] Optional email password reset
+- [x] Email password reset (done in 0.6.3, owner's request)
 - [~] Repo hygiene: README no longer mentions `legacy-flutter/` (done in 0.6.0); LICENSE, contact email to config, scripts still open
 - [ ] Dependency major upgrades (React 19, Vite, Express 5, Vitest), one per PR
 
@@ -93,4 +93,5 @@ Blocked on: production domain, final `appId`, keystore location (open questions 
 - 2026-11-21: Review of alpha 0.5.6 done; hand-off files written; gaps re-prioritised for a personal sideloaded Android app.
 - 2026-11-21: Phase 0 + Phase 1 done → alpha 0.6.0 (committed `e83525e`, CI green).
 - 2026-11-21: alpha 0.6.2 polish: erase/restore need the password; offline retries answered before caps (and "deleted" items not revived); receipt quota counts the Undo trash and locks; undo checks the quota; backup download is one snapshot; error logs drop DB row details; housekeeping clears expired sessions/codes and old audit entries (`AUDIT_KEEP_DAYS`); overpaid people don't lower loan totals; no duplicate category on retry; month-start change refreshes every report; no lock after camera/file picker; account deletion clears the offline queue; service worker precaches the build (opens offline after first visit) with a per-build cache; "new version" only for a newer server; focus handling in sheets/dialogs; Budget menu closes on tap outside; loading/error states; missing translations; RTL minus in KV rows; tutorial tips; `.gitignore` keystores; README/CODEMAP/CLAUDE fixes. New `server/test/security.test.ts` (10: cross-account, untested routes, offline, quota, housekeeping, headers, CSRF).
+- 2026-11-22: alpha 0.6.3 (owner's request): sign-up needs an email; new passwords need 8+ chars with lower/upper/number/special (live checklist, "Show" button, no repeat field on sign-up); sign in with username or email; "Forgot password?" emails a one-time code (30 min, 5 tries, 3 mails/address/hour, same answer for unknown addresses) over any SMTP server (free: Gmail app password or Brevo); admin codes still work; Settings → add/change email (needs password). Migration `008_email`. New dependency nodemailer. New env vars `SMTP_HOST/PORT/USER/PASS`, `MAIL_FROM` (`MAIL_OUTBOX_DIR` dev/test only). Tests: `server/test/email.test.ts` (11), `e2e/tests/email.spec.ts` (3).
 - 2026-11-21: Full review written to `docs/REVIEW-2026-11-21.md`; its 8 "fix first" items fixed → alpha 0.6.1. No migration, no new env vars. Added pino (server). New env vars `LOG_LEVEL`, `MIN_NATIVE_VERSION_CODE`. No migration.

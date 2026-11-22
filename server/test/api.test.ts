@@ -12,7 +12,7 @@ const PASSWORD = 'correct horse battery';
 
 let db: Db;
 /** App for the functional tests: same as production but without the CSRF header check (tested separately). */
-const mkApp = (opts: Parameters<typeof createApp>[1] = {}) => createApp(db, { csrfHeader: false, ...opts });
+const mkApp = (opts: Parameters<typeof createApp>[1] = {}) => createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false, ...opts });
 let agent: ReturnType<typeof request.agent>;
 
 beforeAll(async () => {
@@ -32,7 +32,7 @@ describe('fresh install', () => {
     try {
       await migrate(fresh, path.join(here, '..', 'migrations'));
       await ensureOwner(fresh, PASSWORD);
-      const a = request.agent(createApp(fresh, { csrfHeader: false }));
+      const a = request.agent(createApp(fresh, { requireEmail: false, strongPasswords: false, csrfHeader: false }));
       await a.post('/api/auth/login').send({ password: PASSWORD }).expect(200);
       const s = (await a.get('/api/state?month=2026-11')).body;
       expect(s.categories).toEqual([]);
@@ -82,7 +82,7 @@ describe('sign up', () => {
 
   it('can be turned off', async () => {
     const closed = request(mkApp({ allowSignup: false }));
-    expect((await closed.get('/api/auth/config')).body).toEqual({ signupEnabled: false, inviteRequired: false });
+    expect((await closed.get('/api/auth/config')).body).toMatchObject({ signupEnabled: false, inviteRequired: false });
     expect((await closed.post('/api/auth/signup').send({ username: 'blocked', password: 'long-enough' })).status).toBe(403);
   });
 
@@ -407,7 +407,7 @@ describe('backup', () => {
 
 describe('security hardening', () => {
   const CSRF = { 'X-Requested-With': 'budget-me' };
-  const prod = () => createApp(db); // real defaults: CSRF header required
+  const prod = () => createApp(db, { requireEmail: false, strongPasswords: false }); // real defaults: CSRF header required
 
   it('blocks writes without the app header or from another site', async () => {
     const a = request.agent(prod());
@@ -439,7 +439,7 @@ describe('security hardening', () => {
 
   it('invite code, when set, is required to sign up', async () => {
     const a = request(mkApp({ inviteCode: 'family-2026' }));
-    expect((await a.get('/api/auth/config')).body).toEqual({ signupEnabled: true, inviteRequired: true });
+    expect((await a.get('/api/auth/config')).body).toMatchObject({ signupEnabled: true, inviteRequired: true });
     expect((await a.post('/api/auth/signup').send({ username: 'invited.no', password: 'long-enough-1' })).status).toBe(403);
     expect(
       (await a.post('/api/auth/signup').send({ username: 'invited.no', password: 'long-enough-1', inviteCode: 'wrong' })).status,

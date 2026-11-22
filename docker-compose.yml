@@ -61,6 +61,12 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MIN_NATIVE_VERSION_CODE: ${MIN_NATIVE_VERSION_CODE:-0}
       AUDIT_KEEP_DAYS: ${AUDIT_KEEP_DAYS:-365}
+      # Email for "Forgot password?" codes (empty SMTP_HOST = off)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     ports:
       # Localhost only: your existing reverse proxy (nginx/Caddy) forwards HTTPS traffic here.
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8090}:3000"

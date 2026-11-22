@@ -34,10 +34,10 @@ test.describe('phase 5: admin page and password reset', () => {
     await phone.getByRole('button', { name: 'Settings' }).click();
     await phone.getByRole('button', { name: 'Sign out', exact: true }).click();
     await phone.getByRole('button', { name: 'Forgot password?' }).click();
+    await phone.getByRole('button', { name: 'I already have a code' }).click(); // the code came from the admin, not by email
     await phone.getByLabel('Username').fill(name);
     await phone.getByLabel('Reset code').fill(code.toLowerCase());
-    await phone.getByLabel(/^New password/).fill('my-new-password-1');
-    await phone.getByLabel('Repeat new password').fill('my-new-password-1');
+    await phone.getByLabel(/^New password/).fill('My-new-password-1');
     await phone.getByRole('button', { name: 'Set new password' }).click();
     await expect(phone.getByText('Password changed. Sign in with your new password.')).toBeVisible();
     await expect(phone.getByLabel('Username')).toHaveValue(name);
@@ -46,7 +46,7 @@ test.describe('phase 5: admin page and password reset', () => {
     await phone.getByLabel(/^Password/).fill(PASSWORD);
     await phone.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(phone.getByText('Wrong username or password.')).toBeVisible();
-    await phone.getByLabel(/^Password/).fill('my-new-password-1');
+    await phone.getByLabel(/^Password/).fill('My-new-password-1');
     await phone.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(phone.getByRole('navigation', { name: 'Main' })).toBeVisible();
     await ctx.close();

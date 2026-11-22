@@ -11,7 +11,7 @@ import { migrate } from '../src/migrate.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OWNER_PASS = 'owner-pass-12345';
 let db: Db;
-const mkApp = () => createApp(db, { csrfHeader: false, signupLimit: 1000, loginLimit: 1000, adminUsernames: ['chief', 'deputy'] });
+const mkApp = () => createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false, signupLimit: 1000, loginLimit: 1000, adminUsernames: ['chief', 'deputy'] });
 type Agent = ReturnType<typeof request.agent>;
 const idOf = async (name: string) => (await db.query('SELECT id FROM users WHERE username = $1', [name])).rows[0].id as number;
 async function signIn(username: string, password: string): Promise<Agent> {
@@ -31,7 +31,7 @@ beforeAll(async () => {
   db = await createPgliteDb();
   await migrate(db, path.join(here, '..', 'migrations'));
   await ensureOwner(db, OWNER_PASS);
-  const plain = createApp(db, { csrfHeader: false });
+  const plain = createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false });
   await request(plain).post('/api/auth/signup').send({ username: 'chief', password: 'chief-pass-123' }).expect(201);
   await request(plain).post('/api/auth/signup').send({ username: 'deputy', password: 'deputy-pass-123' }).expect(201);
 }, 60_000);

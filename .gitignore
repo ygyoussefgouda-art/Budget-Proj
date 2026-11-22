@@ -11,6 +11,7 @@ legacy-flutter/
 # Playwright output
 e2e/report/
 e2e/results/
+e2e/mail-outbox/
 # database backups made on the server
 backups/
 # Android signing: never commit the release key or its passwords

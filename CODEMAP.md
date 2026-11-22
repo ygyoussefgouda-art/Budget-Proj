@@ -1,6 +1,6 @@
 # CODEMAP.md: where things live
 
-Snapshot of alpha 0.6.1 (2026-11-21). Update when files are added, moved or change purpose.
+Snapshot of alpha 0.6.3 (2026-11-22). Update when files are added, moved or change purpose.
 Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 
 ## Top level
@@ -28,6 +28,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 |---|---|
 | `index.ts` | Entry: reads env, checks secrets, picks DB driver, runs migrations, creates owner, starts HTTP, trash purge timer, graceful shutdown |
 | `app.ts` | `createApp()`: request logger, Helmet/CSP, `no-store` on `/api`, rate limiters (`ipKey`), Origin + CSRF header check, JSON limits, public routes (`/health`, `/version`, `/client-errors`, `/auth/*`), then `requireAuth`, then all routers; serves the SPA with cache headers |
+| `mail.ts` | `mailerFromEnv` (SMTP via nodemailer, or `MAIL_OUTBOX_DIR` files for dev/tests), reset-code email text (EN + AR), `sendInBackground` |
 | `log.ts` | pino logger (`log`), `APP_VERSION` (from package.json), `requestLogger` (request id + access line), `requestId(res)` |
 | `auth.ts` | Login, signup, logout, logout-all, change password, delete account, `requireAuth`, sessions, owner account, admin usernames |
 | `admin.ts` | Admin page API: users, sign-up settings, delete user, one-time reset codes, audit log; `/auth/reset` handler |
@@ -51,10 +52,10 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 ### Migrations (`server/migrations/`)
 `001_init` users, sessions, categories, month_budgets, category_plans, expenses, goals, goal_entries, loan_entries ·
 `002_month_start_day` · `003_receipts` · `004_recurring_and_undo` (recurring_rules, recurring_occurrences, trash) ·
-`005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets)
+`005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`)
 
 ### Server tests (`server/test/`)
-`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans): vitest + supertest against PGlite.
+`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3): vitest + supertest against PGlite.
 
 ## Web (`web/`)
 | Path | Purpose |
@@ -91,14 +92,14 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `BudgetForms`,
 `charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour), `AppLock` +
 `AppLockSettings`, `OfflineApp` + `OfflineQueue`, `ExportLinks`, `MonthStartPicker`, `ContactCard` (contact email constant),
-`ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).
+`PasswordRules` (live new-password checklist, `newPasswordError`), `ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).
 **(planned)** `UpdateCard` (Android updates), `GetAndroidApp`.
 
 `domain/`: `calc.ts` (workbook formulas, pure) + `calc.test.ts`, `money.ts` (minor units, Arabic digits),
 `gestures.ts` (swipe thresholds) + `phone.test.ts`.
 
 ## E2E (`e2e/`)
-`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety` specs, `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
+`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety`, `email` specs (emails read from `e2e/mail-outbox`), `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
 
 ## Mobile (`mobile/`) **(planned)**
 | Path | Purpose |

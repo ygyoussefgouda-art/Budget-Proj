@@ -13,7 +13,7 @@ import { housekeeping } from '../src/undo.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 let db: Db;
-const mkApp = () => createApp(db, { csrfHeader: false, signupLimit: 1000, loginLimit: 1000 });
+const mkApp = () => createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false, signupLimit: 1000, loginLimit: 1000 });
 type Agent = ReturnType<typeof request.agent>;
 const PASS = 'security-pass-123';
 let n = 0;
@@ -192,7 +192,7 @@ describe('housekeeping', () => {
 
 describe('headers and cookies', () => {
   it('strict security headers, no caching of API data, safe session cookie', async () => {
-    const app = createApp(db, { csrfHeader: false, signupLimit: 1000 });
+    const app = createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false, signupLimit: 1000 });
     const r = await request(app).post('/api/auth/signup').send({ username: 'sec.cookie', password: PASS }).expect(201);
     const cookie = String(r.headers['set-cookie']);
     expect(cookie).toMatch(/HttpOnly/i);
@@ -207,7 +207,7 @@ describe('headers and cookies', () => {
   });
 
   it('writes from another site are refused even with a valid session', async () => {
-    const app = createApp(db, { signupLimit: 1000 });
+    const app = createApp(db, { requireEmail: false, strongPasswords: false, signupLimit: 1000 });
     const a = request.agent(app);
     await a.post('/api/auth/signup').set('X-Requested-With', 'budget-me').send({ username: 'sec.csrf', password: PASS }).expect(201);
     const evil = await a.post('/api/categories').set('X-Requested-With', 'budget-me').set('Origin', 'https://evil.example').send({ name: 'X', month: '2026-11' });

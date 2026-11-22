@@ -1,31 +1,84 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, EyeOff, Languages, Wallet } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { api } from '../api';
+import { newPasswordError, PasswordRules } from '../components/PasswordRules';
 import { COLORS, FormError, Segmented } from '../components/ui';
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
 import { APP_VERSION, STAGE, VERSION_KEY } from '../version';
 
 type Mode = 'signin' | 'signup';
 const USERNAME_RE = /^[a-z0-9._-]{3,30}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+interface AuthConfig {
+  signupEnabled: boolean;
+  inviteRequired?: boolean;
+  emailRequired?: boolean;
+  strongPasswords?: boolean;
+  /** "Forgot password?" can email a code. */
+  emailReset?: boolean;
+}
+
+/** Password input with a "Show" button in the label row (like the sign-up design). */
+function PasswordField({
+  label,
+  value,
+  onChange,
+  autoComplete,
+  describedBy,
+  children,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete: string;
+  describedBy?: string;
+  children?: ReactNode;
+}) {
+  const [show, setShow] = useState(false);
+  const id = `pw-${label.replace(/\W+/g, '-').toLowerCase()}`;
+  return (
+    <div className="field">
+      <div className="field-label-row">
+        <label className="field-label" htmlFor={id}>
+          {label}
+        </label>
+        <button type="button" className="show-btn" aria-controls={id} aria-pressed={show} onClick={() => setShow((s) => !s)}>
+          {show ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+          {show ? t('Hide') : t('Show')}
+        </button>
+      </div>
+      <input
+        id={id}
+        className="input"
+        dir="ltr"
+        type={show ? 'text' : 'password'}
+        autoComplete={autoComplete}
+        value={value}
+        aria-describedby={describedBy}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {children}
+    </div>
+  );
+}
 
 export default function Login() {
   const qc = useQueryClient();
   const { pref: langPref, setPref: setLangPref } = useI18n();
-  const config = useQuery({
-    queryKey: ['auth-config'],
-    queryFn: () => api<{ signupEnabled: boolean; inviteRequired?: boolean }>('/auth/config'),
-    staleTime: Infinity,
-  });
-  const signupEnabled = config.data?.signupEnabled ?? true;
-  const inviteRequired = config.data?.inviteRequired ?? false;
+  const config = useQuery({ queryKey: ['auth-config'], queryFn: () => api<AuthConfig>('/auth/config'), staleTime: Infinity });
+  const cfg = config.data;
+  const signupEnabled = cfg?.signupEnabled ?? true;
+  const inviteRequired = cfg?.inviteRequired ?? false;
+  const emailRequired = cfg?.emailRequired ?? true;
+  const strong = cfg?.strongPasswords ?? true;
 
   const [mode, setMode] = useState<Mode>('signin');
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
   const [invite, setInvite] = useState('');
-  const [show, setShow] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -35,27 +88,33 @@ export default function Login() {
   const switchMode = (m: Mode) => {
     setMode(m);
     setErr(null);
-    setConfirm('');
+    setNotice(null);
   };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const name = username.trim().toLowerCase();
-    if (!name) return setErr(t('Enter your username.'));
+    const mail = email.trim().toLowerCase();
+    if (signup) {
+      if (emailRequired && !mail) return setErr(t('Enter your email address.'));
+      if (mail && !EMAIL_RE.test(mail)) return setErr(t('That email address does not look right.'));
+    }
+    if (!name) return setErr(signup ? t('Enter your username.') : t('Enter your username or email.'));
     if (!password) return setErr(t('Enter your password.'));
     if (signup) {
       if (!USERNAME_RE.test(name)) {
         return setErr(t('Usernames are 3–30 characters: letters, numbers, dots, dashes or underscores.'));
       }
-      if (password.length < 10) return setErr(t('Use a password of at least 10 characters.'));
-      if (password.toLowerCase() === name) return setErr(t('Your password must not be the same as your username.'));
-      if (password !== confirm) return setErr(t('The two passwords do not match.'));
+      const pwErr = newPasswordError(password, name, strong);
+      if (pwErr) return setErr(pwErr);
       if (inviteRequired && !invite.trim()) return setErr(t('Enter the invite code.'));
     }
     setBusy(true);
     setErr(null);
     try {
-      const body = signup && inviteRequired ? { username: name, password, inviteCode: invite.trim() } : { username: name, password };
+      const body = signup
+        ? { username: name, password, ...(mail ? { email: mail } : {}), ...(inviteRequired ? { inviteCode: invite.trim() } : {}) }
+        : { username: name, password };
       const r = await api(signup ? '/auth/signup' : '/auth/login', 'POST', body);
       // Start clean: nothing cached from an earlier account on this phone.
       qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
@@ -70,12 +129,14 @@ export default function Login() {
     return (
       <div className="login">
         <ResetPassword
-          initialUsername={username}
+          initial={username || email}
+          byEmail={cfg?.emailReset ?? false}
+          strong={strong}
           onCancel={() => setResetting(false)}
-          onDone={(name) => {
+          onDone={(login) => {
             setResetting(false);
             setMode('signin');
-            setUsername(name);
+            setUsername(login);
             setPassword('');
             setErr(null);
             setNotice(t('Password changed. Sign in with your new password.'));
@@ -127,8 +188,28 @@ export default function Login() {
           {signup ? t('Create your own account. Your budget starts empty and only you can see it.') : t('Sign in to see your budget.')}
         </p>
 
+        {signup && (
+          <label className="field">
+            <span className="field-label">{t('Email')}</span>
+            <input
+              className="input"
+              dir="ltr"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              value={email}
+              autoFocus
+              maxLength={254}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <span className="field-hint">{t('Used only to send you a code if you forget your password.')}</span>
+          </label>
+        )}
+
         <label className="field">
-          <span className="field-label">{t('Username')}</span>
+          <span className="field-label">{signup ? t('Username') : t('Username or email')}</span>
           <input
             className="input"
             dir="ltr"
@@ -137,49 +218,22 @@ export default function Login() {
             autoCorrect="off"
             spellCheck={false}
             value={username}
-            autoFocus
-            maxLength={30}
+            autoFocus={!signup}
+            maxLength={signup ? 30 : 254}
             onChange={(e) => setUsername(e.target.value)}
           />
           {signup && <span className="field-hint">{t('3–30 characters: letters, numbers, dots, dashes or underscores.')}</span>}
         </label>
 
-        <label className="field">
-          <span className="field-label">{t('Password')}</span>
-          <div className="input-wrap">
-            <input
-              className="input"
-              dir="ltr"
-              type={show ? 'text' : 'password'}
-              autoComplete={signup ? 'new-password' : 'current-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button
-              type="button"
-              className="input-icon-btn"
-              aria-label={show ? t('Hide password') : t('Show password')}
-              onClick={() => setShow((s) => !s)}
-            >
-              {show ? <EyeOff size={17} /> : <Eye size={17} />}
-            </button>
-          </div>
-          {signup && <span className="field-hint">{t('At least 10 characters.')}</span>}
-        </label>
-
-        {signup && (
-          <label className="field">
-            <span className="field-label">{t('Repeat password')}</span>
-            <input
-              className="input"
-              dir="ltr"
-              type={show ? 'text' : 'password'}
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
-          </label>
-        )}
+        <PasswordField
+          label={t('Password')}
+          value={password}
+          onChange={setPassword}
+          autoComplete={signup ? 'new-password' : 'current-password'}
+          describedBy={signup ? 'signup-pw-rules' : undefined}
+        >
+          {signup && (strong ? <PasswordRules password={password} id="signup-pw-rules" /> : <span className="field-hint">{t('At least 10 characters.')}</span>)}
+        </PasswordField>
 
         {signup && inviteRequired && (
           <label className="field">
@@ -212,60 +266,134 @@ export default function Login() {
   );
 }
 
-/** "Forgot password?": a one-time code from the person who runs the app, plus a new password. */
-function ResetPassword({ initialUsername, onCancel, onDone }: { initialUsername: string; onCancel: () => void; onDone: (username: string) => void }) {
-  const [username, setUsername] = useState(initialUsername);
+/**
+ * "Forgot password?". With email set up on the server: enter your email, get a code by email.
+ * Otherwise (or for accounts without an email): a one-time code from the person who runs the app.
+ */
+function ResetPassword({
+  initial,
+  byEmail,
+  strong,
+  onCancel,
+  onDone,
+}: {
+  initial: string;
+  byEmail: boolean;
+  strong: boolean;
+  onCancel: () => void;
+  onDone: (login: string) => void;
+}) {
+  const [step, setStep] = useState<'ask' | 'code'>(byEmail ? 'ask' : 'code');
+  const [login, setLogin] = useState(initial);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
   const [err, setErr] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    const name = username.trim().toLowerCase();
-    if (!name) return setErr(t('Enter your username.'));
-    if (!code.trim()) return setErr(t('Enter the reset code.'));
-    if (password.length < 10) return setErr(t('Use a password of at least 10 characters.'));
-    if (password.toLowerCase() === name) return setErr(t('Your password must not be the same as your username.'));
-    if (password !== confirm) return setErr(t('The two passwords do not match.'));
+  const sendCode = async (e?: FormEvent) => {
+    e?.preventDefault();
+    const mail = login.trim().toLowerCase();
+    if (!EMAIL_RE.test(mail)) return setErr(t('Enter the email address of your account.'));
     setBusy(true);
     setErr(null);
     try {
-      await api('/auth/reset', 'POST', { username: name, code: code.trim(), password });
-      onDone(name);
+      await api('/auth/forgot', 'POST', { email: mail });
+      setLogin(mail);
+      setStep('code');
+      setInfo(t('If an account uses {email}, a code is on its way. Check your inbox (and spam).', { email: mail }));
+    } catch (x) {
+      setErr((x as Error).message);
+    }
+    setBusy(false);
+  };
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const who = login.trim().toLowerCase();
+    if (!who) return setErr(byEmail ? t('Enter your username or email.') : t('Enter your username.'));
+    if (!code.trim()) return setErr(t('Enter the reset code.'));
+    const pwErr = newPasswordError(password, who.includes('@') ? '' : who, strong);
+    if (pwErr) return setErr(pwErr);
+    setBusy(true);
+    setErr(null);
+    try {
+      await api('/auth/reset', 'POST', { username: who, code: code.trim(), password });
+      onDone(who);
     } catch (x) {
       setErr((x as Error).message);
       setBusy(false);
     }
   };
 
+  if (step === 'ask') {
+    return (
+      <form className="login-card" onSubmit={sendCode} noValidate>
+        <h1>{t('Reset your password')}</h1>
+        <p className="small mute">{t('Enter the email you signed up with. We send you a code that works once, for 30 minutes.')}</p>
+        <label className="field">
+          <span className="field-label">{t('Email')}</span>
+          <input
+            className="input"
+            dir="ltr"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            value={login}
+            autoFocus
+            maxLength={254}
+            onChange={(e) => setLogin(e.target.value)}
+          />
+        </label>
+        <FormError text={err} />
+        <button className="btn primary block" disabled={busy}>
+          {busy ? t('Sending…') : t('Email me a code')}
+        </button>
+        <button type="button" className="link-btn tiny center-self" onClick={() => { setErr(null); setStep('code'); }}>
+          {t('I already have a code')}
+        </button>
+        <p className="tiny mute">{t('No email on your account? Ask the person who runs this app for a reset code.')}</p>
+        <button type="button" className="btn ghost block" onClick={onCancel}>
+          {t('Back to sign in')}
+        </button>
+      </form>
+    );
+  }
+
   return (
     <form className="login-card" onSubmit={submit} noValidate>
       <h1>{t('Reset your password')}</h1>
-      <p className="small mute">{t('Ask the person who runs this app for a reset code. It works once, for 1 hour.')}</p>
+      {info ? (
+        <p className="small notice">{info}</p>
+      ) : (
+        <p className="small mute">
+          {byEmail
+            ? t('Enter the code from your email (or from the person who runs this app) and choose a new password.')
+            : t('Ask the person who runs this app for a reset code. It works once, for 1 hour.')}
+        </p>
+      )}
       <label className="field">
-        <span className="field-label">{t('Username')}</span>
-        <input className="input" dir="ltr" autoComplete="username" autoCapitalize="none" value={username} onChange={(e) => setUsername(e.target.value)} maxLength={30} />
+        <span className="field-label">{byEmail ? t('Username or email') : t('Username')}</span>
+        <input className="input" dir="ltr" autoComplete="username" autoCapitalize="none" value={login} onChange={(e) => setLogin(e.target.value)} maxLength={254} />
       </label>
       <label className="field">
         <span className="field-label">{t('Reset code')}</span>
         <input className="input" dir="ltr" autoComplete="one-time-code" autoCapitalize="characters" value={code} onChange={(e) => setCode(e.target.value)} placeholder="XXXXX-XXXXX" maxLength={40} />
       </label>
-      <label className="field">
-        <span className="field-label">{t('New password')}</span>
-        <input className="input" dir="ltr" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        <span className="field-hint">{t('At least 10 characters.')}</span>
-      </label>
-      <label className="field">
-        <span className="field-label">{t('Repeat new password')}</span>
-        <input className="input" dir="ltr" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-      </label>
+      <PasswordField label={t('New password')} value={password} onChange={setPassword} autoComplete="new-password" describedBy="reset-pw-rules">
+        {strong ? <PasswordRules password={password} id="reset-pw-rules" /> : <span className="field-hint">{t('At least 10 characters.')}</span>}
+      </PasswordField>
       <p className="tiny mute">{t('All phones and computers signed in to this account will be signed out.')}</p>
       <FormError text={err} />
       <button className="btn primary block" disabled={busy}>
         {t('Set new password')}
       </button>
+      {byEmail && (
+        <button type="button" className="link-btn tiny center-self" onClick={() => { setErr(null); setInfo(null); setStep('ask'); }}>
+          {t("Didn't get a code? Send a new one")}
+        </button>
+      )}
       <button type="button" className="btn ghost block" onClick={onCancel}>
         {t('Back to sign in')}
       </button>

@@ -5,21 +5,34 @@ test.describe('accounts', () => {
   test('sign-up validates input before sending anything', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('tab', { name: 'Create account' }).click();
-    await page.getByLabel('Username').fill('x');
+    const create = () => page.getByRole('button', { name: 'Create account', exact: true }).click();
+    await page.getByLabel('Username').fill(newUsername());
     await page.getByLabel(/^Password/).fill(PASSWORD);
-    await page.getByLabel('Repeat password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Create account', exact: true }).click();
+    await create();
+    await expect(page.getByText('Enter your email address.')).toBeVisible();
+
+    await page.getByLabel('Email').fill('not-an-email');
+    await create();
+    await expect(page.getByText('That email address does not look right.')).toBeVisible();
+
+    await page.getByLabel('Email').fill('someone@example.com');
+    await page.getByLabel('Username').fill('x');
+    await create();
     await expect(page.getByText(/Usernames are 3–30 characters/)).toBeVisible();
 
+    // The password rules tick off as they are met.
     await page.getByLabel('Username').fill(newUsername());
-    await page.getByLabel('Repeat password').fill('something-else');
-    await page.getByRole('button', { name: 'Create account', exact: true }).click();
-    await expect(page.getByText('The two passwords do not match.')).toBeVisible();
-
+    const rules = page.getByRole('list', { name: 'Rules for the new password' });
     await page.getByLabel(/^Password/).fill('short');
-    await page.getByLabel('Repeat password').fill('short');
-    await page.getByRole('button', { name: 'Create account', exact: true }).click();
-    await expect(page.getByText('Use a password of at least 10 characters.')).toBeVisible();
+    await expect(rules.locator('li.ok')).toHaveCount(1);
+    await expect(rules.locator('li.ok')).toContainText('One lowercase character');
+    await create();
+    await expect(page.getByText('Your password does not meet all the rules yet.')).toBeVisible();
+    await page.getByLabel(/^Password/).fill('Short-pass-1');
+    await expect(rules.locator('li.ok')).toHaveCount(5);
+    // Show / Hide
+    await page.getByRole('button', { name: 'Show' }).click();
+    await expect(page.getByLabel(/^Password/)).toHaveAttribute('type', 'text');
   });
 
   test('a new account starts empty, signs out and back in', async ({ page }) => {
@@ -50,9 +63,9 @@ test.describe('accounts', () => {
     const { ctx, page: other } = await newPhonePage(browser);
     await other.goto('/');
     await other.getByRole('tab', { name: 'Create account' }).click();
+    await other.getByLabel('Email').fill('another.person@example.com');
     await other.getByLabel('Username').fill(user.toUpperCase());
     await other.getByLabel(/^Password/).fill(PASSWORD);
-    await other.getByLabel('Repeat password').fill(PASSWORD);
     await other.getByRole('button', { name: 'Create account', exact: true }).click();
     await expect(other.getByText(/already taken/)).toBeVisible();
     await ctx.close();
@@ -114,8 +127,8 @@ test.describe('accounts', () => {
     await page.getByRole('button', { name: 'Change password' }).click();
     const s = page.getByRole('dialog', { name: 'Change password' });
     await s.getByLabel('Current password').fill('wrong-password-1');
-    await s.getByLabel(/^New password/).fill('brand-new-pass-1');
-    await s.getByLabel('Repeat new password').fill('brand-new-pass-1');
+    await s.getByLabel(/^New password/).fill('Brand-new-pass-1');
+    await s.getByLabel('Repeat new password').fill('Brand-new-pass-1');
     await s.getByRole('button', { name: 'Change password' }).click();
     await expect(s.getByText('Your current password is not right.')).toBeVisible();
     await s.getByLabel('Current password').fill(PASSWORD);
@@ -126,7 +139,7 @@ test.describe('accounts', () => {
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await signIn(page, user, PASSWORD);
     await expect(page.getByText('Wrong username or password.')).toBeVisible();
-    await signIn(page, user, 'brand-new-pass-1');
+    await signIn(page, user, 'Brand-new-pass-1');
     await expect(tab(page, 'Home')).toBeVisible();
 
     // Delete the account: password + confirmation, then it is gone
@@ -134,11 +147,11 @@ test.describe('accounts', () => {
     await page.getByRole('button', { name: 'Settings' }).click();
     await page.getByRole('button', { name: 'Delete my account' }).click();
     const d = page.getByRole('dialog', { name: 'Delete my account' });
-    await d.getByLabel('Your password').fill('brand-new-pass-1');
+    await d.getByLabel('Your password').fill('Brand-new-pass-1');
     await d.getByRole('button', { name: 'Delete my account' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click();
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
-    await signIn(page, user, 'brand-new-pass-1');
+    await signIn(page, user, 'Brand-new-pass-1');
     await expect(page.getByText('Wrong username or password.')).toBeVisible();
   });
 });

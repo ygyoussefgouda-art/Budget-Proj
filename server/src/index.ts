@@ -5,6 +5,7 @@ import { configureAuth, ensureOwner } from './auth.js';
 import { createPgDb, createPgliteDb, type Db } from './db.js';
 import { migrate } from './migrate.js';
 import { APP_VERSION, log } from './log.js';
+import { mailerFromEnv } from './mail.js';
 import { housekeeping } from './undo.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -74,6 +75,11 @@ async function main() {
     if (!found.rows.length) log.warn(`ADMIN_USERNAMES: "${name}" has no account yet (sign-up with that name is blocked).`);
   }
 
+  // Email for "Forgot password?" codes (any SMTP server; free options in DEPLOY.md).
+  const mailer = mailerFromEnv();
+  if (!mailer.enabled) log.warn('No SMTP_HOST: "Forgot password?" emails are off; admins can still make reset codes.');
+  if (production && process.env.MAIL_OUTBOX_DIR) fail('MAIL_OUTBOX_DIR is for development only: in production emails would never be sent.');
+
   const app = createApp(db, {
     publicDir: process.env.PUBLIC_DIR ?? path.join(root, 'public'),
     trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
@@ -84,6 +90,7 @@ async function main() {
     loginLimit: positiveInt(process.env.LOGIN_RATE_LIMIT),
     signupLimit: positiveInt(process.env.SIGNUP_RATE_LIMIT),
     minNativeVersionCode: positiveInt(process.env.MIN_NATIVE_VERSION_CODE),
+    mailer,
   });
   const port = Number(process.env.PORT ?? 3000);
   const server = app.listen(port, () => log.info({ port, version: APP_VERSION }, 'Budget me listening'));

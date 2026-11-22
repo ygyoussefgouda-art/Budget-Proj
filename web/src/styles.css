@@ -524,3 +524,15 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 }
 .update-bar svg { color: var(--accent); flex: none; }
 .spinner.small { width: 24px; height: 24px; border-width: 2px; margin: 16px auto; }
+/* Password rules checklist (sign-up, new password) */
+.pw-rules { list-style: none; margin: 2px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 12.5px; color: var(--mute); }
+.pw-rules li { display: flex; align-items: center; gap: 7px; }
+.pw-rules .pw-dot { width: 14px; height: 14px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--on-accent); transition: background .15s; }
+.pw-rules li.ok { color: var(--text); }
+.pw-rules li.ok .pw-dot { background: var(--accent); }
+@media (max-width: 340px) { .pw-rules { grid-template-columns: 1fr; } }
+.field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.show-btn { border: 0; background: none; padding: 0; display: inline-flex; align-items: center; gap: 5px; color: var(--accent); font-weight: 700; font-size: 13px; cursor: pointer; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.email-row { display: flex; align-items: center; gap: 8px; }

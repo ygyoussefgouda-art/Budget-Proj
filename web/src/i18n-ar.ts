@@ -743,6 +743,53 @@ export const AR: Record<string, string> = {
   'ref.': 'مرجع',
   'Too many reports. Try again later.': 'بلاغات كتير. جرّب تاني بعدين.',
 
+  // 0.6.3: email sign-up and "Forgot password?" by email
+  Email: 'الإيميل',
+  'Username or email': 'اسم المستخدم أو الإيميل',
+  'Used only to send you a code if you forget your password.': 'بنستخدمه بس عشان نبعتلك كود لو نسيت الباسورد.',
+  'Enter your email address.': 'اكتب الإيميل بتاعك.',
+  'That email address does not look right.': 'الإيميل ده شكله مش مظبوط.',
+  'Enter your username or email.': 'اكتب اسم المستخدم أو الإيميل.',
+  Show: 'إظهار',
+  Hide: 'إخفاء',
+  'Rules for the new password': 'شروط الباسورد الجديد',
+  done: 'تمام',
+  missing: 'ناقص',
+  'One lowercase character': 'حرف صغير واحد',
+  'One uppercase character': 'حرف كبير واحد',
+  'One number': 'رقم واحد',
+  'One special character': 'رمز واحد (زي ! أو -)',
+  '8 characters minimum': '8 حروف على الأقل',
+  'Your password does not meet all the rules yet.': 'الباسورد لسه مش مكمّل كل الشروط.',
+  'Use at least 8 characters with a lowercase letter, an uppercase letter, a number and a special character.':
+    'استخدم 8 حروف على الأقل فيهم حرف صغير وحرف كبير ورقم ورمز.',
+  'Enter the email address of your account.': 'اكتب الإيميل اللي على حسابك.',
+  'If an account uses {email}, a code is on its way. Check your inbox (and spam).':
+    'لو فيه حساب على {email}، الكود في السكة. بُص على الإيميل (والسبام).',
+  'Enter the email you signed up with. We send you a code that works once, for 30 minutes.':
+    'اكتب الإيميل اللي سجّلت بيه. هنبعتلك كود يشتغل مرة واحدة، لمدة 30 دقيقة.',
+  'Sending…': 'بيتبعت…',
+  'Email me a code': 'ابعتلي كود على الإيميل',
+  'I already have a code': 'معايا كود فعلاً',
+  'No email on your account? Ask the person who runs this app for a reset code.':
+    'مفيش إيميل على حسابك؟ اطلب كود من الشخص اللي مشغّل الأبلكيشن.',
+  'Enter the code from your email (or from the person who runs this app) and choose a new password.':
+    'اكتب الكود اللي جالك على الإيميل (أو من الشخص اللي مشغّل الأبلكيشن) واختار باسورد جديد.',
+  "Didn't get a code? Send a new one": 'الكود موصلش؟ ابعت واحد جديد',
+  'No email yet: add one so you can reset your password yourself.': 'مفيش إيميل لسه: ضيف واحد عشان تقدر ترجّع الباسورد بنفسك.',
+  Change: 'غيّر',
+  'Add email': 'ضيف إيميل',
+  'Change email': 'غيّر الإيميل',
+  'Email saved.': 'الإيميل اتحفظ.',
+  'Email is not set up on this server. Ask the person who runs the app for a reset code.':
+    'الإيميل مش متظبط على السيرفر ده. اطلب كود من الشخص اللي مشغّل الأبلكيشن.',
+  'An account with that email already exists. Sign in, or use "Forgot password?".':
+    'فيه حساب بالإيميل ده فعلاً. ادخل، أو استخدم "نسيت الباسورد؟".',
+  'Another account already uses that email.': 'فيه حساب تاني بيستخدم الإيميل ده.',
+  'A code was sent recently. Check your inbox (and spam), or try again in an hour.':
+    'اتبعت كود من شوية. بُص على الإيميل (والسبام)، أو جرّب تاني بعد ساعة.',
+  'Too many requests. Try again in 15 minutes.': 'طلبات كتير. جرّب تاني بعد ربع ساعة.',
+
   // 0.6.2: polish
   'Spending by category': 'المصروف حسب الفئة',
   'Monthly spending vs savings': 'المصروف والتوفير كل شهر',

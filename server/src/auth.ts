@@ -4,6 +4,7 @@ import type { CookieOptions, Request, RequestHandler, Response } from 'express';
 import type { Db, Queryable } from './db.js';
 import { ah, HttpError } from './http.js';
 import { seedStartingData } from './seed.js';
+import { passwordProblems } from './validation.js';
 
 const scrypt = (pw: string, salt: Buffer, keylen: number, opts: ScryptOptions) =>
   new Promise<Buffer>((res, rej) => scryptCb(pw, salt, keylen, opts, (e, k) => (e ? rej(e) : res(k))));
@@ -21,9 +22,11 @@ export interface AuthUser {
   currency: string;
   /** Day of the month the budget month starts (1..28). */
   monthStartDay: number;
+  /** For "Forgot password?" codes; older accounts may have none. */
+  email?: string | null;
 }
 
-const USER_COLUMNS = 'u.id, u.username, u.currency, u.month_start_day AS "monthStartDay"';
+const USER_COLUMNS = 'u.id, u.username, u.currency, u.month_start_day AS "monthStartDay", u.email';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -193,8 +196,35 @@ export const publicUser = (u: AuthUser) => ({
   username: u.username,
   currency: u.currency,
   monthStartDay: u.monthStartDay,
+  email: u.email ?? null,
   isAdmin: isAdminName(u.username),
 });
+
+// ---------- sign-up rules ----------
+/** Production: email required and strong passwords. Older tests turn these off to keep their fixtures short. */
+let policy = { requireEmail: true, strongPasswords: true };
+export function setSignupPolicy(p: { requireEmail?: boolean; strongPasswords?: boolean }) {
+  policy = { requireEmail: p.requireEmail ?? true, strongPasswords: p.strongPasswords ?? true };
+}
+export const signupPolicy = () => policy;
+
+/** Every new password (sign-up, change, reset) must meet the rules shown on screen. */
+export function checkNewPassword(pw: string, username: string) {
+  if (pw.toLowerCase() === username.toLowerCase()) {
+    throw new HttpError(400, 'Your password must not be the same as your username.', 'weak_password');
+  }
+  if (policy.strongPasswords) {
+    if (passwordProblems(pw).length) {
+      throw new HttpError(
+        400,
+        'Use at least 8 characters with a lowercase letter, an uppercase letter, a number and a special character.',
+        'weak_password',
+      );
+    }
+  } else if (pw.length < 10) {
+    throw new HttpError(400, 'Use a password of at least 10 characters.', 'weak_password');
+  }
+}
 
 // A real hash of a random password, so a login for an unknown username costs the
 // same scrypt work as a real one (response time doesn't reveal which usernames exist).
@@ -204,9 +234,12 @@ const getDummyHash = () => (dummyHash ??= hashPassword(randomBytes(16).toString(
 export function loginHandler(db: Db, parse: (b: unknown) => { username?: string; password: string }) {
   return ah(async (req: Request, res: Response) => {
     const { username, password } = parse(req.body);
-    const r = await db.query(`SELECT ${USER_COLUMNS}, u.password_hash FROM users u WHERE u.username = $1`, [
-      (username || OWNER).trim().toLowerCase(),
-    ]);
+    // Sign in with the username or the account's email.
+    const login = (username || OWNER).trim().toLowerCase();
+    const r = await db.query(
+      `SELECT ${USER_COLUMNS}, u.password_hash FROM users u WHERE ${login.includes('@') ? 'lower(u.email)' : 'u.username'} = $1`,
+      [login],
+    );
     const user = r.rows[0];
     const ok = await verifyPassword(password, user?.password_hash ?? (await getDummyHash()));
     if (!user || !ok) throw new HttpError(401, 'Wrong username or password.', 'bad_credentials');
@@ -223,13 +256,15 @@ export function loginHandler(db: Db, parse: (b: unknown) => { username?: string;
 /** Create a new account (starts empty) and sign it in. Can be turned off or put behind an invite code. */
 export function signupHandler(
   db: Db,
-  parse: (b: unknown) => { username: string; password: string; inviteCode?: string },
+  parse: (b: unknown) => { username: string; email?: string; password: string; inviteCode?: string },
   opts: () => Promise<{ allowed: boolean; inviteCode: string }>,
 ) {
   return ah(async (req: Request, res: Response) => {
     const o = await opts();
     if (!o.allowed) throw new HttpError(403, 'Creating new accounts is turned off on this server.', 'signup_disabled');
-    const { username, password, inviteCode } = parse(req.body);
+    const { username, email, password, inviteCode } = parse(req.body);
+    if (policy.requireEmail && !email) throw new HttpError(400, 'Enter your email address.', 'email_required');
+    checkNewPassword(password, username);
     if (isListedAdminName(username)) throw new HttpError(403, 'That username is reserved, please choose another one.', 'reserved');
     if (o.inviteCode) {
       const a = Buffer.from(sha256(inviteCode ?? ''));
@@ -237,11 +272,14 @@ export function signupHandler(
       if (!timingSafeEqual(a, b)) throw new HttpError(403, 'That invite code is not right.', 'bad_invite');
     }
     const hash = await hashPassword(password);
+    if (email && (await db.query('SELECT 1 FROM users WHERE lower(email) = $1', [email])).rows.length) {
+      throw new HttpError(409, 'An account with that email already exists. Sign in, or use "Forgot password?".', 'email_taken');
+    }
     const ins = await db.query(
-      `INSERT INTO users(username, password_hash) VALUES ($1, $2)
+      `INSERT INTO users(username, password_hash, email) VALUES ($1, $2, $3)
        ON CONFLICT (username) DO NOTHING
-       RETURNING id, username, currency, month_start_day AS "monthStartDay"`,
-      [username, hash],
+       RETURNING id, username, currency, month_start_day AS "monthStartDay", email`,
+      [username, hash, email ?? null],
     );
     if (!ins.rows.length) throw new HttpError(409, 'That username is already taken. Try another one.', 'username_taken');
     const user = ins.rows[0] as AuthUser;
@@ -275,6 +313,7 @@ export function changePasswordHandler(db: Db, parse: (b: unknown) => { current: 
     const { current, next } = parse(req.body);
     const u = req.user!;
     await checkPassword(db, u.id, current);
+    checkNewPassword(next, u.username);
     const token = String(req.cookies?.[COOKIE] ?? '');
     await db.tx(async (q) => {
       await q.query('UPDATE users SET password_hash = $1 WHERE id = $2', [await hashPassword(next), u.id]);
@@ -286,6 +325,20 @@ export function changePasswordHandler(db: Db, parse: (b: unknown) => { current: 
   });
 }
 
+/** Add or change the account's email (used for "Forgot password?"). Needs the current password. */
+export function setEmailHandler(db: Db, parse: (b: unknown) => { email: string; password: string }) {
+  return ah(async (req, res) => {
+    const { email, password } = parse(req.body);
+    const u = req.user!;
+    await checkPassword(db, u.id, password);
+    const taken = await db.query('SELECT 1 FROM users WHERE lower(email) = $1 AND id <> $2', [email, u.id]);
+    if (taken.rows.length) throw new HttpError(409, 'Another account already uses that email.', 'email_taken');
+    await db.query('UPDATE users SET email = $1 WHERE id = $2', [email, u.id]);
+    // A code sent to the old address must not work any more.
+    await db.query("DELETE FROM password_resets WHERE user_id = $1 AND used_at IS NULL AND via = 'email'", [u.id]);
+    res.json({ user: publicUser({ ...u, email }) });
+  });
+}
 /** Sign out on every device (including this one). */
 export function logoutAllHandler(db: Db) {
   return ah(async (req, res) => {

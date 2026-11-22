@@ -5,7 +5,8 @@
 import { randomInt } from 'node:crypto';
 import { Router, type Request } from 'express';
 import { z } from 'zod';
-import { checkPassword, hashPassword, isAdminName, OWNER, sha256 } from './auth.js';
+import { checkNewPassword, checkPassword, hashPassword, isAdminName, OWNER, sha256 } from './auth.js';
+import { resetCodeMail, sendInBackground, type Mailer } from './mail.js';
 import type { Db, Queryable } from './db.js';
 import { ah, HttpError } from './http.js';
 import { id as idSchema, schemas } from './validation.js';
@@ -193,21 +194,68 @@ export function resetPasswordHandler(db: Db) {
   return ah(async (req, res) => {
     const b = schemas.resetPassword.parse(req.body);
     const wrong = () => new HttpError(400, 'That reset code is not right or has expired.', 'bad_reset_code');
+    // A wrong try is counted even though the request fails, so that part runs outside the main transaction.
+    let missed: number | null = null;
     await db.tx(async (q) => {
-      const u = (await q.query('SELECT id, username FROM users WHERE username = $1', [b.username])).rows[0];
+      // The person may type their username or their email.
+      const by = b.username.includes('@') ? 'lower(email)' : 'username';
+      const u = (await q.query(`SELECT id, username FROM users WHERE ${by} = $1`, [b.username])).rows[0];
       if (!u) throw wrong();
       const used = await q.query(
         `UPDATE password_resets SET used_at = now()
-         WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL AND expires_at > now() RETURNING id`,
-        [u.id, sha256(normalizeCode(b.code))],
+         WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL AND expires_at > now() AND attempts < $3 RETURNING id`,
+        [u.id, sha256(normalizeCode(b.code)), MAX_CODE_TRIES],
       );
-      if (!used.rows.length) throw wrong();
+      if (!used.rows.length) {
+        missed = u.id as number;
+        throw wrong();
+      }
+      checkNewPassword(b.password, u.username);
       await q.query('UPDATE users SET password_hash = $1 WHERE id = $2', [await hashPassword(b.password), u.id]);
       await q.query('DELETE FROM sessions WHERE user_id = $1', [u.id]); // signed out everywhere
       await q.query('DELETE FROM password_resets WHERE user_id = $1 AND used_at IS NULL', [u.id]);
       req.user = { id: u.id, username: u.username, currency: '', monthStartDay: 1 };
       await audit(q, req, 'password_reset', u.username);
+    }).catch(async (e) => {
+      // After MAX_CODE_TRIES wrong codes the current code stops working (a new one must be requested).
+      if (missed !== null) await db.query('UPDATE password_resets SET attempts = attempts + 1 WHERE user_id = $1 AND used_at IS NULL', [missed]);
+      throw e;
     });
+    res.json({ ok: true });
+  });
+}
+
+/** Wrong codes allowed before the current code is void. */
+const MAX_CODE_TRIES = 5;
+/** Emailed codes are valid this long. */
+export const EMAIL_CODE_MINUTES = 30;
+
+/**
+ * "Forgot password?" by email: always answers the same way, whether or not the address belongs
+ * to an account (so nobody can find out who has one); the email is sent in the background.
+ */
+export function forgotPasswordHandler(db: Db, mailer: Mailer) {
+  return ah(async (req, res) => {
+    if (!mailer.enabled) {
+      throw new HttpError(503, 'Email is not set up on this server. Ask the person who runs the app for a reset code.', 'no_email');
+    }
+    const { email } = schemas.forgotPassword.parse(req.body);
+    const u = (await db.query('SELECT id, username, email FROM users WHERE lower(email) = $1', [email])).rows[0];
+    if (u) {
+      const code = newResetCode();
+      await db.tx(async (q) => {
+        await q.query('DELETE FROM password_resets WHERE user_id = $1 AND used_at IS NULL', [u.id]); // only the newest code works
+        await q.query(
+          `INSERT INTO password_resets(user_id, code_hash, created_by, expires_at, via)
+           VALUES ($1, $2, NULL, now() + make_interval(mins => $3), 'email')`,
+          [u.id, sha256(normalizeCode(code)), EMAIL_CODE_MINUTES],
+        );
+        req.user = { id: u.id, username: u.username, currency: '', monthStartDay: 1 };
+        await audit(q, req, 'reset_code_emailed', u.username);
+        req.user = undefined;
+      });
+      sendInBackground(mailer, resetCodeMail(u.email, u.username, code, EMAIL_CODE_MINUTES));
+    }
     res.json({ ok: true });
   });
 }

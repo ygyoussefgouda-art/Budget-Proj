@@ -1,4 +1,4 @@
-# Budget me · Version alpha 0.6.2
+# Budget me · Version alpha 0.6.3
 
 > **Alpha:** this is an early test version. Features and screens may change between updates, so download a backup now and then (Settings → Download backup).
 
@@ -34,12 +34,12 @@ curl http://127.0.0.1:8090/api/health                 # -> {"ok":true}
 
 It is a standalone Compose project (`budget-me`) with its own network, Postgres and volume, so it shares nothing with the other app on your VPS. The app listens only on `127.0.0.1:8090`; put your HTTPS reverse proxy in front of it (ready-made configs: [deploy/nginx-budget-me.conf](deploy/nginx-budget-me.conf), [deploy/Caddyfile](deploy/Caddyfile)). Daily database backups go to `backups/`; update with `sh deploy/update.sh`.
 ### Accounts
-Everyone creates their own account on the sign-in screen with **Create account** (username + password). Each account has its own budget, which starts empty, and nobody can see anyone else's data. Passwords are stored as scrypt hashes, sessions expire after 14 idle days (30 at most), and sign-in and sign-up attempts are rate-limited. Set `SIGNUP_INVITE_CODE` so only people you give the code to can sign up. In Settings each user can change their password, sign out everywhere and delete their account.
+Everyone creates their own account on the sign-in screen with **Create account** (email + username + password; the password needs 8+ characters with a lowercase letter, an uppercase letter, a number and a special character, ticked off live as you type). Sign in with the username or the email. Each account has its own budget, which starts empty, and nobody can see anyone else's data. Passwords are stored as scrypt hashes, sessions expire after 14 idle days (30 at most), and sign-in and sign-up attempts are rate-limited. Set `SIGNUP_INVITE_CODE` so only people you give the code to can sign up. In Settings each user can change their password, sign out everywhere and delete their account.
 
 - Once everyone who should use the app has an account, set `ALLOW_SIGNUP=false` in `.env` and run `docker compose up -d`. The sign-in screen then shows only "Sign in".
 - `APP_PASSWORD` (optional) creates a built-in account with the username `owner`. Changing it and restarting signs that account out everywhere.
 - **Admin page** (Settings → Admin) for `owner` and the accounts in `ADMIN_USERNAMES`: list accounts (joined, last active, storage used), open/close sign-ups and set the invite code while the app runs, remove an account (type its username + your password), and make **one-time password reset codes** (valid 1 hour, stored hashed, needs your own password). Only the built-in `owner` can reset or remove another admin. Every admin action is kept in an activity log. Create your account first, then list it in `ADMIN_USERNAMES` (see [DEPLOY.md](DEPLOY.md#admin-page)).
-- **Forgot password?** on the sign-in screen: enter the reset code from an admin and a new password; every session of that account is signed out.
+- **Forgot password?** on the sign-in screen: with email set up (any SMTP server, free options in [DEPLOY.md](DEPLOY.md#email-forgot-password-codes-free)), enter your email and get a one-time code; otherwise use a reset code from an admin. Then choose a new password; every session of that account is signed out. Older accounts can add an email in Settings.
 
 Every table has a `user_id` and sessions are stored in Postgres. Run **one** app container: rate limits and a few guards are kept in memory per container (migrations do take a database lock, so a second container won't break the schema, but its limits would be separate).
 

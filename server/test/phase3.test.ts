@@ -10,7 +10,7 @@ import { crc32 } from '../src/xlsx.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 let db: Db;
-const mkApp = () => createApp(db, { csrfHeader: false, signupLimit: 1000, loginLimit: 1000 });
+const mkApp = () => createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false, signupLimit: 1000, loginLimit: 1000 });
 type Agent = ReturnType<typeof request.agent>;
 let n = 0;
 async function newUser(): Promise<Agent> {

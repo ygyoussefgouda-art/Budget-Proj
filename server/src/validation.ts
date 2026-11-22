@@ -29,7 +29,28 @@ export const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'KWD', 'QAR
 /** Names nobody can sign up with (the built-in account and look-alikes). */
 export const RESERVED_USERNAMES = new Set(['owner', 'admin', 'administrator', 'root', 'system', 'support']);
 
-const newPassword = z.string().min(10, 'must be at least 10 characters').max(200);
+// Shape only; the password rules (8+ characters with lower, upper, number, special) are checked by
+// `checkNewPassword` in auth.ts, so the message can say exactly what is missing.
+const newPassword = z.string().min(1, 'is required').max(200);
+
+/** The rules a new password must meet (same list as the sign-up screen shows). Returns the ones missing. */
+export function passwordProblems(pw: string): string[] {
+  const missing: string[] = [];
+  if (!/[a-z]/.test(pw)) missing.push('lowercase');
+  if (!/[A-Z]/.test(pw)) missing.push('uppercase');
+  if (!/[0-9]/.test(pw)) missing.push('number');
+  if (!/[^A-Za-z0-9]/.test(pw)) missing.push('special');
+  if (pw.length < 8) missing.push('length');
+  return missing;
+}
+
+/** An email address (stored lower-case). Deliberately simple: the reset code proves it works. */
+export const email = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(254, 'is too long')
+  .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'is not a valid email address');
 
 /** A tag: letters (any language, so Arabic works), numbers, - and _; stored lower-case without '#'. */
 export const tag = z
@@ -57,7 +78,7 @@ const foreign = z.object({
 export const convert = (amount: number, rate: number) => Math.round(amount * rate);
 
 export const schemas = {
-  login: z.object({ username: z.string().trim().max(60).optional(), password: z.string().min(1).max(200) }),
+  login: z.object({ username: z.string().trim().max(254).optional(), password: z.string().min(1).max(200) }),
   signup: z.object({
     username: z
       .string()
@@ -67,10 +88,10 @@ export const schemas = {
       .max(30, 'must be at most 30 characters')
       .regex(/^[a-z0-9._-]+$/, 'can only use letters, numbers, dots, dashes and underscores')
       .refine((u) => !RESERVED_USERNAMES.has(u), 'is reserved, please choose another one'),
+    email: email.optional(),
     password: newPassword,
     inviteCode: z.string().max(200).optional(),
-  })
-    .refine((s) => s.password.toLowerCase() !== s.username, { message: 'must not be the same as the username', path: ['password'] }),
+  }),
   changePassword: z.object({ current: z.string().min(1).max(200), next: newPassword }),
   deleteAccount: z.object({ password: z.string().min(1).max(200) }),
   adminSettings: z.object({
@@ -95,13 +116,14 @@ export const schemas = {
     version: z.string().max(30).optional(),
     kind: z.enum(['render', 'error', 'unhandledrejection']).optional(),
   }),
-  resetPassword: z
-    .object({
-      username: z.string().trim().toLowerCase().min(1).max(60),
-      code: z.string().trim().min(6).max(40),
-      password: newPassword,
-    })
-    .refine((s) => s.password.toLowerCase() !== s.username, { message: 'must not be the same as the username', path: ['password'] }),
+  resetPassword: z.object({
+    /** The username or the account's email. */
+    username: z.string().trim().toLowerCase().min(1).max(254),
+    code: z.string().trim().min(6).max(40),
+    password: newPassword,
+  }),
+  forgotPassword: z.object({ email }),
+  setEmail: z.object({ email, password: z.string().min(1).max(200) }),
   settings: z
     .object({ currency: z.enum(CURRENCIES).optional(), monthStartDay: z.number().int().min(1).max(28).optional() })
     .refine((s) => s.currency !== undefined || s.monthStartDay !== undefined, 'Nothing to change.'),

@@ -13,15 +13,19 @@ import {
   logoutHandler,
   requireAuth,
   setAdminUsernames,
+  setEmailHandler,
+  setSignupPolicy,
   signupHandler,
+  signupPolicy,
 } from './auth.js';
+import { noMailer, type Mailer } from './mail.js';
 import type { Db } from './db.js';
 import { ah, errorHandler, HttpError } from './http.js';
 import { APP_VERSION, log, requestId, requestLogger } from './log.js';
 import { receiptRoutes } from './receipts.js';
 import { recurringRoutes } from './recurring.js';
 import { exportRoutes } from './export.js';
-import { adminRoutes, resetPasswordHandler, signupConfig } from './admin.js';
+import { adminRoutes, forgotPasswordHandler, resetPasswordHandler, signupConfig } from './admin.js';
 import { undoRoutes } from './undo.js';
 import { apiRoutes } from './routes.js';
 import { schemas } from './validation.js';
@@ -47,6 +51,14 @@ export interface AppOptions {
   adminUsernames?: string[];
   /** Installed Android apps below this versionCode must update first (GET /api/version). Default 0. */
   minNativeVersionCode?: number;
+  /** Sign-up needs an email (default true). Older tests switch it off. */
+  requireEmail?: boolean;
+  /** New passwords need 8+ characters with lower, upper, number and special (default true). */
+  strongPasswords?: boolean;
+  /** Sends "Forgot password?" codes. Without it, only admins can make reset codes. */
+  mailer?: Mailer;
+  /** "Forgot password?" emails per network per 15 minutes (default 5). */
+  forgotLimit?: number;
   /** Failed sign-ins per account from all networks together per 15 minutes (default 200). */
   accountFailLimit?: number;
   /** Crash reports per IP per 15 minutes (default 30). */
@@ -173,11 +185,20 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   // .env defaults; an admin can change them in the app (stored in app_settings).
   const signupDefaults = { allowSignup: opts.allowSignup ?? true, inviteCode: opts.inviteCode ?? '' };
   setAdminUsernames(opts.adminUsernames ?? []);
+  setSignupPolicy({ requireEmail: opts.requireEmail, strongPasswords: opts.strongPasswords });
+  const mailer = opts.mailer ?? noMailer;
   api.get(
     '/auth/config',
     ah(async (_req, res) => {
       const c = await signupConfig(db, signupDefaults);
-      res.json({ signupEnabled: c.allowed, inviteRequired: c.allowed && !!c.inviteCode });
+      res.json({
+        signupEnabled: c.allowed,
+        inviteRequired: c.allowed && !!c.inviteCode,
+        emailRequired: signupPolicy().requireEmail,
+        strongPasswords: signupPolicy().strongPasswords,
+        // "Forgot password?" can email a code (otherwise: ask an admin).
+        emailReset: mailer.enabled,
+      });
     }),
   );
 
@@ -204,6 +225,15 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   );
   // "Forgot password?": a one-time code from an admin. Same limits as sign-in (per network + failures per account).
   api.post('/auth/reset', loginIpLimiter, loginAccountLimiter, resetPasswordHandler(db));
+  // "Forgot password?" by email: a few per network, and a few per address (stops mail bombing someone).
+  api.post(
+    '/auth/forgot',
+    limiter(15, opts.forgotLimit ?? 5, 'Too many requests. Try again in 15 minutes.'),
+    limiter(60, 3, 'A code was sent recently. Check your inbox (and spam), or try again in an hour.', {
+      keyGenerator: (req: Request) => `f:${String((req.body as { email?: unknown })?.email ?? '').trim().toLowerCase().slice(0, 254)}`,
+    }),
+    forgotPasswordHandler(db, mailer),
+  );
   api.post('/auth/logout', logoutHandler(db));
 
   api.use(requireAuth(db));
@@ -220,6 +250,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   });
   api.post('/auth/password', passwordLimiter, changePasswordHandler(db, (b) => schemas.changePassword.parse(b)));
   api.post('/auth/logout-all', logoutAllHandler(db));
+  api.put('/auth/email', passwordLimiter, setEmailHandler(db, (b) => schemas.setEmail.parse(b)));
   api.post('/auth/delete-account', passwordLimiter, deleteAccountHandler(db, (b) => schemas.deleteAccount.parse(b)));
 
   api.use(receiptRoutes(db));

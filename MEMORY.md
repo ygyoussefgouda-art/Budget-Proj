@@ -17,6 +17,12 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-21: Money input: with no dot, `d,dd` / `d,d` at the end is a decimal comma; any other comma is a thousands separator. Exchange rates: a comma is always decimal (`parseRate`).
 - 2026-11-21: Backups are only kept if the plain dump ends with `PostgreSQL database dump complete` (no `pipefail` in `sh`).
 
+## Accounts and email (0.6.3)
+- 2026-11-22: Sign-up requires an email (unique, lower-case) and a strong password: 8+ chars with lower, upper, number, special (`passwordProblems` in `server/src/validation.ts` = `PASSWORD_RULES` in `web/src/components/PasswordRules.tsx`; keep them the same). Owner's request with a reference screenshot. Old accounts keep their passwords and may have no email.
+- 2026-11-22: Email must be **free**: plain SMTP via nodemailer; documented free options Gmail app password / Brevo. No paid API.
+- 2026-11-22: `createApp` defaults to the strict rules; older server tests pass `requireEmail: false, strongPasswords: false` (`setSignupPolicy` is module-level like `setAdminUsernames`). `email.test.ts` covers the strict rules.
+- 2026-11-22: No email verification step on sign-up (a typo means that account can't use email reset until fixed in Settings; admins can still make codes).
+
 ## Workflow (owner's rules)
 - 2026-11-21 (later): the owner asked to **commit and push to GitHub after each finished phase** (tests green first). Before that: never commit or push until the owner says so. Why: the owner reviews first. (This overrides "one branch + PR per phase" in `CLAUDE.md` until the owner asks for branches/PRs. Commit as `ygyoussefgouda-art@users.noreply.github.com`; never put the owner's private email in commits or requests.)
 - 2026-11-21: Standalone project: don't touch anything outside this repo.
@@ -67,4 +73,5 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-21: Android refuses to install an update with a lower `versionCode` or a different signing key. Losing the keystore = users must uninstall.
 
 ## Dependencies added (with reason)
+- 2026-11-22: `nodemailer` (server): sends "Forgot password?" codes over any SMTP server, so the owner can use a free provider (Gmail app password / Brevo free plan); the most used Node mail library, no paid service.
 - 2026-11-21: `pino` ^9 (server): structured JSON logging asked for by HANDOFF Phase 1; small, fast, widely used, no transports needed (Docker collects stdout).

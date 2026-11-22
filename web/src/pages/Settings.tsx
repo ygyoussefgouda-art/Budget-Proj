@@ -1,11 +1,12 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Download, FileSpreadsheet, GraduationCap, ShieldCheck, KeyRound, Languages, LogOut, MonitorSmartphone, Trash2, Upload, UserX } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Download, FileSpreadsheet, GraduationCap, ShieldCheck, KeyRound, Languages, LogOut, Mail, MonitorSmartphone, Trash2, Upload, UserX } from 'lucide-react';
 import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { ExportCardBody } from '../components/ExportLinks';
 import MonthStartPicker from '../components/MonthStartPicker';
 import { Sheet, useOverlay } from '../components/Overlays';
+import { newPasswordError, PasswordRules } from '../components/PasswordRules';
 import { restartTutorial } from '../components/Tutorial';
 import { Card, Field, FormError, IconButton, PageHeader, SaveButton, SectionTitle, Segmented } from '../components/ui';
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
@@ -25,7 +26,7 @@ export default function Settings() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [sheet, setSheet] = useState<'password' | 'delete' | null>(null);
+  const [sheet, setSheet] = useState<'password' | 'email' | 'delete' | null>(null);
 
   const setCurrency = async (currency: string) => {
     try {
@@ -183,6 +184,19 @@ export default function Settings() {
         <p className="small" style={{ marginBottom: 12 }}>
           {t('Signed in as')} <strong dir="ltr">{user.username}</strong>
         </p>
+        <div className="email-row small" style={{ marginBottom: 12 }}>
+          <Mail size={16} className="mute" aria-hidden="true" />
+          <span className="grow">
+            {user.email ? (
+              <span dir="ltr">{user.email}</span>
+            ) : (
+              <span className="mute">{t('No email yet: add one so you can reset your password yourself.')}</span>
+            )}
+          </span>
+          <button className="btn text small" onClick={() => setSheet('email')}>
+            {user.email ? t('Change') : t('Add email')}
+          </button>
+        </div>
         <div className="stack">
           <button className="btn tonal block" onClick={() => setSheet('password')}>
             <KeyRound size={18} /> {t('Change password')}
@@ -205,6 +219,18 @@ export default function Settings() {
             onDone={() => {
               setSheet(null);
               toast(t('Password changed. Other devices were signed out.'));
+            }}
+          />
+        )}
+      </Sheet>
+      <Sheet open={sheet === 'email'} onClose={() => setSheet(null)} title={user.email ? t('Change email') : t('Add email')}>
+        {sheet === 'email' && (
+          <EmailForm
+            current={user.email ?? ''}
+            onDone={(r) => {
+              qc.setQueryData(['me'], r);
+              setSheet(null);
+              toast(t('Email saved.'));
             }}
           />
         )}
@@ -252,8 +278,42 @@ export default function Settings() {
   );
 }
 
+/** Add or change the account email (for "Forgot password?" codes). Needs the password. */
+function EmailForm({ current, onDone }: { current: string; onDone: (r: { user: unknown }) => void }) {
+  const [email, setEmail] = useState(current);
+  const [password, setPassword] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const mail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return setErr(t('That email address does not look right.'));
+    if (!password) return setErr(t('Enter your password.'));
+    setBusy(true);
+    try {
+      onDone(await api<{ user: unknown }>('/auth/email', 'PUT', { email: mail, password }));
+    } catch (x) {
+      setErr((x as Error).message);
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={submit} className="form">
+      <Field label={t('Email')} hint={t('Used only to send you a code if you forget your password.')}>
+        <input className="input" dir="ltr" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={254} />
+      </Field>
+      <Field label={t('Your password')}>
+        <input className="input" dir="ltr" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </Field>
+      <FormError text={err} />
+      <SaveButton label={t('Save')} busy={busy} />
+    </form>
+  );
+}
+
 function ChangePasswordForm({ onDone }: { onDone: () => void }) {
   const { user } = useApp();
+  const strong = useQuery({ queryKey: ['auth-config'], queryFn: () => api<{ strongPasswords?: boolean }>('/auth/config'), staleTime: Infinity }).data?.strongPasswords ?? true;
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [repeat, setRepeat] = useState('');
@@ -263,8 +323,8 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!current) return setErr(t('Enter your current password.'));
-    if (next.length < 10) return setErr(t('Use a password of at least 10 characters.'));
-    if (next.toLowerCase() === user.username) return setErr(t('Your password must not be the same as your username.'));
+    const pwErr = newPasswordError(next, user.username, strong);
+    if (pwErr) return setErr(pwErr);
     if (next !== repeat) return setErr(t('The two passwords do not match.'));
     setBusy(true);
     try {
@@ -281,9 +341,10 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
       <Field label={t('Current password')}>
         <input className="input" dir="ltr" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
       </Field>
-      <Field label={t('New password')} hint={t('At least 10 characters.')}>
-        <input className="input" dir="ltr" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
+      <Field label={t('New password')} hint={strong ? undefined : t('At least 10 characters.')}>
+        <input className="input" dir="ltr" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} aria-describedby="change-pw-rules" />
       </Field>
+      {strong && <PasswordRules password={next} id="change-pw-rules" />}
       <Field label={t('Repeat new password')}>
         <input className="input" dir="ltr" type="password" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} />
       </Field>

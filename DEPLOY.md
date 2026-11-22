@@ -65,6 +65,7 @@ Checklist for `.env`:
 | `LOG_LEVEL` | `info` (default); `debug` only while chasing a problem |
 | `MIN_NATIVE_VERSION_CODE` | `0` until the Android app exists |
 | `AUDIT_KEEP_DAYS` | `365`: how long the Admin activity log is kept |
+| `SMTP_*`, `MAIL_FROM` | email for "Forgot password?" codes (see "Email" below); empty = off |
 
 **Important:** never change `POSTGRES_PASSWORD` after the first start without also changing
 it inside Postgres (the database keeps the original password in its volume).
@@ -130,6 +131,28 @@ sh deploy/update.sh
 
 It backs up the database, pulls the latest code, rebuilds, restarts and waits until the
 app is healthy. Database migrations run automatically on start.
+
+## Email ("Forgot password?" codes), free
+
+New accounts sign up with an email. With email set up, **Forgot password?** emails a one-time code
+(valid 30 minutes, 5 wrong tries, 3 emails per address per hour; the screen never says whether an address
+has an account). Any SMTP server works; two free ones:
+
+**Gmail** (free, about 500 emails a day):
+1. On the Google account that sends the mail, turn on 2-Step Verification.
+2. Google Account → Security → **App passwords** → create one ("Budget me"). You get 16 letters.
+3. In `.env`: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_USER=you@gmail.com`,
+   `SMTP_PASS=<the 16 letters, no spaces>`, `MAIL_FROM=Budget me <you@gmail.com>`.
+
+**Brevo** (free plan, 300 emails a day): create an account, add and verify your sender address, then
+SMTP & API → SMTP: `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587`, `SMTP_USER=<your SMTP login>`,
+`SMTP_PASS=<SMTP key>`, `MAIL_FROM=Budget me <the verified address>`.
+
+Then `docker compose up -d`. Check: on the sign-in screen tap **Forgot password?** and send a code to your own
+address. If it doesn't arrive, look in spam and in `docker compose logs app | grep email`.
+Without `SMTP_HOST` the app still works: **Forgot password?** then asks for a code from an admin.
+
+Accounts made before 0.6.3 have no email: each person can add one in **Settings → Account**.
 
 ## Admin page
 

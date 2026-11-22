@@ -12,7 +12,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const OWNER_PASS = 'owner-pass-12345';
 let db: Db;
 // "chief" becomes an admin through ADMIN_USERNAMES; "boss" is listed but has no account.
-const mkApp = () => createApp(db, { csrfHeader: false, signupLimit: 1000, loginLimit: 1000, adminUsernames: ['chief', 'boss'] });
+const mkApp = () => createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false, signupLimit: 1000, loginLimit: 1000, adminUsernames: ['chief', 'boss'] });
 type Agent = ReturnType<typeof request.agent>;
 let n = 0;
 async function newUser(prefix = 'p5.user'): Promise<{ a: Agent; name: string; id: number }> {
@@ -33,7 +33,7 @@ beforeAll(async () => {
   await migrate(db, path.join(here, '..', 'migrations'));
   await ensureOwner(db, OWNER_PASS);
   // "chief" signs up before being listed (the right order); the app below lists it.
-  await request(createApp(db, { csrfHeader: false })).post('/api/auth/signup').send({ username: 'chief', password: 'chief-pass-123' }).expect(201);
+  await request(createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false })).post('/api/auth/signup').send({ username: 'chief', password: 'chief-pass-123' }).expect(201);
 }, 60_000);
 afterAll(async () => {
   await db?.close();

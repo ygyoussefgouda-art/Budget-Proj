@@ -9,15 +9,16 @@ export const newPhonePage = async (browser: Browser) => {
 let counter = 0;
 /** A unique, valid username for this run. */
 export const newUsername = (prefix = 'e2e') => `${prefix}.${Date.now().toString(36)}${(counter++).toString(36)}`;
-export const PASSWORD = 'correct-horse-9';
+export const PASSWORD = 'Correct-horse-9'; // meets the rules: lower, upper, number, special, 8+
+export const emailFor = (username: string) => `${username}@example.com`;
 
 /** Creates a brand-new account through the UI. Leaves the first-run tutorial open. */
 export async function signUp(page: Page, username = newUsername()) {
   await page.goto('/');
   await page.getByRole('tab', { name: 'Create account' }).click();
+  await page.getByLabel('Email').fill(emailFor(username));
   await page.getByLabel('Username').fill(username);
   await page.getByLabel(/^Password/).fill(PASSWORD);
-  await page.getByLabel('Repeat password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(page.getByRole('dialog', { name: /Welcome to Budget me/ })).toBeVisible();
   return username;
