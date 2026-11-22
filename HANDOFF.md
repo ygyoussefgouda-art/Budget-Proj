@@ -1,7 +1,7 @@
 # HANDOFF: Budget me → production-ready personal Android app
 
 > Read this file first. It is the brief for the next Claude session.
-> Repo: https://github.com/ygyoussefgouda-art/Budget-Proj (hand-off written at alpha 0.5.6; Phase 0 + 1 done in alpha 0.6.0, see `PROGRESS.md`)
+> Repo: https://github.com/ygyoussefgouda-art/Budget-Proj (hand-off written at alpha 0.5.6; all phases built by alpha 0.6.6, device tests and owner setup left; see `PROGRESS.md`)
 > Companion files (copy them into the repo root on the first commit):
 > `CLAUDE.md`, `MEMORY.md`, `PROGRESS.md`, `CODEMAP.md`, `docs/ANDROID_SELF_UPDATE.md`
 

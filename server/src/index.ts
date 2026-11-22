@@ -91,6 +91,7 @@ async function main() {
     signupLimit: positiveInt(process.env.SIGNUP_RATE_LIMIT),
     minNativeVersionCode: positiveInt(process.env.MIN_NATIVE_VERSION_CODE),
     mailer,
+    contactEmail: process.env.CONTACT_EMAIL || undefined,
     downloadsDir: process.env.DOWNLOADS_DIR || path.join(root, 'downloads'),
   });
   const port = Number(process.env.PORT ?? 3000);

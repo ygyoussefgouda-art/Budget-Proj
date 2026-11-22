@@ -19,6 +19,7 @@ import {
   signupPolicy,
 } from './auth.js';
 import { noMailer, type Mailer } from './mail.js';
+import { loginSecondStepHandler, twoFactorRoutes } from './twoFactor.js';
 import type { Db } from './db.js';
 import { ah, errorHandler, HttpError } from './http.js';
 import { APP_VERSION, log, requestId, requestLogger } from './log.js';
@@ -58,6 +59,8 @@ export interface AppOptions {
   strongPasswords?: boolean;
   /** Sends "Forgot password?" codes. Without it, only admins can make reset codes. */
   mailer?: Mailer;
+  /** Shown in Settings → Contact us (CONTACT_EMAIL). */
+  contactEmail?: string;
   /** Folder with android/latest.json and the APKs (DOWNLOADS_DIR). */
   downloadsDir?: string;
   /** "Forgot password?" emails per network per 15 minutes (default 5). */
@@ -204,6 +207,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         strongPasswords: signupPolicy().strongPasswords,
         // "Forgot password?" can email a code (otherwise: ask an admin).
         emailReset: mailer.enabled,
+        contactEmail: opts.contactEmail || null,
       });
     }),
   );
@@ -240,6 +244,8 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     }),
     forgotPasswordHandler(db, mailer),
   );
+  // Two-step sign-in, second step (same limits as signing in).
+  api.post('/auth/login/2fa', loginIpLimiter, loginSecondStepHandler(db));
   api.post('/auth/logout', logoutHandler(db));
 
   api.use(requireAuth(db));
@@ -257,6 +263,8 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   api.post('/auth/password', passwordLimiter, changePasswordHandler(db, (b) => schemas.changePassword.parse(b)));
   api.post('/auth/logout-all', logoutAllHandler(db));
   api.put('/auth/email', passwordLimiter, setEmailHandler(db, (b) => schemas.setEmail.parse(b)));
+  api.use('/auth/2fa', passwordLimiter);
+  api.use(twoFactorRoutes(db));
   api.post('/auth/delete-account', passwordLimiter, deleteAccountHandler(db, (b) => schemas.deleteAccount.parse(b)));
 
   api.use(receiptRoutes(db));

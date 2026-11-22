@@ -1,6 +1,6 @@
 # CODEMAP.md: where things live
 
-Snapshot of alpha 0.6.5 (2026-11-22). Update when files are added, moved or change purpose.
+Snapshot of alpha 0.6.6 (2026-11-22). Update when files are added, moved or change purpose.
 Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 
 ## Top level
@@ -10,7 +10,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `server/` | Express API, SQL migrations, API tests |
 | `e2e/` | Playwright tests in a phone-sized browser against the real app |
 | `mobile/` | Capacitor 8 Android shell (remote URL mode), `BudgetNativePlugin.java`, release script |
-| `deploy/` | VPS ops: `Caddyfile`, `nginx-budget-me.conf`, `update.sh`, `backup-now.sh`, `restore.sh` |
+| `deploy/` | VPS ops: `Caddyfile`, `nginx-budget-me.conf`, `update.sh`, `backup-now.sh`, `restore.sh`, `backup-offsite.sh` (age + rclone), `restore-test.sh`, `check-health.sh` (alerts), `rollback.sh`, `lib.sh` (`load_env`, `alert`) |
 | `design/` | Design notes + reference images |
 | `scripts/` | Windows dev helpers (`dev-server.cmd`, `n.cmd`, `setup-node.cmd`) using portable Node in `D:\devtools` |
 | `Dockerfile` | Multi-stage: build web → build server → slim runtime (non-root, health check) |
@@ -18,6 +18,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `.env.example` | All production settings (DB password, sign-up, admin, cookies, proxy, quotas, backups) |
 | `DEPLOY.md` | Step-by-step VPS guide (firewall, secrets, HTTPS, backups, updates, admin page) |
 | `.github/workflows/ci.yml` | CI: server typecheck+tests, web tests+build, npm audit, E2E, Docker build |
+| `.github/workflows/deploy.yml` | Manual one-click deploy: tests (reuses `ci.yml`), then SSH `deploy/update.sh` |
 | `.github/workflows/android.yml` | Android: debug APK on push, signed release + publish on tag `android-v*` |
 | `.github/dependabot.yml` | Weekly dependency PRs |
 | `docs/ANDROID_SELF_UPDATE.md` | Spec: APK hosting, download link, self-update (Phase 3) |
@@ -29,6 +30,8 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 |---|---|
 | `index.ts` | Entry: reads env, checks secrets, picks DB driver, runs migrations, creates owner, starts HTTP, trash purge timer, graceful shutdown |
 | `app.ts` | `createApp()`: request logger, Helmet/CSP, `no-store` on `/api`, rate limiters (`ipKey`), Origin + CSRF header check, JSON limits, public routes (`/health`, `/version`, `/client-errors`, `/auth/*`), then `requireAuth`, then all routers; serves the SPA with cache headers |
+| `totp.ts` | TOTP (RFC 6238) + base32 + backup codes, node:crypto only |
+| `twoFactor.ts` | Two-step sign-in: login ticket → `/auth/login/2fa`, `/auth/2fa/setup` / `enable` / `disable` |
 | `mail.ts` | `mailerFromEnv` (SMTP via nodemailer, or `MAIL_OUTBOX_DIR` files for dev/tests), reset-code email text (EN + AR), `sendInBackground` |
 | `log.ts` | pino logger (`log`), `APP_VERSION` (from package.json), `requestLogger` (request id + access line), `requestId(res)` |
 | `auth.ts` | Login, signup, logout, logout-all, change password, delete account, `requireAuth`, sessions, owner account, admin usernames |
@@ -53,10 +56,10 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 ### Migrations (`server/migrations/`)
 `001_init` users, sessions, categories, month_budgets, category_plans, expenses, goals, goal_entries, loan_entries ·
 `002_month_start_day` · `003_receipts` · `004_recurring_and_undo` (recurring_rules, recurring_occurrences, trash) ·
-`005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`)
+`005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`) · `009_two_factor` (totp columns, backup codes, login challenges)
 
 ### Server tests (`server/test/`)
-`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3): vitest + supertest against PGlite.
+`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6): vitest + supertest against PGlite.
 
 ## Web (`web/`)
 | Path | Purpose |
@@ -96,13 +99,13 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour), `AppLock` +
 `AppLockSettings`, `OfflineApp` + `OfflineQueue`, `ExportLinks`, `MonthStartPicker`, `ContactCard` (contact email constant),
 `PasswordRules` (live new-password checklist, `newPasswordError`), `ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).
-`AndroidApp` (`NativeLayer`: back button / shortcut / resume; `UpdateGate`, `UpdateOffer`, `UpdateCard`, `GetAndroidAppCard`/`Link`), `RemindersCard`.
+`AndroidApp` (`NativeLayer`: back button / shortcut / resume; `UpdateGate`, `UpdateOffer`, `UpdateCard`, `GetAndroidAppCard`/`Link`), `RemindersCard`, `TwoFactorCard`.
 
 `domain/`: `calc.ts` (workbook formulas, pure) + `calc.test.ts`, `money.ts` (minor units, Arabic digits),
 `gestures.ts` (swipe thresholds) + `phone.test.ts`.
 
 ## E2E (`e2e/`)
-`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety`, `email`, `phase6` specs (emails read from `e2e/mail-outbox`), `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
+`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety`, `email`, `phase6`, `android`, `twofactor` specs (emails read from `e2e/mail-outbox`), `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
 
 ## Mobile (`mobile/`)
 | Path | Purpose |

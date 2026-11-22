@@ -1,4 +1,4 @@
-# Budget me · Version alpha 0.6.5
+# Budget me · Version alpha 0.6.6
 
 > **Alpha:** this is an early test version. Features and screens may change between updates, so download a backup now and then (Settings → Download backup).
 
@@ -40,6 +40,7 @@ Everyone creates their own account on the sign-in screen with **Create account**
 - Once everyone who should use the app has an account, set `ALLOW_SIGNUP=false` in `.env` and run `docker compose up -d`. The sign-in screen then shows only "Sign in".
 - `APP_PASSWORD` (optional) creates a built-in account with the username `owner`. Changing it and restarting signs that account out everywhere.
 - **Admin page** (Settings → Admin) for `owner` and the accounts in `ADMIN_USERNAMES`: list accounts (joined, last active, storage used), open/close sign-ups and set the invite code while the app runs, remove an account (type its username + your password), and make **one-time password reset codes** (valid 1 hour, stored hashed, needs your own password). Only the built-in `owner` can reset or remove another admin. Every admin action is kept in an activity log. Create your account first, then list it in `ADMIN_USERNAMES` (see [DEPLOY.md](DEPLOY.md#admin-page)).
+- **Two-step sign-in** (Settings): password + a 6-digit code from any authenticator app (Google Authenticator, Aegis, 2FAS…), with 8 one-time backup codes. Recommended for admins; an admin can turn it off for someone who lost their phone.
 - **Forgot password?** on the sign-in screen: with email set up (any SMTP server, free options in [DEPLOY.md](DEPLOY.md#email-forgot-password-codes-free)), enter your email and get a one-time code; otherwise use a reset code from an admin. Then choose a new password; every session of that account is signed out. Older accounts can add an email in Settings.
 
 Every table has a `user_id` and sessions are stored in Postgres. Run **one** app container: rate limits and a few guards are kept in memory per container (migrations do take a database lock, so a second container won't break the schema, but its limits would be separate).

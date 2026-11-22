@@ -66,6 +66,7 @@ Checklist for `.env`:
 | `MIN_NATIVE_VERSION_CODE` | `0` until the Android app exists |
 | `AUDIT_KEEP_DAYS` | `365`: how long the Admin activity log is kept |
 | `SMTP_*`, `MAIL_FROM` | email for "Forgot password?" codes (see "Email" below); empty = off |
+| `CONTACT_EMAIL` | address for Settings → Contact us (empty = the app's default) |
 
 **Important:** never change `POSTGRES_PASSWORD` after the first start without also changing
 it inside Postgres (the database keeps the original password in its volume).
@@ -113,8 +114,8 @@ You can also run the site through <https://securityheaders.com> and <https://www
 - The `backup` container writes a compressed dump of the whole database (all accounts and
   receipts) to `/opt/budget-me/backups` once a day and keeps `BACKUP_KEEP_DAYS` days.
 - Make one any time: `sh deploy/backup-now.sh`. Every backup is checked for completeness; an incomplete dump is deleted and reported as `backup: FAILED` (daily, in `docker compose logs backup`) or stops `update.sh` / `restore.sh` before they change anything.
-- **Copy backups off the server** (a backup on the same disk doesn't survive losing the VPS),
-  e.g. a nightly `rsync`/`rclone` of the `backups/` folder to another machine or cloud storage.
+- **Copy backups off the server** (a backup on the same disk doesn't survive losing the VPS):
+  `deploy/backup-offsite.sh` sends an encrypted copy every night (see "Operations" below).
 - Restore (replaces everything; asks for confirmation and makes a safety backup first):
   `sh deploy/restore.sh backups/<file>.sql.gz`
 - Test a restore occasionally.
@@ -180,12 +181,58 @@ A new APK is only needed when the native part changes (plugins, permissions, ico
 
 Every push also builds a test (debug) APK, kept 14 days under the workflow run's artifacts.
 
+## Operations: off-site backups, restore test, alerts, rollback
+
+Everything here is optional, free, and runs from the VPS's own cron. Settings go in `.env`
+(see the "operations" block in `.env.example`).
+
+**1. Alerts (pick one, all free).** Easiest: install the **ntfy** app on your phone, subscribe to a long random
+topic name (e.g. `budget-me-7f3k9q2x`), and put `ALERT_NTFY_TOPIC=budget-me-7f3k9q2x` in `.env`. (Or a Telegram
+bot: `ALERT_TELEGRAM_BOT_TOKEN` + `ALERT_TELEGRAM_CHAT_ID`; or any `ALERT_WEBHOOK_URL`.)
+Test it: `sh -c '. deploy/lib.sh; load_env; alert "test"'`.
+
+**2. Encrypted off-site backups** (a backup on the same disk doesn't survive losing the VPS):
+```sh
+sudo apt install age && curl https://rclone.org/install.sh | sudo bash
+rclone config                       # add a remote: Backblaze B2 (10 GB free), S3, Google Drive, another server (sftp)...
+age-keygen -o budget-me-backup.key  # do this on YOUR computer; keep the file in your password manager, NOT on the VPS
+```
+Put the public key (the `age1...` line) and the remote in `.env`: `OFFSITE_AGE_RECIPIENT=age1...`,
+`OFFSITE_REMOTE=b2:my-bucket/budget-me`. Then `sh deploy/backup-offsite.sh` once to check.
+To restore from an off-site copy: download it, `age -d -i budget-me-backup.key -o x.sql.gz <file>.age`,
+then `sh deploy/restore.sh x.sql.gz`.
+
+**3. Cron** (`crontab -e` as the user that runs Docker; adjust the path):
+```
+*/5 * * * *  cd /opt/budget-me && sh deploy/check-health.sh       >> backups/ops.log 2>&1
+30 3 * * *   cd /opt/budget-me && sh deploy/backup-offsite.sh     >> backups/ops.log 2>&1
+0 4 1 * *    cd /opt/budget-me && sh deploy/restore-test.sh       >> backups/ops.log 2>&1
+```
+`check-health.sh` alerts (at most hourly per problem) when `/api/health` fails, the disk is over
+`DISK_ALERT_PERCENT` (85%), no daily backup in 26 hours, or no off-site copy in 2 days.
+`restore-test.sh` loads the newest backup into a throwaway Postgres container (no network, nothing of the
+running app touched) and checks the tables and accounts; it alerts if anything is wrong.
+
+**4. Uptime from outside** (the VPS can't report its own outage): a free monitor such as UptimeRobot or
+healthchecks.io pointed at `https://<your site>/api/health`, alerting by email or the ntfy app.
+
+**5. Rollback.** `sh deploy/rollback.sh <tag or commit>` (see `git log --oneline -15`): backup, switch the code,
+rebuild, wait until healthy. Back to the newest: `git checkout main && sh deploy/update.sh`.
+
+**6. One-click deploy from GitHub (optional).** Actions → **Deploy** → Run workflow: runs all tests, then SSHes
+in and runs `deploy/update.sh`. Needs repository secrets `VPS` (`user@host`), `VPS_SSH_KEY` (a dedicated key),
+`VPS_KNOWN_HOSTS` (`ssh-keyscan <host>`), optionally `VPS_APP_DIR`.
+
+**7. Disk encryption.** If your VPS provider offers encrypted volumes, keep the Docker data (`/var/lib/docker`)
+and `/opt/budget-me` on one. Backups leaving the server are always encrypted (step 2).
+
 ## Admin page
 
 Admins see **Settings → Admin**: every account (joined, last active, storage used), sign-ups
 on/off and the invite code (these override `ALLOW_SIGNUP` / `SIGNUP_INVITE_CODE` once saved there),
 removing an account (type its username + your password), and **password reset codes**.
 Every admin action is written to an activity log on that page.
+**Turn on two-step sign-in for every admin account** (Settings → Two-step sign-in, any free authenticator app); the Admin page reminds you until it's on.
 
 1. Create your own account in the app first.
 2. Put its username in `.env`: `ADMIN_USERNAMES=yourname` (comma-separate several), then `docker compose up -d`.

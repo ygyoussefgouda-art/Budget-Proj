@@ -54,6 +54,11 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-22: `allowBackup=false` + data-extraction rules: the PIN hash, offline copy and queued expenses never go to Google backups.
 - 2026-11-22: Not verified on a device yet: the APK has only been built by CI. Things to check first: bridge with our CSP, update install, BiometricPrompt, notification permission on Android 13+.
 
+## Operations and two-step sign-in (0.6.6)
+- 2026-11-22: Alerts are free channels only (ntfy topic / Telegram bot / webhook) from `deploy/lib.sh`; scripts read `.env` with `load_env` (no `source`, no execution). The alert channel is still the owner's choice.
+- 2026-11-22: No GHCR image: the VPS builds from the repo (`deploy/update.sh`). The **Deploy** workflow only SSHes in once the owner adds `VPS`/`VPS_SSH_KEY`/`VPS_KNOWN_HOSTS`.
+- 2026-11-22: Two-step sign-in = TOTP in `server/src/totp.ts` (node:crypto only, RFC 6238 vectors tested) + 8 hashed backup codes. Login with it on returns `{ twoFactor, ticket }` (no session) → `POST /auth/login/2fa`. Codes can't be reused (`totp_last_step`). An email password reset does **not** turn it off; an admin can (`/admin/users/:id/disable-2fa`, same rules as reset codes).
+
 ## Owner answers (2026-11-21)
 - Android `appId` = **`com.budgetme.app`** (never change it: it is the update identity).
 - APK download = **open link** (no sign-in needed). Manifest and APK are public; integrity comes from SHA-256 + Android signature checks.
@@ -81,6 +86,8 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-21: Android refuses to install an update with a lower `versionCode` or a different signing key. Losing the keystore = users must uninstall.
 
 ## Dependencies added (with reason)
+- 2026-11-22: Dev tools upgraded for advisories (they never ship): Vitest 2→5 (server needs `vite` as a dev dependency for it), Vite 5→8, `@vitejs/plugin-react` 4→6, Playwright 1.49→1.65 (run `npx playwright install chromium` after).
+- 2026-11-22: `react-router-dom` 6→7 (web): fixes two moderate advisories (GHSA-wrjc-x8rr-h8h6, GHSA-337j-9hxr-rhxg); library mode, no code changes needed.
 - 2026-11-22: `@capacitor/core` (web) and Capacitor 8 packages in `mobile/` (android, app, camera, filesystem, haptics, local-notifications, share, splash-screen, status-bar): the HANDOFF's chosen native shell; all official Capacitor plugins. `androidx.biometric` (Android): Google's library behind BiometricPrompt.
 - 2026-11-22: `@tanstack/react-query-persist-client` (web): official add-on of React Query for the Phase 6 offline copy; we wrote the IndexedDB persister ourselves (no idb library).
 - 2026-11-22: `nodemailer` (server): sends "Forgot password?" codes over any SMTP server, so the owner can use a free provider (Gmail app password / Brevo free plan); the most used Node mail library, no paid service.

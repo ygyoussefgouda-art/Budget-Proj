@@ -69,6 +69,7 @@ services:
       MAIL_FROM: ${MAIL_FROM:-}
       # Android app downloads: downloads/android/latest.json + budget-me-<version>.apk (see DEPLOY.md)
       DOWNLOADS_DIR: /app/downloads
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-}
     volumes:
       - ./downloads:/app/downloads:ro
     ports:

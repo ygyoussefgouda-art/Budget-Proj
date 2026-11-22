@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Copy, KeyRound, Shield, Shuffle } from 'lucide-react';
+import { ArrowLeft, Copy, KeyRound, Shield, ShieldOff, Shuffle } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../api';
@@ -8,7 +8,7 @@ import { Card, COLORS, DeleteButton, Empty, Field, FormError, IconButton, PageHe
 import { locale, t } from '../i18n';
 import { useApp } from '../state';
 
-interface AdminUser { id: number; username: string; createdAt: string; lastActiveAt: string | null; receiptBytes: number; items: number; isAdmin: boolean }
+interface AdminUser { id: number; username: string; createdAt: string; lastActiveAt: string | null; receiptBytes: number; items: number; isAdmin: boolean; twoFactor?: boolean }
 interface AuditEntry { id: number; actor: string; action: string; target: string | null; details: Record<string, unknown>; at: string }
 interface ResetCode { code: string; username: string; expiresAt: string }
 
@@ -51,6 +51,11 @@ export default function Admin() {
   return (
     <div className="page">
       <PageHeader title={t('Admin')} left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/settings')} flip />} />
+      {!user.twoFactor && (
+        <Card className="warn-card">
+          <p className="small">{t('Admin accounts should use two-step sign-in. Turn it on in Settings → Two-step sign-in.')}</p>
+        </Card>
+      )}
       <SignupCard />
       <UsersCard />
       <AuditCard />
@@ -129,6 +134,7 @@ function UsersCard() {
   const [asking, setAsking] = useState<AdminUser | null>(null);
   const [reset, setReset] = useState<ResetCode | null>(null);
   const [removing, setRemoving] = useState<AdminUser | null>(null);
+  const [twoFactorOff, setTwoFactorOff] = useState<AdminUser | null>(null);
   const closeReset = () => {
     setAsking(null);
     setReset(null);
@@ -148,6 +154,7 @@ function UsersCard() {
             <div className="row gap">
               <strong dir="ltr">{u.username}</strong>
               {u.isAdmin && <Pill color={COLORS.accent}>{t('admin')}</Pill>}
+              {u.twoFactor && <Pill color={COLORS.blue}>{t('2-step')}</Pill>}
               {u.id === user.id && <span className="tiny mute">{t('(you)')}</span>}
             </div>
             <div className="tiny mute">
@@ -159,6 +166,9 @@ function UsersCard() {
             <div className="admin-actions">
               {u.username !== 'owner' && (
                 <IconButton icon={KeyRound} label={t('Password reset code for {name}', { name: u.username })} onClick={() => setAsking(u)} />
+              )}
+              {u.twoFactor && (
+                <IconButton icon={ShieldOff} label={t('Turn off two-step sign-in for {name}', { name: u.username })} onClick={() => setTwoFactorOff(u)} />
               )}
               {u.username !== 'owner' && <DeleteButton label={t('Remove {name}', { name: u.username })} onClick={() => setRemoving(u)} />}
             </div>
@@ -179,6 +189,21 @@ function UsersCard() {
               }}
             />
           )
+        )}
+      </Sheet>
+      <Sheet open={!!twoFactorOff} onClose={() => setTwoFactorOff(null)} title={t('Turn off two-step sign-in')}>
+        {twoFactorOff && (
+          <PasswordAction
+            text={t('For a lost phone: "{name}" can then sign in with the password only (and is signed out everywhere now).', { name: twoFactorOff.username })}
+            action={t('Turn off')}
+            run={(password) => api(`/admin/users/${twoFactorOff.id}/disable-2fa`, 'POST', { password })}
+            onDone={async () => {
+              setTwoFactorOff(null);
+              await qc.invalidateQueries({ queryKey: ['admin-users'] });
+              await qc.invalidateQueries({ queryKey: ['admin-audit'] });
+              toast(t('Two-step sign-in is off for "{name}".', { name: twoFactorOff.username }));
+            }}
+          />
         )}
       </Sheet>
       <Sheet open={!!removing} onClose={() => setRemoving(null)} title={t('Remove an account')}>
@@ -250,6 +275,35 @@ function ResetCodeView({ r }: { r: ResetCode }) {
         {t('Works once, until {time}. It is shown only now; making a new code cancels this one. Using it signs them out everywhere.', { time: when(r.expiresAt) })}
       </p>
     </div>
+  );
+}
+
+/** An admin action confirmed with the admin's own password. */
+function PasswordAction({ text, action, run, onDone }: { text: string; action: string; run: (password: string) => Promise<unknown>; onDone: () => void }) {
+  const [password, setPassword] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!password) return setErr(t('Enter your password.'));
+    setBusy(true);
+    try {
+      await run(password);
+      onDone();
+    } catch (x) {
+      setErr((x as Error).message);
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={submit} className="form">
+      <p className="small">{text}</p>
+      <Field label={t('Your password')}>
+        <input className="input" dir="ltr" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </Field>
+      <FormError text={err} />
+      <SaveButton label={action} busy={busy} />
+    </form>
   );
 }
 

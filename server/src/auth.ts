@@ -5,6 +5,7 @@ import type { Db, Queryable } from './db.js';
 import { ah, HttpError } from './http.js';
 import { seedStartingData } from './seed.js';
 import { passwordProblems } from './validation.js';
+import { startChallenge } from './twoFactor.js';
 
 const scrypt = (pw: string, salt: Buffer, keylen: number, opts: ScryptOptions) =>
   new Promise<Buffer>((res, rej) => scryptCb(pw, salt, keylen, opts, (e, k) => (e ? rej(e) : res(k))));
@@ -24,9 +25,11 @@ export interface AuthUser {
   monthStartDay: number;
   /** For "Forgot password?" codes; older accounts may have none. */
   email?: string | null;
+  /** Two-step sign-in (authenticator app) is on. */
+  twoFactor?: boolean;
 }
 
-const USER_COLUMNS = 'u.id, u.username, u.currency, u.month_start_day AS "monthStartDay", u.email';
+const USER_COLUMNS = 'u.id, u.username, u.currency, u.month_start_day AS "monthStartDay", u.email, (u.totp_enabled_at IS NOT NULL) AS "twoFactor"';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -129,6 +132,7 @@ export async function ensureOwner(db: Db, password: string, seed = false): Promi
   return id as number;
 }
 
+export const cookieOptionsFor = (req: Request) => cookieOptions(req);
 function cookieOptions(req: Request): CookieOptions {
   return {
     httpOnly: true,
@@ -197,6 +201,7 @@ export const publicUser = (u: AuthUser) => ({
   currency: u.currency,
   monthStartDay: u.monthStartDay,
   email: u.email ?? null,
+  twoFactor: !!u.twoFactor,
   isAdmin: isAdminName(u.username),
 });
 
@@ -247,6 +252,11 @@ export function loginHandler(db: Db, parse: (b: unknown) => { username?: string;
       await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [await hashPassword(password), user.id]);
     }
     await db.query('DELETE FROM sessions WHERE expires_at < now()');
+    // Two-step sign-in: no session yet, only a ticket for the code (POST /auth/login/2fa).
+    if (user.twoFactor) {
+      res.json({ twoFactor: true, ticket: await startChallenge(db, user.id) });
+      return;
+    }
     const token = await createSession(db, user.id);
     res.cookie(COOKIE, token, cookieOptions(req));
     res.json({ user: publicUser(user as AuthUser) });

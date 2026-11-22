@@ -1,6 +1,6 @@
 {
   "name": "budget-me-e2e",
-  "version": "0.6.5-alpha",
+  "version": "0.6.6-alpha",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,6 @@
     "report": "playwright show-report"
   },
   "devDependencies": {
-    "@playwright/test": "1.49.1"
+    "@playwright/test": "^1.65.1"
   }
 }

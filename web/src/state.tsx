@@ -20,7 +20,7 @@ import {
 import { fmtMoney } from './domain/money';
 import { isRtl, locale, t } from './i18n';
 
-export interface User { id: number; username: string; currency: string; monthStartDay: number; isAdmin?: boolean; email?: string | null }
+export interface User { id: number; username: string; currency: string; monthStartDay: number; isAdmin?: boolean; email?: string | null; twoFactor?: boolean }
 
 export interface ServerState {
   month: string;

@@ -3,7 +3,7 @@
 Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (say why).
 Update at the end of every session. Phases come from `HANDOFF.md` §4.
 
-**Current version:** alpha 0.6.5 · **Current phase:** 2-5 code done (device testing pending); next: 7, 8 · **Last updated:** 2026-11-21
+**Current version:** alpha 0.6.6 · **Current phase:** all HANDOFF phases built; left: things only the owner can do (phone test, signing key, VPS setup, LICENSE) · **Last updated:** 2026-11-21
 
 ## Phase 0: Hand-off setup
 - [-] Clone repo, branch `phase-0-handoff`: worked on `main` in the existing checkout; the owner commits/pushes only when they say so (see `MEMORY.md`)
@@ -75,23 +75,25 @@ Phase 1 test results: see the Log below.
 - [x] Persist React Query cache to IndexedDB (`web/src/persist.ts`, official `@tanstack/react-query-persist-client`); cleared on sign-out, 401, forgot-PIN and account deletion (`clearKit`)
 - [x] Offline: the app opens from the saved copy with "Showing data from <time>" in the offline bar; new expenses still queue; E2E `e2e/tests/phase6.spec.ts` · committed (0.6.4)
 
-## Phase 7: VPS operations
-- [ ] Encrypted offsite backups (`age` + rclone) + docs
-- [ ] Monthly automated restore test
-- [ ] Uptime monitor + alerts (health, backup failure, disk > 85%)
-- [ ] CI/CD: tag → tests → GHCR image → deploy over SSH → APK publish; `deploy/rollback.sh`
-- [ ] Disk/volume encryption (if provider supports) · PR merged
+## Phase 7: VPS operations (alpha 0.6.6)
+- [x] Encrypted off-site backups: `deploy/backup-offsite.sh` (age public key + any rclone remote, 90 days) + docs (DEPLOY.md "Operations"); target still the owner's choice
+- [x] Monthly automated restore test: `deploy/restore-test.sh` (throwaway Postgres, no network, checks tables and accounts)
+- [x] Alerts: `deploy/check-health.sh` every 5 min (health, disk > 85%, backup older than 26 h, off-site older than 2 days) via ntfy / Telegram / webhook (all free); outside uptime monitor documented (UptimeRobot / healthchecks.io)
+- [x] Rollback `deploy/rollback.sh <ref>`; one-click **Deploy** workflow (tests, then SSH `deploy/update.sh`) once the owner adds SSH secrets; APK publish on tag `android-v*` (Phase 3). No GHCR image: the VPS builds from the repo (simpler for one server)
+- [x] Backups only kept when complete (0.6.1); disk encryption documented (depends on the provider)
+- [ ] Owner: set up cron, alerts and the off-site target on the VPS (DEPLOY.md "Operations")
 
-## Phase 8: Hardening & cleanup (optional)
-- [ ] TOTP 2FA for admins
+## Phase 8: Hardening & cleanup (alpha 0.6.6)
+- [x] Two-step sign-in (TOTP authenticator codes + 8 backup codes) for everyone, recommended for admins (Admin page reminds; admins can turn it off for a lost phone)
 - [x] Email password reset (done in 0.6.3, owner's request)
-- [~] Repo hygiene: README no longer mentions `legacy-flutter/` (done in 0.6.0); LICENSE, contact email to config, scripts still open
-- [ ] Dependency major upgrades (React 19, Vite, Express 5, Vitest), one per PR
-
+- [x] Repo hygiene: no `legacy-flutter/` mention, contact email from `CONTACT_EMAIL`, scripts documented
+- [ ] `LICENSE`: owner's choice (none = all rights reserved)
+- [~] Dependency majors: done in 0.6.6: React Router 7 (two moderate advisories), Vite 8 + plugin-react 6, Vitest 5 (server + web), Playwright 1.65 (`npm audit`: 0 vulnerabilities in server, web, mobile, e2e). Still as Dependabot PRs, one at a time with green CI: React 19, TypeScript 7, Express 5, express-rate-limit 8, Node 26 image, upload-artifact 7
 ## Log
 - 2026-11-21: Review of alpha 0.5.6 done; hand-off files written; gaps re-prioritised for a personal sideloaded Android app.
 - 2026-11-21: Phase 0 + Phase 1 done → alpha 0.6.0 (committed `e83525e`, CI green).
 - 2026-11-21: alpha 0.6.2 polish: erase/restore need the password; offline retries answered before caps (and "deleted" items not revived); receipt quota counts the Undo trash and locks; undo checks the quota; backup download is one snapshot; error logs drop DB row details; housekeeping clears expired sessions/codes and old audit entries (`AUDIT_KEEP_DAYS`); overpaid people don't lower loan totals; no duplicate category on retry; month-start change refreshes every report; no lock after camera/file picker; account deletion clears the offline queue; service worker precaches the build (opens offline after first visit) with a per-build cache; "new version" only for a newer server; focus handling in sheets/dialogs; Budget menu closes on tap outside; loading/error states; missing translations; RTL minus in KV rows; tutorial tips; `.gitignore` keystores; README/CODEMAP/CLAUDE fixes. New `server/test/security.test.ts` (10: cross-account, untested routes, offline, quota, housekeeping, headers, CSRF).
+- 2026-11-22: alpha 0.6.6 = Phases 7 + 8: off-site backups, restore test, alerts, rollback, Deploy workflow; two-step sign-in; React Router 7; contact email from config. First Android CI build passed (debug APK).
 - 2026-11-22: alpha 0.6.5 = Phases 2-5 in code: `mobile/` Capacitor shell + `BudgetNativePlugin` (self-update, fingerprint, app settings), download routes, update flow, permissions screen, camera receipts, reminders, share sheet, back button, shortcut; CI builds the APK. Crash "Reload" now drops the offline copy (bad saved data could crash again). Not yet built or run on a phone.
 - 2026-11-22: alpha 0.6.4 = Phase 6 offline viewing (copy kept 7 days, per app version, only the account's own screens).
 - 2026-11-22: alpha 0.6.3 (owner's request): sign-up needs an email; new passwords need 8+ chars with lower/upper/number/special (live checklist, "Show" button, no repeat field on sign-up); sign in with username or email; "Forgot password?" emails a one-time code (30 min, 5 tries, 3 mails/address/hour, same answer for unknown addresses) over any SMTP server (free: Gmail app password or Brevo); admin codes still work; Settings → add/change email (needs password). Migration `008_email`. New dependency nodemailer. New env vars `SMTP_HOST/PORT/USER/PASS`, `MAIL_FROM` (`MAIL_OUTBOX_DIR` dev/test only). Tests: `server/test/email.test.ts` (11), `e2e/tests/email.spec.ts` (3).

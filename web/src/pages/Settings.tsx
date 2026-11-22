@@ -16,6 +16,7 @@ import { removeLock } from '../pin';
 import AppLockSettings from '../components/AppLockSettings';
 import { GetAndroidAppCard, UpdateCard } from '../components/AndroidApp';
 import RemindersCard from '../components/RemindersCard';
+import TwoFactorCard from '../components/TwoFactorCard';
 import ContactCard from '../components/ContactCard';
 import { CURRENCIES, useApp } from '../state';
 import { getThemePref, setThemePref, type ThemePref } from '../theme';
@@ -212,6 +213,8 @@ export default function Settings() {
           </button>
         </div>
       </Card>
+
+      <TwoFactorCard />
 
       <Sheet open={sheet === 'password'} onClose={() => setSheet(null)} title={t('Change password')}>
         {sheet === 'password' && (

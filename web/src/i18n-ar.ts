@@ -743,6 +743,50 @@ export const AR: Record<string, string> = {
   'ref.': 'مرجع',
   'Too many reports. Try again later.': 'بلاغات كتير. جرّب تاني بعدين.',
 
+  // 0.6.6: two-step sign-in
+  'Two-step sign-in': 'الدخول بخطوتين',
+  'On: signing in needs your password and a code from your authenticator app.': 'شغّال: الدخول محتاج الباسورد وكود من تطبيق المصادقة.',
+  'Off. Turn it on so a stolen password alone is not enough to sign in (recommended for admins).':
+    'مقفول. شغّله عشان الباسورد لوحده لو اتسرق ميكفيش للدخول (مهم للأدمن).',
+  'Turn off two-step sign-in': 'اقفل الدخول بخطوتين',
+  'Turn on two-step sign-in': 'شغّل الدخول بخطوتين',
+  'You need an authenticator app on your phone, for example Google Authenticator, Microsoft Authenticator, Aegis or 2FAS (all free).':
+    'محتاج تطبيق مصادقة على موبايلك، زي Google Authenticator أو Microsoft Authenticator أو Aegis أو 2FAS (كلهم ببلاش).',
+  Continue: 'كمّل',
+  '1. Add Budget me to your authenticator app: tap the button on this phone, or type the key in the app.':
+    '1. ضيف Budget me لتطبيق المصادقة: دوس الزرار على الموبايل ده، أو اكتب المفتاح في التطبيق.',
+  'Open in authenticator app': 'افتح في تطبيق المصادقة',
+  'Setup key': 'مفتاح الإعداد',
+  'Copy key': 'انسخ المفتاح',
+  '2. Enter the 6-digit code it shows': '2. اكتب الكود اللي فيه 6 أرقام اللي بيظهر',
+  'Turn on': 'شغّل',
+  'Two-step sign-in is on. Keep these backup codes somewhere safe (a password manager or on paper). Each one works once if you lose your phone.':
+    'الدخول بخطوتين اشتغل. احفظ أكواد الاحتياط دي في مكان آمن (مدير باسوردات أو ورقة). كل كود بيشتغل مرة واحدة لو ضاع موبايلك.',
+  'Backup codes': 'أكواد الاحتياط',
+  'Copy backup codes': 'انسخ أكواد الاحتياط',
+  'They are shown only now.': 'بتظهر دلوقتي بس.',
+  'Enter your password and a code.': 'اكتب الباسورد وكود.',
+  'Two-step sign-in is off.': 'الدخول بخطوتين اتقفل.',
+  'Code from your app (or a backup code)': 'الكود من التطبيق (أو كود احتياط)',
+  'Admin accounts should use two-step sign-in. Turn it on in Settings → Two-step sign-in.':
+    'حسابات الأدمن لازم تستخدم الدخول بخطوتين. شغّله من الإعدادات ← الدخول بخطوتين.',
+  '2-step': 'خطوتين',
+  'Turn off two-step sign-in for {name}': 'اقفل الدخول بخطوتين لـ {name}',
+  'For a lost phone: "{name}" can then sign in with the password only (and is signed out everywhere now).':
+    'لو الموبايل ضاع: "{name}" هيقدر يدخل بالباسورد بس (وهيخرج من كل الأجهزة دلوقتي).',
+  'Two-step sign-in is off for "{name}".': 'الدخول بخطوتين اتقفل لـ "{name}".',
+  'Enter the code from your authenticator app.': 'اكتب الكود من تطبيق المصادقة.',
+  'Open your authenticator app and enter the 6-digit code for Budget me. Lost your phone? Use one of your backup codes.':
+    'افتح تطبيق المصادقة واكتب الكود (6 أرقام) بتاع Budget me. موبايلك ضاع؟ استخدم كود من أكواد الاحتياط.',
+  Code: 'الكود',
+  'Turn it off in your own Settings instead.': 'اقفله من الإعدادات بتاعتك.',
+  'That code is not right. Try the newest code from your app.': 'الكود ده مش صح. جرّب أحدث كود في التطبيق.',
+  'That took too long. Sign in again.': 'الوقت خلص. ادخل تاني.',
+  'Too many wrong codes. Sign in again.': 'أكواد غلط كتير. ادخل تاني.',
+  'Two-step sign-in is already on.': 'الدخول بخطوتين شغّال فعلاً.',
+  'Start the setup again.': 'ابدأ الإعداد من الأول.',
+  'That code is not right. Check the time on your phone and try the newest code.': 'الكود ده مش صح. اتأكد من ساعة الموبايل وجرّب أحدث كود.',
+
   // 0.6.5: Android app (updates, permissions, fingerprint, reminders, camera)
   'Downloading the update': 'التحديث بيتحمّل',
   'Allow Budget me to install updates: turn on "Allow from this source", then come back.':

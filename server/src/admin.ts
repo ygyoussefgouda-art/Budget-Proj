@@ -7,6 +7,7 @@ import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { checkNewPassword, checkPassword, hashPassword, isAdminName, OWNER, sha256 } from './auth.js';
 import { resetCodeMail, sendInBackground, type Mailer } from './mail.js';
+import { turnOff } from './twoFactor.js';
 import type { Db, Queryable } from './db.js';
 import { ah, HttpError } from './http.js';
 import { id as idSchema, schemas } from './validation.js';
@@ -67,7 +68,7 @@ export function adminRoutes(db: Db, defaults: SignupDefaults): Router {
     '/admin/users',
     ah(async (_req, res) => {
       const rows = await db.query(
-        `SELECT u.id, u.username, u.created_at, u.last_active_at,
+        `SELECT u.id, u.username, u.created_at, u.last_active_at, (u.totp_enabled_at IS NOT NULL) AS two_factor,
            (SELECT COALESCE(SUM(size), 0) FROM receipts r WHERE r.user_id = u.id) AS receipt_bytes,
            (SELECT COUNT(*) FROM expenses e WHERE e.user_id = u.id)
              + (SELECT COUNT(*) FROM goal_entries g WHERE g.user_id = u.id)
@@ -83,6 +84,7 @@ export function adminRoutes(db: Db, defaults: SignupDefaults): Router {
           receiptBytes: Number(x.receipt_bytes),
           items: Number(x.items),
           isAdmin: isAdminName(x.username),
+          twoFactor: !!x.two_factor,
         })),
       );
     }),
@@ -151,6 +153,25 @@ export function adminRoutes(db: Db, defaults: SignupDefaults): Router {
     }),
   );
 
+  // Lost phone and backup codes: an admin turns two-step sign-in off (their password; not for other admins unless owner).
+  r.post(
+    '/admin/users/:id/disable-2fa',
+    ah(async (req, res) => {
+      const userId = pid(req.params.id);
+      const b = schemas.adminResetCode.parse(req.body);
+      await checkPassword(db, req.user!.id, b.password);
+      await db.tx(async (q) => {
+        const u = (await q.query('SELECT id, username FROM users WHERE id = $1', [userId])).rows[0];
+        if (!u) throw new HttpError(404, 'User not found.');
+        if (u.id === req.user!.id) throw new HttpError(400, 'Turn it off in your own Settings instead.');
+        protectAdmins(req, u.username);
+        await turnOff(q, u.id);
+        await q.query('DELETE FROM sessions WHERE user_id = $1', [u.id]);
+        await audit(q, req, 'two_factor_reset', u.username);
+      });
+      res.status(204).end();
+    }),
+  );
   r.post(
     '/admin/users/:id/delete',
     ah(async (req, res) => {

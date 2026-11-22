@@ -84,7 +84,14 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [ticket, setTicket] = useState<string | null>(null);
   const signup = mode === 'signup' && signupEnabled;
+
+  const signedIn = (r: unknown) => {
+    // Start clean: nothing cached from an earlier account on this phone.
+    qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
+    qc.setQueryData(['me'], r);
+  };
 
   const switchMode = (m: Mode) => {
     setMode(m);
@@ -116,15 +123,35 @@ export default function Login() {
       const body = signup
         ? { username: name, password, ...(mail ? { email: mail } : {}), ...(inviteRequired ? { inviteCode: invite.trim() } : {}) }
         : { username: name, password };
-      const r = await api(signup ? '/auth/signup' : '/auth/login', 'POST', body);
-      // Start clean: nothing cached from an earlier account on this phone.
-      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
-      qc.setQueryData(['me'], r);
+      const r = await api<{ user?: unknown; twoFactor?: boolean; ticket?: string }>(signup ? '/auth/signup' : '/auth/login', 'POST', body);
+      if (r.twoFactor && r.ticket) {
+        // Right password; now the code from the authenticator app.
+        setTicket(r.ticket);
+        setBusy(false);
+        return;
+      }
+      signedIn(r);
     } catch (x) {
       setErr((x as Error).message);
       setBusy(false);
     }
   };
+
+  if (ticket) {
+    return (
+      <div className="login">
+        <SecondStep
+          ticket={ticket}
+          onDone={signedIn}
+          onCancel={() => {
+            setTicket(null);
+            setPassword('');
+            setErr(null);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (resetting) {
     return (
@@ -396,6 +423,52 @@ function ResetPassword({
           {t("Didn't get a code? Send a new one")}
         </button>
       )}
+      <button type="button" className="btn ghost block" onClick={onCancel}>
+        {t('Back to sign in')}
+      </button>
+    </form>
+  );
+}
+
+/** Two-step sign-in: the 6-digit code from the authenticator app, or a backup code. */
+function SecondStep({ ticket, onDone, onCancel }: { ticket: string; onDone: (r: unknown) => void; onCancel: () => void }) {
+  const [code, setCode] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!code.trim()) return setErr(t('Enter the code from your authenticator app.'));
+    setBusy(true);
+    setErr(null);
+    try {
+      onDone(await api('/auth/login/2fa', 'POST', { ticket, code: code.trim() }));
+    } catch (x) {
+      setErr((x as Error).message);
+      setBusy(false);
+      setCode('');
+    }
+  };
+  return (
+    <form className="login-card" onSubmit={submit} noValidate>
+      <h1>{t('Two-step sign-in')}</h1>
+      <p className="small mute">{t('Open your authenticator app and enter the 6-digit code for Budget me. Lost your phone? Use one of your backup codes.')}</p>
+      <label className="field">
+        <span className="field-label">{t('Code')}</span>
+        <input
+          className="input"
+          dir="ltr"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          autoFocus
+          maxLength={20}
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+        />
+      </label>
+      <FormError text={err} />
+      <button className="btn primary block" disabled={busy}>
+        {t('Sign in')}
+      </button>
       <button type="button" className="btn ghost block" onClick={onCancel}>
         {t('Back to sign in')}
       </button>
