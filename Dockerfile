@@ -2,7 +2,7 @@
 # Budget me: React web app + Node API in one small image.
 
 # ---- build the React app ----
-FROM node:22-alpine AS web
+FROM node:26-alpine AS web
 WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
 # npm ci installs exactly what the lockfile says (reproducible, no surprise upgrades)
@@ -11,7 +11,7 @@ COPY web/ ./
 RUN npm run build
 
 # ---- build the API ----
-FROM node:22-alpine AS server
+FROM node:26-alpine AS server
 WORKDIR /src/server
 COPY server/package.json server/package-lock.json ./
 RUN npm ci --no-audit --no-fund
@@ -19,7 +19,7 @@ COPY server/ ./
 RUN npm run build && npm prune --omit=dev
 
 # ---- runtime: only the compiled app and production dependencies ----
-FROM node:22-alpine
+FROM node:26-alpine
 ENV NODE_ENV=production PORT=3000
 WORKDIR /app
 COPY --from=server --chown=root:root /src/server/package.json ./

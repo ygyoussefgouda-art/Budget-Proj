@@ -13,7 +13,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
  * Keyboard and screen-reader friendly layer: moves focus inside when it opens, keeps Tab inside,
  * Escape closes only the top layer, and focus goes back to where it was when it closes.
  */
-function useLayer(ref: RefObject<HTMLElement>, active: boolean, onEscape: () => void) {
+function useLayer(ref: RefObject<HTMLElement | null>, active: boolean, onEscape: () => void) {
   const escape = useRef(onEscape);
   escape.current = onEscape;
   useEffect(() => {
