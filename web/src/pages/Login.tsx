@@ -6,7 +6,7 @@ import { GetAndroidAppLink } from '../components/AndroidApp';
 import { newPasswordError, PasswordRules } from '../components/PasswordRules';
 import { COLORS, FormError, Segmented } from '../components/ui';
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
-import { APP_VERSION, STAGE, VERSION_KEY } from '../version';
+import { APP_VERSION, MARK, VERSION_KEY } from '../version';
 
 type Mode = 'signin' | 'signup';
 const USERNAME_RE = /^[a-z0-9._-]{3,30}$/;
@@ -196,11 +196,10 @@ export default function Login() {
           <span dir="ltr">
             Budget <span style={{ color: COLORS.accent }}>me</span>
           </span>
-          <span className="stage-badge" title={t(STAGE)}>
-            {t(VERSION_KEY, { v: APP_VERSION })}
+          <span className="stage-badge" title={t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}>
+            {MARK}
           </span>
         </h1>
-        <p className="tiny mute">{t('Early test version: things may change between updates.')}</p>
 
         {signupEnabled && (
           <Segmented

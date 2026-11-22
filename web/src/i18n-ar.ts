@@ -48,7 +48,6 @@ export const AR: Record<string, string> = {
   'Left': 'فاضل',
   'From': 'من',
   'To': 'لحد',
-  'Alpha': 'تجريبي',
   'Previous month': 'الشهر اللي فات',
   'Next month': 'الشهر الجاي',
   'Pick a month': 'اختار شهر',
@@ -88,8 +87,6 @@ export const AR: Record<string, string> = {
   'Signing in…': 'بندخّلك…',
   'Already have an account?': 'عندك حساب؟',
   'New here?': 'أول مرة هنا؟',
-  'Early test version: things may change between updates.': 'نسخة تجريبية: حاجات ممكن تتغير مع التحديثات.',
-  'Version alpha {v}': 'إصدار ألفا {v}',
 
   // ---- home ----
   'Your budget left': 'اللي فاضل من ميزانيتك',
@@ -327,7 +324,6 @@ export const AR: Record<string, string> = {
   'All expenses, receipts, loans, savings and budgets are deleted. Export a backup first if unsure.': 'كل المصاريف والإيصالات والسلف والتحويش والميزانيات هتتمسح. نزّل نسخة احتياطية الأول لو مش متأكد.',
   'All data erased.': 'كل البيانات اتمسحت.',
   'About': 'عن التطبيق',
-  'This is an alpha: an early test version. Screens and features may still change, and you might find bugs. Download a backup now and then so your data is safe.': 'دي نسخة تجريبية لسه في الأول. الشاشات والحاجات ممكن تتغير، وممكن تلاقي شوية مشاكل. نزّل نسخة احتياطية كل فترة عشان بياناتك تبقى في أمان.',
   'Show the tutorial again': 'ورّيني الشرح تاني',
 
   // ---- month start calendar ----
@@ -342,7 +338,6 @@ export const AR: Record<string, string> = {
   // ---- tutorial ----
   'Welcome to {app}': 'أهلًا بيك في {app}',
   'Plan your month, log what you spend, save for goals and keep track of money you owe or lent.': 'خطّط لشهرك، سجّل اللي بتصرفه، حوّش لأهدافك، وتابع السلف اللي عليك واللي ليك.',
-  'This is an alpha (early test) version, so screens may change between updates.': 'دي نسخة تجريبية، فالشاشات ممكن تتغير مع التحديثات.',
   'Everything you see can be edited, renamed or removed. Nothing is fixed.': 'أي حاجة تشوفها تقدر تعدّلها أو تغيّر اسمها أو تشيلها. مفيش حاجة ثابتة.',
   'When do you get your money?': 'بتقبض إمتى؟',
   'Tap the day your salary or allowance usually arrives. Your budget month will start on that day.': 'دوس على اليوم اللي مرتبك أو مصروفك بيوصل فيه. شهر ميزانيتك هيبدأ من اليوم ده.',
@@ -742,6 +737,11 @@ export const AR: Record<string, string> = {
   Later: 'بعدين',
   'ref.': 'مرجع',
   'Too many reports. Try again later.': 'بلاغات كتير. جرّب تاني بعدين.',
+
+  // 1.0.0 (MK1): version mark and developer credit
+  '{mark} · Version {v}': '{mark} · إصدار {v}',
+  'Developed by {name}': 'تطوير {name}',
+  'Download a backup now and then so your data is always safe.': 'نزّل نسخة احتياطية كل فترة عشان بياناتك تفضل في أمان.',
 
   // 0.6.6: two-step sign-in
   'Two-step sign-in': 'الدخول بخطوتين',

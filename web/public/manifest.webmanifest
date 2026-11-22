@@ -1,7 +1,7 @@
 {
   "name": "Budget me",
   "short_name": "Budget me",
-  "description": "Budget me (alpha): monthly budget, expenses, savings goals and loans.",
+  "description": "Budget me: monthly budget, expenses, savings goals and loans.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

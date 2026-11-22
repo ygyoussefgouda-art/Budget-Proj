@@ -8,7 +8,8 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-21: Languages: English + Egyptian Arabic, RTL supported. Default theme dark ("Emerald night"). Default currency label EGP.
 - 2026-11-21: Budget maths mirror the original `Student_Budget.xlsx` workbook (`web/src/domain/calc.ts`). Don't change formulas without the owner.
 - 2026-11-21: Biometrics: the owner removed a browser (WebAuthn) fingerprint unlock earlier, then chose **fingerprint unlock of the app lock in the Android app only** (native BiometricPrompt, HANDOFF Phase 5, PIN as fallback). Why: bank-app feel, reliable on Android. (No WebAuthn/passkeys in the browser; never for sign-in; only offered when a PIN is set.)
-- 2026-11-21: Versions: one patch number per small phase (0.5.2…0.5.6), 0.6.0 = HANDOFF Phase 0+1. Show it as "Version alpha X.Y.Z" under the logo. A short plain summary for the owner after every phase.
+- 2026-11-22: **MK1 = version 1.0.0**: the owner ended the alpha. The app shows the mark `MK1` under the logo and "Budget me MK1 · Version 1.0.0" in the Settings footer under "Developed by Youssef Gouda" (`web/src/version.ts`: `APP_VERSION`, `MARK`, `DEVELOPER`). No "alpha" anywhere in the app. Next releases: patch/minor numbers as usual; a new mark (MK2) only when the owner says so.
+- 2026-11-21: (history) Alpha versions: one patch number per phase (0.5.2…0.6.6). A short plain summary for the owner after every phase.
 
 ## Security decisions (0.6.1)
 - 2026-11-21: Admin powers: reset codes and removals need the acting admin's password; admins from `ADMIN_USERNAMES` can't act on other admins, only `owner` can; nobody makes a code for `owner`. Why: one stolen admin session must not take over everyone.

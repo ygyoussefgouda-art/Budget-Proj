@@ -13,9 +13,9 @@ test.describe('0.6.0: crash screen, version and update prompt', () => {
 
     const alert = page.getByRole('alert');
     await expect(alert.getByRole('heading', { name: 'Something went wrong' })).toBeVisible();
-    await expect(alert).toContainText('Version alpha 0.6.6');
+    await expect(alert).toContainText('Budget me MK1 · Version 1.0.0');
     const body = (await report).postDataJSON();
-    expect(body).toMatchObject({ kind: 'render', version: '0.6.6' });
+    expect(body).toMatchObject({ kind: 'render', version: '1.0.0' });
     expect(body.message).toBeTruthy();
 
     // Fixed data + Reload = the app is back.
@@ -27,7 +27,7 @@ test.describe('0.6.0: crash screen, version and update prompt', () => {
   test('GET /api/version is public', async ({ request }) => {
     const r = await request.get('/api/version');
     expect(r.ok()).toBe(true);
-    expect(await r.json()).toEqual({ web: '0.6.6', api: '0.6.6', minNativeVersionCode: 0 });
+    expect(await r.json()).toEqual({ web: '1.0.0', api: '1.0.0', minNativeVersionCode: 0 });
   });
 
   test('when the server has a newer version, the app offers "Reload" (and "Later" hides it)', async ({ page }) => {

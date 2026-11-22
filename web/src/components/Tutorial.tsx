@@ -26,7 +26,6 @@ const STEPS: Step[] = [
     title: 'Welcome to {app}',
     text: 'Plan your month, log what you spend, save for goals and keep track of money you owe or lent.',
     tips: [
-      'This is an alpha (early test) version, so screens may change between updates.',
       'Everything you see can be edited, renamed or removed. Nothing is fixed.',
     ],
     route: '/',

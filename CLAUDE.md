@@ -62,5 +62,5 @@ On the owner's PC the `scripts\*.cmd` helpers use a portable Node in `D:\devtool
 - **Don't commit or push until the owner says so** (owner's rule, see `MEMORY.md`). When asked: one branch + PR per phase (`phase-N-short-name`), small commits with clear messages.
 - Before each PR: server typecheck + tests, web tests + build, E2E. Add tests for new endpoints/screens.
 - At the end of every work session/phase: tick items in `PROGRESS.md`, add decisions to `MEMORY.md`, update `CODEMAP.md`.
-- Bump versions together: `web/package.json`, `server/package.json`, `e2e/package.json` (+ the three `package-lock.json` top-level versions), `web/src/version.ts`, README title, version asserts in `e2e/tests/reliability.spec.ts`; Android `versionCode`/`versionName` in `mobile/` for native releases.
+- Bump versions together: `web/package.json`, `server/package.json`, `e2e/package.json` (+ the three `package-lock.json` top-level versions), `web/src/version.ts` (`APP_VERSION`; the mark `MARK` = MK1 only changes when the owner says), README title, version asserts in `e2e/tests/reliability.spec.ts`; Android `versionCode`/`versionName` in `mobile/` for native releases.
 - Ask the owner before: changing the Android `appId`, rotating the signing key, changing backup targets, deleting data, or anything on the VPS that isn't in `DEPLOY.md`.

@@ -20,7 +20,7 @@ import TwoFactorCard from '../components/TwoFactorCard';
 import ContactCard from '../components/ContactCard';
 import { CURRENCIES, useApp } from '../state';
 import { getThemePref, setThemePref, type ThemePref } from '../theme';
-import { APP_NAME, APP_VERSION, STAGE, VERSION_KEY } from '../version';
+import { APP_NAME, APP_VERSION, DEVELOPER, MARK, VERSION_KEY } from '../version';
 
 export default function Settings() {
   const { user, refresh } = useApp();
@@ -269,12 +269,9 @@ export default function Settings() {
       <ContactCard />
 
       <Card>
-        <SectionTitle trailing={<span className="stage-badge">{t(STAGE)}</span>}>{t('About')}</SectionTitle>
-        <p className="small">
-          {APP_NAME} <span className="mute">{t(VERSION_KEY, { v: APP_VERSION })}</span>
-        </p>
-        <p className="small mute" style={{ marginTop: 6 }}>
-          {t('This is an alpha: an early test version. Screens and features may still change, and you might find bugs. Download a backup now and then so your data is safe.')}
+        <SectionTitle trailing={<span className="stage-badge">{MARK}</span>}>{t('About')}</SectionTitle>
+        <p className="small mute" style={{ marginBottom: 10 }}>
+          {t('Download a backup now and then so your data is always safe.')}
         </p>
         <div className="stack">
           <button className="btn tonal block" onClick={() => restartTutorial()}>
@@ -282,6 +279,13 @@ export default function Settings() {
           </button>
         </div>
       </Card>
+
+      <footer className="app-footer">
+        <p>{t('Developed by {name}', { name: DEVELOPER })}</p>
+        <p className="mute">
+          {APP_NAME} {t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}
+        </p>
+      </footer>
     </div>
   );
 }

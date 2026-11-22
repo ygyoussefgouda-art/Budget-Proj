@@ -75,6 +75,16 @@ test.describe('settings, language and navigation', () => {
     }
   });
 
+  test('MK1: the badge under the logo, and the Settings footer credits the developer', async ({ page }) => {
+    await tab(page, 'Home').click();
+    await expect(page.locator('.stage-badge').first()).toHaveText('MK1');
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const footer = page.locator('footer.app-footer');
+    await expect(footer).toContainText('Developed by Youssef Gouda');
+    await expect(footer).toContainText('Budget me MK1 · Version 1.0.0');
+    await expect(page.getByText(/alpha/i)).toHaveCount(0);
+  });
+
   test('backup downloads a JSON file', async ({ page }) => {
     await setUpBudget(page);
     await tab(page, 'Home').click();

@@ -3,7 +3,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { reportClientError } from '../errors';
 import { t } from '../i18n';
 import { clearOfflineCache } from '../persist';
-import { APP_NAME, APP_VERSION, VERSION_KEY } from '../version';
+import { APP_NAME, APP_VERSION, MARK, VERSION_KEY } from '../version';
 
 /** Reload without the offline copy: if bad saved data caused the crash, it must not come back. */
 async function reloadFresh() {
@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           <RotateCw size={18} aria-hidden="true" /> {t('Reload')}
         </button>
         <p className="mute small">
-          {APP_NAME} · {t(VERSION_KEY, { v: APP_VERSION })}
+          {APP_NAME} {t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}
         </p>
       </div>
     );

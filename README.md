@@ -1,6 +1,6 @@
-# Budget me · Version alpha 0.6.6
+# Budget me · MK1 (version 1.0.0)
 
-> **Alpha:** this is an early test version. Features and screens may change between updates, so download a backup now and then (Settings → Download backup).
+> **MK1** is the first full release (after the 0.x alphas). Developed by Youssef Gouda. Download a backup now and then (Settings → Download backup).
 
 A mobile web app for managing a budget: monthly budget, expenses, savings goals, loans and yearly reports.
 It is built with **React** (Vite, TypeScript) and a **Node.js API** (Express, TypeScript) on **PostgreSQL**, and runs in **Docker**.
