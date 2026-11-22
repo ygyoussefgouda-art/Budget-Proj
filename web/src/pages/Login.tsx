@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, EyeOff, Languages, Wallet } from 'lucide-react';
 import { useState, type FormEvent, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { GetAndroidAppLink } from '../components/AndroidApp';
+import Splash from '../components/Splash';
 import { newPasswordError, PasswordRules } from '../components/PasswordRules';
 import { COLORS, FormError, Segmented } from '../components/ui';
 import { langOptions, t, useI18n, type LangPref } from '../i18n';
@@ -67,6 +69,7 @@ function PasswordField({
 
 export default function Login() {
   const qc = useQueryClient();
+  const nav = useNavigate();
   const { pref: langPref, setPref: setLangPref } = useI18n();
   const config = useQuery({ queryKey: ['auth-config'], queryFn: () => api<AuthConfig>('/auth/config'), staleTime: Infinity });
   const cfg = config.data;
@@ -90,6 +93,8 @@ export default function Login() {
   const signedIn = (r: unknown) => {
     // Start clean: nothing cached from an earlier account on this phone.
     qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
+    // Always land on Home, not on whatever page was open when you signed out (usually Settings).
+    nav('/', { replace: true });
     qc.setQueryData(['me'], r);
   };
 
@@ -136,6 +141,9 @@ export default function Login() {
       setBusy(false);
     }
   };
+
+  // Checking the password: the loading screen, then Home appears once your data is in.
+  if (busy) return <Splash label={signup ? t('Creating your account…') : t('Signing in…')} />;
 
   if (ticket) {
     return (

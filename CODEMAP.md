@@ -59,7 +59,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`) · `009_two_factor` (totp columns, backup codes, login challenges)
 
 ### Server tests (`server/test/`)
-`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6) + `spa.test.ts` (Express 5: static files, page fallback, no hidden-file leaks): vitest + supertest against PGlite.
+`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6) + `spa.test.ts` (Express 5: static files, page fallback, no hidden-file leaks) + `ipKey.test.ts` (rate-limit key per IPv4 / IPv6 /56): vitest + supertest against PGlite.
 
 ## Web (`web/`)
 | Path | Purpose |
@@ -95,7 +95,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `pages/`: `Dashboard`, `Budget`, `Expenses` (largest), `Loans`, `Savings` (+ GoalDetail), `Reports`, `Settings`, `Admin`, `Login`.
 `Permissions` (first-run permissions screen, Android app only).
 
-`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `BudgetForms`,
+`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `BudgetForms`,
 `charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour), `AppLock` +
 `AppLockSettings`, `OfflineApp` + `OfflineQueue`, `ExportLinks`, `MonthStartPicker`, `ContactCard` (contact email constant),
 `PasswordRules` (live new-password checklist, `newPasswordError`), `ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).

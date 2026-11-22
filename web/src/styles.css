@@ -487,6 +487,27 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .login-card { width: 100%; max-width: 380px; display: grid; gap: 14px; background: var(--card); border: 0.6px solid var(--line); border-radius: 28px; padding: 28px 22px; }
 .login-card h1 { font-size: 24px; }
 .login-logo { width: 60px; height: 60px; border-radius: 18px; background: var(--accent); display: grid; place-items: center; }
+/* Loading screen (also drawn by index.html before the app loads) */
+.splash.boot { background: var(--bg); }
+.boot-inner { display: grid; justify-items: center; gap: 14px; text-align: center; }
+.boot-logo { width: 80px; height: 80px; border-radius: 22px; }
+.boot-name { font-family: var(--font-head, inherit); font-size: 32px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); line-height: 1.1; }
+.boot-me { color: var(--accent-text); }
+.boot-tagline { margin: -6px 0 0; font-size: 15px; color: var(--mute); }
+/* Three dots hopping in turn: green, white, gold (spruce, indigo, golden earth in light mode) */
+.boot-dots { display: flex; gap: 8px; margin-top: 28px; --dot1: #6fbf8a; --dot2: #f4f2ee; --dot3: #d29a5c; }
+:root[data-theme='light'] .boot-dots { --dot1: #254d32; --dot2: #17183b; --dot3: #a27035; }
+.boot-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--dot1); animation: hop 1s ease-in-out infinite; }
+.boot-dots i:nth-child(2) { background: var(--dot2); animation-delay: .15s; }
+.boot-dots i:nth-child(3) { background: var(--dot3); animation-delay: .3s; }
+@keyframes hop { 0%, 60%, 100% { transform: translateY(0); opacity: .5; } 30% { transform: translateY(-12px); opacity: 1; } }
+/* Fading from the loading screen into Home */
+.boot-exit { position: fixed; inset: 0; z-index: 100; pointer-events: none; animation: boot-out .45s ease-in forwards; }
+.boot-exit .boot-inner { animation: boot-shrink .45s ease-in forwards; }
+@keyframes boot-out { to { opacity: 0; } }
+@keyframes boot-shrink { to { transform: scale(.85); } }
+.content.enter { animation: fade .45s ease-out; }
+@media (prefers-reduced-motion: reduce) { .boot-exit { display: none; } }
 .spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--card2); border-top-color: var(--accent-text); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

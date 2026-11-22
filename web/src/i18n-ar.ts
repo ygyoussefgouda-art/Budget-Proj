@@ -85,6 +85,8 @@ export const AR: Record<string, string> = {
   'The two passwords do not match.': 'الباسوردين مش زي بعض.',
   'Creating account…': 'بنعمل الحساب…',
   'Signing in…': 'بندخّلك…',
+  'Creating your account…': 'بنعملك الحساب…',
+  'Your money, planned': 'فلوسك، بخطة',
   'Already have an account?': 'عندك حساب؟',
   'New here?': 'أول مرة هنا؟',
 

@@ -58,6 +58,38 @@ test.describe('accounts', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
+  test('loading screen while signing in, then always Home (not the page you signed out from)', async ({ page }) => {
+    // The page itself carries the loading screen, so there is no blank screen before the app's code loads.
+    const html = await (await page.request.get('/')).text();
+    expect(html).toContain('class="boot-dots"');
+    expect(html).toContain('Your money, planned');
+
+    const user = await signUpAndSkipTutorial(page);
+    await tab(page, 'Home').click();
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await expect(page).toHaveURL(/\/settings$/);
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await expect(page).toHaveURL(/\/settings$/); // still there, on the sign-in screen
+
+    // Slow the server down a little so the loading screen can be seen.
+    await page.route('**/api/auth/login', async (r) => {
+      await new Promise((ok) => setTimeout(ok, 800));
+      await r.continue();
+    });
+    await page.getByLabel('Username').fill(user);
+    await page.getByLabel(/^Password/).fill(PASSWORD);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    const loading = page.getByRole('status');
+    await expect(loading).toContainText('Signing in…');
+    await expect(loading.locator('.boot-dots')).toBeVisible();
+
+    await expect(page).toHaveURL(/\/$/);
+    await expect(tab(page, 'Home')).toHaveClass(/active/);
+    // The fade-out layer goes away and never blocks taps.
+    await expect(page.locator('.boot-exit')).toHaveCount(0);
+    await expect(page.locator('.splash.boot')).toHaveCount(0);
+  });
+
   test('the same username cannot be taken twice (any capitals)', async ({ page, browser }) => {
     const user = await signUpAndSkipTutorial(page);
     const { ctx, page: other } = await newPhonePage(browser);

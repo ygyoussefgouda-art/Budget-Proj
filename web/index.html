@@ -15,7 +15,8 @@
     <script src="/theme-init.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Loading screen shown before the app's code has loaded; React replaces it. -->
+    <div id="root"><div class="splash boot"><div class="boot-inner"><img class="boot-logo" src="/icon.svg" alt="" width="80" height="80" /><div class="boot-name" dir="ltr">Budget <span class="boot-me">me</span></div><p class="boot-tagline">Your money, planned</p><div class="boot-dots"><i></i><i></i><i></i></div></div></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

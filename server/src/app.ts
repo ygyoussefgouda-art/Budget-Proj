@@ -1,9 +1,8 @@
 import { existsSync } from 'node:fs';
-import { isIPv6 } from 'node:net';
 import path from 'node:path';
 import cookieParser from 'cookie-parser';
 import express, { type Request } from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import helmet from 'helmet';
 import {
   changePasswordHandler,
@@ -74,16 +73,12 @@ export interface AppOptions {
 export const CSRF_HEADER = 'x-requested-with';
 export const CSRF_VALUE = 'budget-me';
 
-/** Rate-limit key: the client IP, with IPv6 grouped by /56 (one home/VPS gets a whole /56 or /64). */
+/**
+ * Rate-limit key: the client IP, with IPv6 grouped by /56 (one home/VPS gets a whole /56 or /64).
+ * Uses express-rate-limit's own helper, which also turns IPv4-in-IPv6 (::ffff:1.2.3.4) back into IPv4.
+ */
 export function ipKey(req: Request) {
-  const ip = req.ip ?? 'unknown';
-  if (!isIPv6(ip) || ip.startsWith('::ffff:')) return ip;
-  const full = ip.split('::');
-  const head = full[0] ? full[0].split(':') : [];
-  const tail = full.length > 1 && full[1] ? full[1].split(':') : [];
-  const groups = [...head, ...Array(8 - head.length - tail.length).fill('0'), ...tail];
-  // first 56 bits = 3.5 groups
-  return `${groups.slice(0, 3).join(':')}:${(groups[3] ?? '0').padStart(4, '0').slice(0, 2)}::/56`;
+  return ipKeyGenerator(req.ip ?? 'unknown', 56);
 }
 
 const limiter = (windowMin: number, limit: number, error: string, extra: Partial<Parameters<typeof rateLimit>[0]> = {}) =>

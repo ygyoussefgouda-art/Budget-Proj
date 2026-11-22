@@ -29,7 +29,7 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false,
   },
   plugins: {
-    SplashScreen: { launchShowDuration: 600, backgroundColor: '#0b0c1f', showSpinner: false },
+    SplashScreen: { launchShowDuration: 600, backgroundColor: '#0b0c1f', showSpinner: false }, // the app's dark page colour, like the web loading screen
     LocalNotifications: { smallIcon: 'ic_stat_budget', iconColor: '#d29a5c' },
   },
 };

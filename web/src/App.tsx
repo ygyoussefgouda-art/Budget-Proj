@@ -5,6 +5,7 @@ import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { api, ApiError } from './api';
 import { AppLock } from './components/AppLock';
 import OfflineApp from './components/OfflineApp';
+import Splash, { SplashExit } from './components/Splash';
 import { OfflineBar, OfflineProvider } from './components/OfflineQueue';
 import Tutorial from './components/Tutorial';
 import { useReminders } from './notify';
@@ -105,8 +106,9 @@ function Shell() {
   return (
     <div className="shell">
       <ScrollToTop />
+      <SplashExit />
       <OfflineBar updatedAt={updatedAt} />
-      <main className="content">
+      <main className="content enter">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/budget" element={<Budget />} />
@@ -151,24 +153,5 @@ function Tab({ to, icon: Icon, label, end, badge }: { to: string; icon: typeof H
       </span>
       <span>{label}</span>
     </NavLink>
-  );
-}
-
-function Splash({ text, retry }: { text?: string; retry?: () => void }) {
-  return (
-    <div className="splash">
-      {text ? (
-        <>
-          <p>{text}</p>
-          {retry && (
-            <button className="btn primary" onClick={retry}>
-              {t('Try again')}
-            </button>
-          )}
-        </>
-      ) : (
-        <div className="spinner" aria-label={t('Loading')} />
-      )}
-    </div>
   );
 }
