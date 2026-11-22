@@ -304,8 +304,8 @@ export function createApp(db: Db, opts: AppOptions = {}) {
         },
       }),
     );
-    // Single-page app: every other GET returns index.html.
-    app.get('*', (_req, res) => {
+    // Single-page app: every other GET returns index.html. ('/{*rest}' is Express 5's catch-all; it also matches '/'.)
+    app.get('/{*rest}', (_req, res) => {
       res.setHeader('Cache-Control', 'no-cache');
       res.sendFile(path.join(pub, 'index.html'));
     });

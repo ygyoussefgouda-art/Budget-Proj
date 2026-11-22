@@ -59,7 +59,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`) · `009_two_factor` (totp columns, backup codes, login challenges)
 
 ### Server tests (`server/test/`)
-`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6): vitest + supertest against PGlite.
+`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6) + `spa.test.ts` (Express 5: static files, page fallback, no hidden-file leaks): vitest + supertest against PGlite.
 
 ## Web (`web/`)
 | Path | Purpose |
