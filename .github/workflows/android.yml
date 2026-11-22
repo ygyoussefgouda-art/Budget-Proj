@@ -50,7 +50,7 @@ jobs:
           npm ci --no-audit --no-fund
           npx cap sync android
           cd android && chmod +x gradlew && ./gradlew --no-daemon assembleDebug
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: budget-me-debug-apk
           path: mobile/android/app/build/outputs/apk/debug/*.apk
@@ -101,7 +101,7 @@ jobs:
           # versionCode was raised in mobile/version.json in the commit being released.
           KEEP_VERSION_CODE: 'true'
         run: sh mobile/scripts/release.sh "${VERSION#android-v}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: budget-me-release
           path: |
