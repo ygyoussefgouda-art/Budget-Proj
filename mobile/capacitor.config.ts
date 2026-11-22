@@ -25,6 +25,8 @@ const config: CapacitorConfig = {
       }
     : undefined,
   android: {
+    // Marks every request from the app; with APP_ONLY=true the server only serves requests carrying it.
+    appendUserAgent: 'BudgetMeApp',
     allowMixedContent: false,
     webContentsDebuggingEnabled: false,
   },

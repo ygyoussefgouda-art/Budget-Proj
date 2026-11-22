@@ -67,6 +67,7 @@ Checklist for `.env`:
 | `AUDIT_KEEP_DAYS` | `365`: how long the Admin activity log is kept |
 | `SMTP_*`, `MAIL_FROM` | email for "Forgot password?" codes (see "Email" below); empty = off |
 | `CONTACT_EMAIL` | address for Settings → Contact us (empty = the app's default) |
+| `APP_ONLY` | `true` (default): only the Android app can use Budget me; a browser shows a "Get the app" page with the download link. `false`: it also works as a website |
 
 **Important:** never change `POSTGRES_PASSWORD` after the first start without also changing
 it inside Postgres (the database keeps the original password in its volume).
@@ -161,9 +162,16 @@ The Android app is a thin shell around this site: every normal deploy updates it
 A new APK is only needed when the native part changes (plugins, permissions, icon). Details:
 [docs/ANDROID_SELF_UPDATE.md](docs/ANDROID_SELF_UPDATE.md).
 
+**App only (`APP_ONLY=true`, the default):** Budget me is used through the Android app, not as a website.
+The app marks its requests (`BudgetMeApp` in its user agent); anything else gets the "Get the app" page,
+and the API answers it with 403. Health/version checks and the APK download stay open, so people can
+still install the app from `https://<your site>`. This keeps people on the app; it is not a security
+boundary (a user agent can be faked), so accounts stay protected exactly as before. To test in a
+phone or computer browser, run with `APP_ONLY=false`.
+
 **Where the APK lives:** `/opt/budget-me/downloads/android/` on the VPS (mounted read-only into the app):
-`latest.json` plus `budget-me-<version>.apk` (the last 3 are kept). People download it from
-**Settings → Get the Android app** in the browser, the link on the sign-in screen, or the short link
+`latest.json` plus `budget-me-<version>.apk` (the last 3 are kept). People download it from the
+"Get the app" page at `https://<your site>` (with `APP_ONLY=true`), or the short link
 `https://<your site>/download/android`. Installed apps check `/api/app/android/latest` and update themselves.
 
 **Building it (on GitHub, nothing to install at home):**

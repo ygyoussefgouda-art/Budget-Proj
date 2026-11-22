@@ -93,7 +93,9 @@ async function main() {
     mailer,
     contactEmail: process.env.CONTACT_EMAIL || undefined,
     downloadsDir: process.env.DOWNLOADS_DIR || path.join(root, 'downloads'),
+    appOnly: process.env.APP_ONLY === 'true',
   });
+  if (process.env.APP_ONLY === 'true') log.info('APP_ONLY: only the Android app can use Budget me; browsers see the "Get the app" page.');
   const port = Number(process.env.PORT ?? 3000);
   const server = app.listen(port, () => log.info({ port, version: APP_VERSION }, 'Budget me listening'));
   // Deleted items are kept briefly for "Undo"; expired items, sessions and codes are cleared every few minutes.

@@ -60,7 +60,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`) · `009_two_factor` (totp columns, backup codes, login challenges)
 
 ### Server tests (`server/test/`)
-`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6) + `spa.test.ts` (Express 5: static files, page fallback, no hidden-file leaks) + `ipKey.test.ts` (rate-limit key per IPv4 / IPv6 /56) + `qol.test.ts` (1.2.0: icons/colours, rollover, merge repeats, Undo for goals/people): vitest + supertest against PGlite.
+`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6) + `spa.test.ts` (Express 5: static files, page fallback, no hidden-file leaks, APP_ONLY) + `ipKey.test.ts` (rate-limit key per IPv4 / IPv6 /56) + `qol.test.ts` (1.2.0: icons/colours, rollover, merge repeats, Undo for goals/people): vitest + supertest against PGlite.
 
 ## Web (`web/`)
 | Path | Purpose |
@@ -70,6 +70,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `public/sw.js` | Service worker: shell cache `sb-shell-v4`, cache-first `/assets/`, network-first navigation, never caches `/api`; waits for `SKIP_WAITING` before taking over |
 | `public/theme-init.js` | Applies saved theme/language before React loads |
 | `public/icon-*.png`, `icon.svg` | App icons (also source for Android icons) |
+| `public/get-app.html`, `get-app.css` | "Get the Budget me app" page that browsers see when the server runs with `APP_ONLY=true` |
 | `vite.config.ts` | Dev proxy `/api` → `:3000`, build to `dist/` |
 
 ### `web/src/`

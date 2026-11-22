@@ -13,7 +13,10 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 let db: Db;
 let pub: string;
 const INDEX = '<!doctype html><title>Budget me test page</title>';
-const mkApp = () => createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false, publicDir: pub });
+const GET_APP = '<!doctype html><title>Get the Budget me app</title>';
+const mkApp = (appOnly = false) => createApp(db, { requireEmail: false, strongPasswords: false, csrfHeader: false, publicDir: pub, appOnly });
+const APP_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 7 Build/AP2A; wv) AppleWebKit/537.36 Chrome/131.0 Mobile Safari/537.36 BudgetMeApp';
+const BROWSER_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 Chrome/131.0 Mobile Safari/537.36';
 
 beforeAll(async () => {
   db = await createPgliteDb();
@@ -21,6 +24,9 @@ beforeAll(async () => {
   pub = mkdtempSync(path.join(tmpdir(), 'bm-public-'));
   mkdirSync(path.join(pub, 'assets'));
   writeFileSync(path.join(pub, 'index.html'), INDEX);
+  writeFileSync(path.join(pub, 'get-app.html'), GET_APP);
+  writeFileSync(path.join(pub, 'get-app.css'), 'body{}');
+  writeFileSync(path.join(pub, 'icon.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
   writeFileSync(path.join(pub, 'assets', 'app-123.js'), 'console.log(1)');
   writeFileSync(path.join(pub, 'sw.js'), '// sw');
   writeFileSync(path.join(pub, '.env'), 'SECRET=1');
@@ -65,5 +71,47 @@ describe('web app serving', () => {
   it('odd query strings do not crash the server', async () => {
     const r = await request(mkApp()).get('/budget?a[b][c]=1&a=2&__proto__[x]=1');
     expect(r.status).toBe(200);
+  });
+});
+
+describe("APP_ONLY: only the Android app (owner's choice)", () => {
+  it('off by default: a browser gets the app as before', async () => {
+    const r = await request(mkApp()).get('/budget').set('User-Agent', BROWSER_UA).expect(200);
+    expect(r.text).toBe(INDEX);
+  });
+
+  it('a browser gets the "Get the app" page on every page, and the API refuses it', async () => {
+    const app = mkApp(true);
+    for (const p of ['/', '/budget', '/settings', '/assets/app-123.js', '/sw.js']) {
+      const r = await request(app).get(p).set('User-Agent', BROWSER_UA);
+      expect(r.text, p).toBe(GET_APP);
+      expect(r.headers.vary, p).toMatch(/User-Agent/i);
+    }
+    for (const [method, p] of [['get', '/api/auth/me'], ['get', '/api/auth/config'], ['post', '/api/auth/login'], ['post', '/api/auth/signup']] as const) {
+      const r = await request(app)[method](p).set('User-Agent', BROWSER_UA).send({ username: 'someone', password: 'whatever-123' });
+      expect(r.status, p).toBe(403);
+      expect(r.body.code, p).toBe('app_only');
+      expect(r.headers['cache-control'], p).toBe('no-store');
+    }
+  });
+
+  it('the app gets everything as usual', async () => {
+    const app = mkApp(true);
+    expect((await request(app).get('/budget').set('User-Agent', APP_UA).expect(200)).text).toBe(INDEX);
+    const cfg = await request(app).get('/api/auth/config').set('User-Agent', APP_UA).expect(200);
+    expect(cfg.body).toHaveProperty('signupEnabled');
+    expect((await request(app).get('/api/auth/me').set('User-Agent', APP_UA)).status).toBe(401); // normal: not signed in
+  });
+
+  it("health, version, the APK download and the page's own files stay open to everyone", async () => {
+    const app = mkApp(true);
+    await request(app).get('/api/health').set('User-Agent', BROWSER_UA).expect(200);
+    await request(app).get('/api/version').set('User-Agent', BROWSER_UA).expect(200);
+    expect((await request(app).get('/api/app/android/latest').set('User-Agent', BROWSER_UA)).status).not.toBe(403); // 404: no release in tests
+    expect((await request(app).get('/download/android').set('User-Agent', BROWSER_UA)).status).toBe(302);
+    expect((await request(app).get('/get-app.css').set('User-Agent', BROWSER_UA).expect(200)).text).toBe('body{}');
+    await request(app).get('/icon.svg').set('User-Agent', BROWSER_UA).expect(200);
+    // a look-alike name is not the app
+    expect((await request(app).get('/api/auth/config').set('User-Agent', `${BROWSER_UA} NotBudgetMeAppX`)).status).toBe(403);
   });
 });

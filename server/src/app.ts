@@ -68,7 +68,19 @@ export interface AppOptions {
   accountFailLimit?: number;
   /** Crash reports per IP per 15 minutes (default 30). */
   clientErrorLimit?: number;
+  /** APP_ONLY: only the Android app may use the site; browsers get the "Get the app" page. Default false. */
+  appOnly?: boolean;
 }
+
+/** The Android app adds this to its user agent (mobile/capacitor.config.ts → android.appendUserAgent). */
+export const APP_USER_AGENT = 'BudgetMeApp';
+export const isAppRequest = (req: Request) => new RegExp(`\\b${APP_USER_AGENT}\\b`).test(req.get('user-agent') ?? '');
+
+/**
+ * Open to everyone even with APP_ONLY: health and version checks (Docker, the app's update check),
+ * the APK download, and the files of the "Get the app" page itself.
+ */
+const APP_ONLY_OPEN = /^\/(?:api\/(?:health|version|app\/android\/.*)|download\/android|get-app\.(?:html|css)|icon(?:-[\w-]+)?\.(?:svg|png)|manifest\.webmanifest)$/;
 
 export const CSRF_HEADER = 'x-requested-with';
 export const CSRF_VALUE = 'budget-me';
@@ -121,6 +133,25 @@ export function createApp(db: Db, opts: AppOptions = {}) {
     }),
   );
   app.use(cookieParser());
+
+  // ---------- APP_ONLY: the Android app only (owner's choice) ----------
+  // Browsers get the "Get the Budget me app" page and the API answers them 403. This keeps people on the
+  // app; it is not a security boundary (anyone can fake a user agent): accounts are still protected by
+  // their passwords, sessions, CSRF checks and rate limits as before.
+  if (opts.appOnly) {
+    app.use((req, res, next) => {
+      res.vary('User-Agent'); // a cache must never hand the app's answer to a browser or the other way round
+      if (isAppRequest(req) || APP_ONLY_OPEN.test(req.path)) return next();
+      if (req.path === '/api' || req.path.startsWith('/api/')) {
+        res.setHeader('Cache-Control', 'no-store');
+        return void res.status(403).json({ error: 'Budget me is only available in the app.', code: 'app_only' });
+      }
+      const page = opts.publicDir ? path.join(opts.publicDir, 'get-app.html') : '';
+      res.setHeader('Cache-Control', 'no-cache');
+      if (page && existsSync(page)) return void res.status(200).sendFile(page);
+      res.status(403).type('text/plain').send('Budget me is only available in the Android app.');
+    });
+  }
 
   // ---------- /api ----------
   app.use('/api', requestLogger); // request id + one log line per request

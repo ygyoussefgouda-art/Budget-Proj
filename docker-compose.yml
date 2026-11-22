@@ -69,6 +69,8 @@ services:
       MAIL_FROM: ${MAIL_FROM:-}
       # Android app downloads: downloads/android/latest.json + budget-me-<version>.apk (see DEPLOY.md)
       DOWNLOADS_DIR: /app/downloads
+      # Only the Android app may use Budget me; browsers get a "Get the app" page (false = website too)
+      APP_ONLY: ${APP_ONLY:-true}
       CONTACT_EMAIL: ${CONTACT_EMAIL:-}
     volumes:
       - ./downloads:/app/downloads:ro
