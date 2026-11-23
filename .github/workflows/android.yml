@@ -97,6 +97,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           EXPECTED_CERT_SHA256: ${{ secrets.EXPECTED_CERT_SHA256 }}
           VPS: ${{ secrets.VPS }}
+          VPS_DIR: /opt/masrofy/downloads/android
           VERSION: ${{ inputs.version || github.ref_name }}
           # versionCode was raised in mobile/version.json in the commit being released.
           KEEP_VERSION_CODE: 'true'

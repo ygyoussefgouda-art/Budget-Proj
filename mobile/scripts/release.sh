@@ -4,7 +4,7 @@
 #
 #   BUDGET_ME_URL=https://budget.example.com \
 #   ANDROID_KEYSTORE_PATH=... ANDROID_KEYSTORE_PASSWORD=... ANDROID_KEY_ALIAS=budgetme ANDROID_KEY_PASSWORD=... \
-#   [EXPECTED_CERT_SHA256=AB:CD:...]  [VPS=deploy@your-vps  VPS_DIR=/opt/budget-me/downloads/android] \
+#   [EXPECTED_CERT_SHA256=AB:CD:...]  [VPS=deploy@your-vps  VPS_DIR=/opt/masrofy/downloads/android] \
 #   [MANDATORY=false MIN_VERSION_CODE=0 NOTES_EN="Camera receipts|Fingerprint unlock" NOTES_AR="...|..."] \
 #   sh mobile/scripts/release.sh 0.7.0
 #
@@ -66,7 +66,7 @@ echo "==> dist/latest.json written (sha256 $SHA, $SIZE bytes)"
 
 # 5. Publish: APK first, then latest.json (so the manifest never points at a missing file); keep the last 3 APKs
 if [ -n "${VPS:-}" ]; then
-  VPS_DIR="${VPS_DIR:-/opt/budget-me/downloads/android}"
+  VPS_DIR="${VPS_DIR:-/opt/masrofy/downloads/android}"
   ssh "$VPS" "mkdir -p '$VPS_DIR'"
   scp "$APK" "$VPS:$VPS_DIR/"
   scp dist/latest.json "$VPS:$VPS_DIR/latest.json.part"

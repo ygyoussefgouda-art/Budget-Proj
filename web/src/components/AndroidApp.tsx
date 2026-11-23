@@ -218,6 +218,67 @@ export function GetAndroidAppCard() {
   );
 }
 
+const OFFER_KEY = 'masrofy.appOffer';
+const isAndroidBrowser = () => !isNative() && /Android/i.test(navigator.userAgent);
+const offerAnswered = () => {
+  try {
+    return !!localStorage.getItem(OFFER_KEY);
+  } catch {
+    return false;
+  }
+};
+const answerOffer = (v: 'app' | 'web') => {
+  try {
+    localStorage.setItem(OFFER_KEY, v);
+  } catch {
+    /* private mode: ask again next time */
+  }
+};
+
+/**
+ * Asked once before the sign-in screen, in an Android phone's browser (owner's request):
+ * download the app, or carry on in the browser. Returns 'loading' while checking for a release.
+ */
+export function useAppOffer() {
+  const ask = isAndroidBrowser() && !offerAnswered();
+  const q = useAndroidRelease();
+  const [answered, setAnswered] = useState(false);
+  if (!ask || answered) return { show: false as const };
+  if (q.isLoading) return { show: 'loading' as const };
+  if (!q.data) return { show: false as const };
+  return { show: true as const, release: q.data, done: () => setAnswered(true) };
+}
+
+export function AppOffer({ release, onContinue }: { release: AndroidRelease; onContinue: () => void }) {
+  const [downloaded, setDownloaded] = useState(false);
+  const finish = () => {
+    answerOffer(downloaded ? 'app' : 'web');
+    onContinue();
+  };
+  return (
+    <main className="login">
+      <section className="login-card app-offer" aria-labelledby="app-offer-title">
+        <img className="boot-logo center-self" src="/icon.svg" alt="" width={80} height={80} />
+        <h1 id="app-offer-title" className="center">{t('Do you want to download the Masrofy app for a better experience?')}</h1>
+        <p className="small mute center">{t('Opens faster, works offline, reminds you of payments and locks with your fingerprint.')}</p>
+        <a className="btn primary block" href={release.downloadUrl} download onClick={() => setDownloaded(true)}>
+          <Download size={18} aria-hidden="true" /> {t('Download the app')}
+        </a>
+        <p className="tiny mute center">{t('Version {v} · {size} MB · Not on Google Play', { v: release.versionName, size: mb(release.size) })}</p>
+        {downloaded && (
+          <ol className="small steps">
+            <li>{t('Open the file. If Android asks, allow your browser to install unknown apps.')}</li>
+            <li>{t('Open Masrofy and sign in. The app then asks for the permissions it needs.')}</li>
+          </ol>
+        )}
+        <button type="button" className="btn ghost block" onClick={finish}>
+          {t('Continue on the website')}
+        </button>
+      </section>
+    </main>
+  );
+}
+
 /** Small link on the sign-in screen (browser only, when an APK is published). */
 export function GetAndroidAppLink() {
   const q = useAndroidRelease();

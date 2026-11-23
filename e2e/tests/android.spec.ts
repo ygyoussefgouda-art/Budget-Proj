@@ -32,3 +32,20 @@ test.describe('Android app download (browser side)', () => {
     expect(r.headers()['location']).toBe('/api/app/android/apk/budget-me-0.6.5.apk');
   });
 });
+
+test.describe('in an Android phone browser', () => {
+  // The phone profile is already an Android browser; start without the answer the config pre-fills.
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test('the app is offered once before sign-in; "Continue on the website" goes to sign-in and is remembered', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Do you want to download the Masrofy app for a better experience?' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign in' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Download the app' })).toHaveAttribute('href', '/api/app/android/apk/budget-me-0.6.5.apk');
+    await page.getByRole('button', { name: 'Continue on the website' }).click();
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /download the Masrofy app/ })).toHaveCount(0);
+  });
+});

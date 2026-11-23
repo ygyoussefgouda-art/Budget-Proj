@@ -26,6 +26,9 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     locale: 'en-US',
     timezoneId: 'Africa/Cairo',
+    // The phone profile is Android, so the "download the app?" question would come before every sign-in.
+    // Answer it up front; tests/android.spec.ts clears this to test the question itself.
+    storageState: { cookies: [], origins: [{ origin: `http://localhost:${PORT}`, localStorage: [{ name: 'masrofy.appOffer', value: 'web' }] }] },
   },
   projects: [
     { name: 'phone', use: { ...devices['Pixel 7'] } },

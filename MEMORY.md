@@ -172,6 +172,9 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-21: Owner's PC: git/gh/node are portable in `D:\devtools` (`mingit\cmd`, `gh`, `node-v22…`), not on PATH. Only Java 8 is installed (no JDK 21 / Android SDK).
 - 2026-11-21: Playwright: `page.route()` still intercepts `/api` calls with our service worker active (it never handles `/api`), so E2E can fake API answers.
 - 2026-11-21: Android refuses to install an update with a lower `versionCode` or a different signing key. Losing the keystore = users must uninstall.
+- 2026-11-23: Release key on the owner's PC: `D:\keys\masrofy-release.jks` (outside the repo); `mobile/android/keystore.properties` points at it with empty passwords, which are given as env vars at build time. GitHub has the non-secret signing values (`ANDROID_KEY_ALIAS`, `BUDGET_ME_URL`, `EXPECTED_CERT_SHA256`); the owner adds the keystore and the passwords.
+- 2026-11-23: Browsers keep a site's tab icon even after the file changes: when the logo changes, bump the `?v=` on the icon links (`index.html`, `get-app.html`, `manifest.webmanifest`).
+- 2026-11-23: Owner's request: an Android phone's browser is asked once, before sign-in, to download the app (`AppOffer` in `AndroidApp.tsx`; the answer is kept in localStorage `masrofy.appOffer`). Not shown on iPhone or computers (the APK can't run there), nor inside the app.
 
 ## Dependencies added (with reason)
 - 2026-11-22: Dev tools upgraded for advisories (they never ship): Vitest 2→5 (server needs `vite` as a dev dependency for it), Vite 5→8, `@vitejs/plugin-react` 4→6, Playwright 1.49→1.65 (run `npx playwright install chromium` after).

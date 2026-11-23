@@ -4,7 +4,7 @@ import { Eye, EyeOff, Languages } from 'lucide-react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import { GetAndroidAppLink } from '../components/AndroidApp';
+import { AppOffer, GetAndroidAppLink, useAppOffer } from '../components/AndroidApp';
 import Splash from '../components/Splash';
 import { newPasswordError, PasswordRules } from '../components/PasswordRules';
 import { FormError, Segmented } from '../components/ui';
@@ -87,6 +87,7 @@ export default function Login() {
   const [notice, setNotice] = useState<string | null>(null);
   const [ticket, setTicket] = useState<string | null>(null);
   const signup = mode === 'signup' && signupEnabled;
+  const offer = useAppOffer();
 
   const signedIn = (r: unknown) => {
     // Start clean: nothing cached from an earlier account on this phone.
@@ -138,6 +139,10 @@ export default function Login() {
       setBusy(false);
     }
   };
+
+  // Android phone's browser, first visit: offer the app before the sign-in form.
+  if (offer.show === 'loading') return <Splash />;
+  if (offer.show) return <AppOffer release={offer.release} onContinue={offer.done} />;
 
   // Checking the password: the loading screen, then Home appears once your data is in.
   if (busy) return <Splash label={signup ? t('Creating your account…') : t('Signing in…')} />;
