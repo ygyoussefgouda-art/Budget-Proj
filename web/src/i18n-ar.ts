@@ -1076,4 +1076,13 @@ export const AR: Record<string, string> = {
   'Compare with last month, see your year': 'قارن بالشهر اللي فات وشوف سنتك',
   'Back to Savings': 'ارجع للتحويش',
   '#trip #friends': '#سفر #صحاب',
+  // 2026 redesign
+  'Where it went': 'الفلوس راحت فين',
+  'Spending by category, biggest first': 'الصرف حسب البند، الأكبر الأول',
+  '{used} used of {income}': 'اتصرف {used} من {income}',
+  'This week': 'الأسبوع ده',
+  'Spending per day this week: {amount} in total': 'الصرف كل يوم الأسبوع ده: {amount} في المجموع',
+  'See where every pound goes': 'شوف فلوسك بتروح فين',
+  Today: 'النهارده',
+  Yesterday: 'امبارح',
 };

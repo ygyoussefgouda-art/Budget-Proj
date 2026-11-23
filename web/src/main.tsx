@@ -15,9 +15,11 @@ import { idbPersister, KEEP_OFFLINE, OFFLINE_MAX_AGE } from './persist';
 import { APP_VERSION } from './version';
 import { I18nProvider } from './i18n';
 // Fonts are bundled with the app: no Google request, works offline.
-import '@fontsource-variable/manrope'; // body text
-import '@fontsource/montserrat/700.css'; // headings (Montserrat Bold)
-import '@fontsource-variable/cairo'; // Arabic letters (Manrope/Montserrat have none)
+import '@fontsource-variable/manrope'; // all Latin text, headings included (2026 redesign)
+// Arabic letters (Manrope has none): Almarai, Option E's Arabic face; Arabic subset only, three weights
+import '@fontsource/almarai/arabic-400.css';
+import '@fontsource/almarai/arabic-700.css';
+import '@fontsource/almarai/arabic-800.css';
 import './styles.css';
 import { registerServiceWorker } from './swUpdate';
 import { applyTheme, watchSystemTheme } from './theme';

@@ -10,7 +10,7 @@ function BootContent() {
       <div className="boot-name">
         <Brand />
       </div>
-      <p className="boot-tagline">{t('Your money, planned')}</p>
+      <p className="boot-tagline">{t('See where every pound goes')}</p>
       <div className="boot-dots">
         <i />
         <i />

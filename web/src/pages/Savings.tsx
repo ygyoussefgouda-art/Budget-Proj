@@ -220,7 +220,7 @@ export function GoalDetail() {
       {entries.length === 0 && <Empty text={t('No deposits or withdrawals yet.')} />}
       <div className="list">
         {[...entries].reverse().map((e) => {
-          const color = e.deposit ? COLORS.accent : COLORS.red;
+          const color = e.deposit ? COLORS.highlight : COLORS.text; // deposits in savings blue, withdrawals neutral
           const Icon = e.deposit ? ArrowUpRight : ArrowDownLeft;
           return (
             <SwipeRow key={e.id} className="list-item" onDelete={() => delEntry(e)} onEdit={() => setEntryForm({ deposit: e.deposit, edit: e })}>

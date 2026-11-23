@@ -94,7 +94,13 @@ Phase 1 test results: see the Log below.
 - 2026-11-21: Review of alpha 0.5.6 done; hand-off files written; gaps re-prioritised for a personal sideloaded Android app.
 - 2026-11-21: Phase 0 + Phase 1 done → alpha 0.6.0 (committed `e83525e`, CI green).
 - 2026-11-21: alpha 0.6.2 polish: erase/restore need the password; offline retries answered before caps (and "deleted" items not revived); receipt quota counts the Undo trash and locks; undo checks the quota; backup download is one snapshot; error logs drop DB row details; housekeeping clears expired sessions/codes and old audit entries (`AUDIT_KEEP_DAYS`); overpaid people don't lower loan totals; no duplicate category on retry; month-start change refreshes every report; no lock after camera/file picker; account deletion clears the offline queue; service worker precaches the build (opens offline after first visit) with a per-build cache; "new version" only for a newer server; focus handling in sheets/dialogs; Budget menu closes on tap outside; loading/error states; missing translations; RTL minus in KV rows; tutorial tips; `.gitignore` keystores; README/CODEMAP/CLAUDE fixes. New `server/test/security.test.ts` (10: cross-account, untested routes, offline, quota, housekeeping, headers, CSRF).
-- 2026-11-22: **1.3.0 design fixes** (whole-app critique, `design/critique/whole-app-2026-11-22.md`, 25/40 before). Main changes:
+- 2026-11-23: **2026 redesign, Option E look** (owner's pick from the branding canvas, every screen; layout first drawn in Figma "Masrofy redesign 2026"). Done:
+  - Night/Lime/Carbon/Fog palette in both themes; Manrope + Almarai (Montserrat and Cairo removed); new tagline "See where every pound goes";
+  - open Home hero with lime currency; "This week" chart; stacked bar instead of the donut;
+  - neutral spending amounts; rounded row lists; Expenses grouped by day; new sign-in;
+  - restyled inputs, buttons, segmented control and nav; PWA, "Get the app" and loading colours.
+  - Logo: mark 11 "Budget line M" for now (owner); all icons via `scripts/make-icons.mjs`.
+  - Left: centre "+" nav; category chips and the "More details" fold in Add expense; a new APK so installed phones get the new launcher icon.- 2026-11-22: **1.3.0 design fixes** (whole-app critique, `design/critique/whole-app-2026-11-22.md`, 25/40 before). Main changes:
   - Home's top card shows the sum: income − spent − saved − repaid. It has "N days left", a first step for new accounts, and whole pounds a day.
   - Home no longer copies the Budget list: a glance card plus a Reports card; the alert banner can be tapped.
   - No "Goal met" on 0 of 0 (now "No plan").

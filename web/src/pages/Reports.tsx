@@ -62,7 +62,7 @@ export default function Reports() {
       </div>
 
       <Card>
-        <KV k={t('Spent on expenses')} v={fmt(spent)} color={COLORS.red} bold />
+        <KV k={t('Spent on expenses')} v={fmt(spent)} bold />
         <KV k={t('Net saved')} v={fmt(saved)} color={COLORS.accent} bold />
         <KV k={t('Loans repaid')} v={fmt(repaid)} color={COLORS.amber} bold />
         <KV k={t('Average monthly spending')} v={fmt(active === 0 ? 0 : wholeUnits(Math.floor(spent / active)))} bold />
@@ -72,7 +72,7 @@ export default function Reports() {
         <SectionTitle
           trailing={
             <span className="tiny mute row gap">
-              <span className="dot" style={{ background: COLORS.red }} /> {t('Spent')}
+              <span className="dot" style={{ background: COLORS.mute }} /> {t('Spent')}
               <span className="dot" style={{ background: COLORS.accent, marginInlineStart: 8 }} /> {t('Saved')}
             </span>
           }
@@ -85,7 +85,7 @@ export default function Reports() {
               a={months.map((m) => m.spent)}
               b={months.map((m) => m.saved)}
               labels={chartLabels}
-              colorA={COLORS.red}
+              colorA={COLORS.mute}
               colorB={COLORS.accent}
             />
           </div>

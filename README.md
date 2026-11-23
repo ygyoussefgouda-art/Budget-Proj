@@ -1,6 +1,6 @@
 # Masrofy (مصروفي) · MK1 (version 1.3.0)
 
-*Your money, planned.*
+*See where every pound goes.*
 
 ![Masrofy MK1: Home, Budget, Expenses, Savings, Reports, light mode and Arabic](design/screenshots/overview.png)
 

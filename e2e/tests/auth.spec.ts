@@ -62,7 +62,7 @@ test.describe('accounts', () => {
     // The page itself carries the loading screen, so there is no blank screen before the app's code loads.
     const html = await (await page.request.get('/')).text();
     expect(html).toContain('class="boot-dots"');
-    expect(html).toContain('Your money, planned');
+    expect(html).toContain('See where every pound goes');
 
     const user = await signUpAndSkipTutorial(page);
     await tab(page, 'Home').click();

@@ -39,7 +39,7 @@ export default function Loans() {
   const principal = people.reduce((s, p) => s + p.principal, 0);
   const repaid = people.reduce((s, p) => s + p.repaid, 0);
   const owed = outstanding(data.loans, borrowed); // overpaid people don't lower the total
-  const accent = borrowed ? COLORS.red : COLORS.accent;
+  const accent = borrowed ? COLORS.amber : COLORS.accent; // owing is "watch this", not "over budget"
   const history = data.loans
     .filter((l) => l.borrowed === borrowed)
     .sort((x, y) => y.date.localeCompare(x.date) || y.id - x.id);

@@ -20,7 +20,7 @@ export const COLORS = {
 export const tint = (color: string, percent: number) => `color-mix(in srgb, ${color} ${percent}%, transparent)`;
 
 /** Chart colours (readable on both light and dark cards). */
-export const PALETTE = ['#d29a5c', '#6fbf8a', '#8a8ff0', '#e07a6f', '#5bb0c9', '#c9a0dc', '#b9c96b', '#94a3b8'];
+export const PALETTE = ['#b8f25c', '#8fa39a', '#5b7fe0', '#e3a33b', '#e06c5a', '#38a9c4', '#a77fe0', '#6e7d76'];
 
 export function Card({ children, onClick, className = '', style }: { children: ReactNode; onClick?: () => void; className?: string; style?: CSSProperties }) {
   if (onClick) {

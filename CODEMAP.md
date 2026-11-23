@@ -11,7 +11,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `e2e/` | Playwright tests in a phone-sized browser against the real app |
 | `mobile/` | Capacitor 8 Android shell (remote URL mode), `BudgetNativePlugin.java`, release script |
 | `deploy/` | VPS ops: `Caddyfile`, `nginx-budget-me.conf`, `update.sh`, `backup-now.sh`, `restore.sh`, `backup-offsite.sh` (age + rclone), `restore-test.sh`, `check-health.sh` (alerts), `rollback.sh`, `lib.sh` (`load_env`, `alert`) |
-| `design/` | Design notes, reference images, `screenshots/` (presentation pictures + `overview.png`), `critique/` (Impeccable design reviews: Home, whole app) |
+| `design/` | Design notes, reference images, `screenshots/` (presentation pictures + `overview.png`), `critique/` (Impeccable design reviews: Home, whole app), `redesign-2026/` (before/after screenshots of the 2026 redesign, Option E look; Figma file and branding canvas links in MEMORY.md) |
 | `scripts/` | `screenshots.mjs` (demo data + presentation screenshots), Windows dev helpers (`dev-server.cmd`, `n.cmd`, `setup-node.cmd`) using portable Node in `D:\devtools` |
 | `Dockerfile` | Multi-stage: build web → build server → slim runtime (non-root, health check) |
 | `docker-compose.yml` | Project `budget-me`: `db` (Postgres 16), `app`, `backup` (daily `pg_dump`) on an internal network |
@@ -69,7 +69,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `public/manifest.webmanifest` | PWA manifest (standalone, portrait, "Add expense" shortcut) |
 | `public/sw.js` | Service worker: shell cache `sb-shell-v4`, cache-first `/assets/`, network-first navigation, never caches `/api`; waits for `SKIP_WAITING` before taking over |
 | `public/theme-init.js` | Applies saved theme/language before React loads |
-| `public/icon-*.png`, `icon.svg` | App icons (also source for Android icons) |
+| `public/icon-*.png`, `icon.svg` | App icons: mark 11 "Budget line M". All PNGs (web + Android launcher + splash) come from `scripts/make-icons.mjs` |
 | `public/get-app.html`, `get-app.css` | "Get the Budget me app" page that browsers see when the server runs with `APP_ONLY=true` |
 | `vite.config.ts` | Dev proxy `/api` → `:3000`, build to `dist/` |
 

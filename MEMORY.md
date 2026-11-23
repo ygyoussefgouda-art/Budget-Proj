@@ -10,7 +10,7 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-22: **Email from our own server.** docker-compose `mail` service = Postfix (`boky/postfix:v5.2.1`, a widely used image; reason: the owner wants a mailer daemon on the VPS sending from no-reply@masrofy.online, no third-party account). Send-only, no published port, DKIM keys in the `mailkeys` volume (`DKIM_BACKEND=opendkim` set explicitly). The app talks to it plainly on the private network (`SMTP_REQUIRE_TLS=false`), which `mail.ts` honours only for local hosts (bare service name, localhost); any other SMTP server always needs TLS. `SMTP_HOST=off` turns email off. Deliverability needs port 25 open, PTR, SPF/DKIM/DMARC (DEPLOY.md "Email"). "Forgot password?" accepts the username or email; the code goes to the email on the account.
 - 2026-11-21: Budget maths mirror the original `Student_Budget.xlsx` workbook (`web/src/domain/calc.ts`). Don't change formulas without the owner.
 - 2026-11-21: Biometrics: the owner removed a browser (WebAuthn) fingerprint unlock earlier, then chose **fingerprint unlock of the app lock in the Android app only** (native BiometricPrompt, HANDOFF Phase 5, PIN as fallback). Why: bank-app feel, reliable on Android. (No WebAuthn/passkeys in the browser; never for sign-in; only offered when a PIN is set.)
-- 2026-11-22: **Colours: theme "Midnight spruce"** (owner's pick from Space Indigo #17183B, Dark Spruce #254D32, Golden Earth #A27035). Dark: page #0B0C1F, cards #17183B, buttons #2F6B45 with white text, text-spruce #6FBF8A (`--accent-text`: positive amounts, links, active tab, tints), golden earth #D29A5C for money in / rings, soft red #E07A6F for spending, #B23A3A filled danger. Light: page #F5F5F7, indigo #17183B buttons with white text, spruce #254D32 for money in, #B23A3A spending, indigo text. `--accent` = solid fills only; anything that is text or a tint uses `--accent-text` (`COLORS.accent` points to it). Avoid burgundy + gold (Banque Misr look). Icon: spruce square, off-white bars, tallest bar golden earth, on indigo. Also in `theme.ts`, manifest, PNG icons, Android launcher icons, splash, fallback page.
+- 2026-11-22: **(Replaced on 2026-11-23 by the "Option E" look and mark 11 below.)** **Colours: theme "Midnight spruce"** (owner's pick from Space Indigo #17183B, Dark Spruce #254D32, Golden Earth #A27035). Dark: page #0B0C1F, cards #17183B, buttons #2F6B45 with white text, text-spruce #6FBF8A (`--accent-text`: positive amounts, links, active tab, tints), golden earth #D29A5C for money in / rings, soft red #E07A6F for spending, #B23A3A filled danger. Light: page #F5F5F7, indigo #17183B buttons with white text, spruce #254D32 for money in, #B23A3A spending, indigo text. `--accent` = solid fills only; anything that is text or a tint uses `--accent-text` (`COLORS.accent` points to it). Avoid burgundy + gold (Banque Misr look). Icon: spruce square, off-white bars, tallest bar golden earth, on indigo. Also in `theme.ts`, manifest, PNG icons, Android launcher icons, splash, fallback page.
 - 2026-11-22: **MK1 = version 1.0.0**: the owner ended the alpha. The app shows the mark `MK1` under the logo and "Budget me MK1 · Version 1.0.0" in the Settings footer under "Developed by Youssef Gouda" (`web/src/version.ts`: `APP_VERSION`, `MARK`, `DEVELOPER`). No "alpha" anywhere in the app. Next releases: patch/minor numbers as usual; a new mark (MK2) only when the owner says so.
 - 2026-11-22: **Express 5** (from Dependabot's 4→5 bump; Express 4 is in maintenance only). The one breaking spot was the page fallback: Express 5 rejects a bare `'*'` route, so it is `app.get('/{*rest}')` (also matches `/`). Other v5 changes checked: `req.body` is undefined without a matching body (all routes Zod-parse it, receipts check `Buffer.isBuffer`), the query parser is "simple" (no nested `a[b]`), and rejected async handlers reach the error handler. New routes: use `/{*name}` or `/*name` wildcards, never `*` or `(.*)`.
 - 2026-11-22: **Dependabot batch** (all six PRs done by hand on main, tested together):
@@ -37,6 +37,41 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-22: **Tutorial must cover every feature** (owner asked for it). When you add a user-facing feature, add a tip (or step) in `web/src/components/Tutorial.tsx` with its Arabic, and update the step list in `e2e/tests/auth.spec.ts`. Playwright `getByText('…')` is a case-insensitive substring match: use `{ exact: true }` for step titles.
 - 2026-11-21: (history) Alpha versions: one patch number per phase (0.5.2…0.6.6). A short plain summary for the owner after every phase.
 
+## 2026 redesign: owner's "Option E" look (2026-11-23)
+- **Where it came from:**
+  - The owner chose Option E from the "Masrofy Branding Options" canvas (claude.ai artifact `NKrajw1ozYckw33Dci3vkW`, page "Round 2": "use everything here BUT the logo").
+  - It replaces "Midnight spruce" and the short-lived green "flat ledger" palette. The layout from that round stays; its Figma file (https://www.figma.com/design/Jvrii6gRHwPef7riyiDffY) shows the layout in the older green palette.
+- **Palette** (`web/src/styles.css`): Night `#0b0f0d` page, Carbon `#171d1a` cards, `#232b27` card2, Lime `#b8f25c` brand, Fog `#8fa39a` muted text.
+  - **Dark (default):** lime buttons with night text; lime is the brand text colour.
+  - **Light:** page `#edf0ee`, white cards. Night buttons with lime labels. Brand text is `#3e6a0b`, because lime is unreadable on white.
+  - **Other colours:** savings blue (`--highlight`), amber for 80%, red only for over budget/errors.
+  - **Contrast:** all text tokens are ≥4.78:1 on page/card/card2 in both themes.
+- **Meaning of colour:** the brand colour means "good for you" (money in, on track, a debt getting smaller). Ordinary spending is neutral ink, never red. Owing is amber.
+- **Fonts:**
+  - Manrope for all Latin text (headings 800, tight tracking).
+  - **Almarai for Arabic.** New dependency `@fontsource/almarai`, Arabic subset, weights 400/700/800. Reason: it's Option E's Arabic face.
+  - Removed: `@fontsource/montserrat` and `@fontsource-variable/cairo`, both no longer used.
+- **Tagline:** "See where every pound goes" (Arabic "شوف فلوسك بتروح فين"), from Option E. It replaces "Your money, planned" on the splash, sign-in, README and the "Get the app" page.
+- **Home:**
+  - Open hero: the number sits on the page with the currency small in the brand colour, and a subline "X used of Y · N days left".
+  - The sum (income − spent − saved − repaid) and the per-day amount sit in cards under it.
+  - "This week" bar chart (Saturday to Friday, today in lime; current month only, because Home only has this month's expenses).
+  - "Where it went" is a stacked bar plus a ranked list.
+  - Logo on the left, Reports and Settings on the right.
+- **Lists:** each entry is its own rounded Carbon row. Expenses are grouped by day with a per-day total.
+- **Sign in:** no boxed card; big logo plus the tagline.
+- **Logo (owner, 2026-11-23, "use 11 for now"): mark 11 "Budget line M".**
+  - One M stroke drawn like a progress bar: brand colour = spent, quiet part = left.
+  - Used in `web/public/icon.svg`, the PWA PNGs, the Android launcher icons (background `#0B0F0D`) and the splash PNGs.
+  - In the app, `BrandMark` in `components/Brand.tsx` sits beside the wordmark on Home and sign-in.
+  - Regenerate every icon with `node scripts/make-icons.mjs` (uses e2e's Playwright Chromium).
+  - The old indigo icon is gone. A new APK is needed for the launcher icon and splash to change on installed phones (versionCode 6).
+  - Other candidates stay on the canvas (Options A–F, marks 1–16).
+  - **Wordmark rule (owner, 2026-11-23):** the last letter, **y** in Masrofy and **ي** in مصروفي, is always in the secondary colour (Lime; `--accent-text` in the app, which is `#3e6a0b` on light backgrounds).
+  - Rounds 4 and 5 are on the canvas; copies are in `design/redesign-2026/logo-round4/`.
+- **Not built yet:**
+  - From Option E: a centre "+" in the bottom nav (needs 4 tabs; the app has 5).
+  - From Figma: category chips instead of the Category dropdown, and folding receipt/split/currency into "More". The E2E tests drive these through the dropdown and visible fields, so they need test updates first.
 ## Design decisions (whole-app critique, 2026-11-22)
 - **Home is a glance screen.**
   - The top card shows the sum (income − spent − saved − repaid = left), so "% used" and the amounts agree.

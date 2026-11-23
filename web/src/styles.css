@@ -1,67 +1,73 @@
-/* Owner's theme "Midnight spruce" (MK1), from Space Indigo #17183B, Dark Spruce #254D32, Golden Earth #A27035.
-   --accent      filled main colour (buttons, active segments) with --on-accent text on it
-   --accent-text the same colour where it is text, an outline or a light tint (readable on the page)
-   --highlight   money in, progress rings, highlights (golden earth)
-   --red         money going out / over budget (soft red; never burgundy next to gold)
+/* Masrofy 2026 look: owner's "Option E" (Night + Lime), from the "Masrofy Branding Options" canvas.
+   Night #0B0F0D, Lime #B8F25C, Carbon #171D1A, Fog #8FA39A, White. Manrope (Latin) + Almarai (Arabic).
+   Meaning of colour:
+   --accent      filled brand (buttons, FAB, active segments) with --on-accent text on it
+                 (dark: lime fill + night text; light: night fill + lime text)
+   --accent-text brand where it is text, an outline or a tint; also "good for you" (money in, on track)
+   --highlight   savings (blue)
+   --red         over budget only. Ordinary spending is shown in --text, never red.
    --danger      filled red surfaces with white text (delete buttons, badges)
-   --amber       80% budget warning */
+   --amber       80% budget warning
+   All text tokens are >= 4.5:1 on --bg, --card and --card2 in both themes. */
 :root {
-  --bg: #0b0c1f;
-  --card: #17183b;
-  --card2: #20224d;
-  --line: #2c2f5e;
-  --divider: #363a6e; /* row separators */
-  --press: #121334;
-  --hover: #24275a;
-  --handle: #3a3e74;
-  --nav-bg: rgba(11, 12, 31, 0.94);
-  --toast-bg: #20224d;
-  --accent: #2f6b45;
-  --accent-text: #6fbf8a;
-  --on-accent: #ffffff;
-  --highlight: #d29a5c;
-  --red: #e07a6f;
-  --danger: #b23a3a;
-  --amber: #e8b04a;
-  --blue: #8a8ff0;
-  --purple: #c9a0dc;
-  --text: #f4f2ee;
-  --text2: #d2d0e0;
-  --mute: #9a9bbd;
-  --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
-  --font-body: 'Manrope Variable', 'Manrope', 'Cairo Variable', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-  --font-head: 'Montserrat', 'Cairo Variable', 'Manrope Variable', system-ui, sans-serif;
-  --radius: 24px;
-  --nav-h: 68px;
+  --bg: #0b0f0d;
+  --card: #171d1a;
+  --card2: #232b27;
+  --line: #26302b;
+  --divider: #222a26;
+  --press: #101512;
+  --hover: #1d2521;
+  --handle: #34403a;
+  --nav-bg: rgba(11, 15, 13, 0.96);
+  --toast-bg: #232b27;
+  --accent: #b8f25c;
+  --accent-text: #b8f25c;
+  --on-accent: #0b0f0d;
+  --lime: #b8f25c;
+  --highlight: #8eaef5;
+  --red: #f2877a;
+  --danger: #c0392b;
+  --amber: #edb453;
+  --blue: #8eaef5;
+  --purple: #c3a8f5;
+  --text: #f4f7f5;
+  --text2: #c9d3ce;
+  --mute: #8fa39a;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --font-body: 'Manrope Variable', 'Manrope', 'Almarai', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-head: 'Manrope Variable', 'Manrope', 'Almarai', system-ui, sans-serif;
+  --radius: 20px;
+  --nav-h: 72px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   color-scheme: dark;
 }
 
-/* Light: near-white page, Space Indigo buttons with white text, Dark Spruce for money in and positive amounts. */
+/* Light: Option E's pale canvas, white cards, Night buttons with Lime labels. */
 :root[data-theme='light'] {
-  --bg: #f5f5f7;
+  --bg: #edf0ee;
   --card: #ffffff;
-  --card2: #ececf3;
-  --line: #dddde8;
-  --divider: #cfcfdd; /* row separators */
-  --press: #f0f0f5;
-  --hover: #e6e6ef;
-  --handle: #c8c8d8;
-  --nav-bg: rgba(255, 255, 255, 0.95);
-  --toast-bg: #17183b;
-  --accent: #17183b;
-  --accent-text: #17183b;
-  --on-accent: #ffffff;
-  --highlight: #254d32;
-  --red: #9e2f2f; /* #b23a3a was 4.3:1 on its own tint (category letters) */
-  --danger: #b23a3a;
-  --amber: #8a5a00; /* #b06d00 was 3.8:1 on white; this is 5.9:1 (text on tinted banners stays above 4.5:1) */
-  --blue: #3b40a8;
-  --purple: #6d4fd8;
-  --text: #17183b;
-  --text2: #3a3b5c;
-  --mute: #62637e; /* #6e6f8a was 4.48:1 on the page and 4.15:1 on --card2 */
-  --shadow: 0 12px 32px rgba(23, 24, 59, 0.12);
+  --card2: #e3e8e5;
+  --line: #d5dcd8;
+  --divider: #e2e7e4;
+  --press: #e8ece9;
+  --hover: #e3e8e5;
+  --handle: #c3ccc7;
+  --nav-bg: rgba(255, 255, 255, 0.96);
+  --toast-bg: #0b0f0d;
+  --accent: #0b0f0d;
+  --accent-text: #3e6a0b;
+  --on-accent: #b8f25c;
+  --lime: #b8f25c;
+  --highlight: #2e5bba;
+  --red: #b42a1f;
+  --danger: #b42a1f;
+  --amber: #8a5a00;
+  --blue: #2e5bba;
+  --purple: #6b4fc8;
+  --text: #0b0f0d;
+  --text2: #2e3833;
+  --mute: #4a544f;
+  --shadow: 0 12px 32px rgba(11, 15, 13, 0.12);
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -79,8 +85,8 @@ body.no-scroll { overflow: hidden; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 h1, h2, h3, p { margin: 0; }
-/* Headings: Montserrat Bold (Arabic letters fall back to Cairo) */
-h1, h2, h3, .sheet-title, .tutorial-title { font-family: var(--font-head); font-weight: 700; letter-spacing: -0.01em; }
+/* Headings: Manrope ExtraBold (Arabic letters fall back to Almarai) */
+h1, h2, h3, .sheet-title, .tutorial-title { font-family: var(--font-head); font-weight: 800; letter-spacing: -0.015em; }
 hr { border: 0; border-top: 1px solid var(--line); margin: 8px 0; }
 a { color: inherit; }
 a.btn { text-decoration: none; } /* links that look like buttons (Export, Contact us) */
@@ -497,7 +503,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .toasts { position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + var(--safe-b) + 80px); z-index: 60; display: grid; justify-items: center; gap: 8px; pointer-events: none; padding: 0 16px; }
 .toast { background: var(--toast-bg); color: #f5f5f5; border: 1px solid var(--line); padding: 12px 16px; border-radius: 14px; max-width: 520px; box-shadow: var(--shadow); animation: up .2s; }
 .toast.with-action { display: flex; align-items: center; gap: 16px; pointer-events: auto; padding-block: 6px; padding-inline: 16px 6px; min-width: 220px; justify-content: space-between; }
-.toast-action { border: 0; background: none; color: #d29a5c; font-weight: 800; font-size: 14px; padding: 10px 12px; border-radius: 10px; text-transform: uppercase; letter-spacing: .04em; }
+.toast-action { border: 0; background: none; color: #b8f25c; font-weight: 800; font-size: 14px; padding: 10px 12px; border-radius: 10px; text-transform: uppercase; letter-spacing: .04em; }
 .toast-action:active { background: rgba(255, 255, 255, .08); }
 /* first-run tutorial: card at the bottom, the real screen stays visible above */
 .tutorial-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(0, 0, 0, 0.45); display: flex; align-items: flex-end; justify-content: center; padding: 12px 12px calc(12px + var(--safe-b)); animation: fade .15s; }
@@ -528,8 +534,8 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .boot-me { color: var(--accent-text); }
 .boot-tagline { margin: -6px 0 0; font-size: 15px; color: var(--mute); }
 /* Three dots hopping in turn: green, white, gold (spruce, indigo, golden earth in light mode) */
-.boot-dots { display: flex; gap: 8px; margin-top: 28px; --dot1: #6fbf8a; --dot2: #f4f2ee; --dot3: #d29a5c; }
-:root[data-theme='light'] .boot-dots { --dot1: #254d32; --dot2: #17183b; --dot3: #a27035; }
+.boot-dots { display: flex; gap: 8px; margin-top: 28px; --dot1: #b8f25c; --dot2: #f4f7f5; --dot3: #8fa39a; }
+:root[data-theme='light'] .boot-dots { --dot1: #3e6a0b; --dot2: #0b0f0d; --dot3: #4a544f; }
 .boot-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--dot1); animation: hop 1s ease-in-out infinite; }
 .boot-dots i:nth-child(2) { background: var(--dot2); animation-delay: .15s; }
 .boot-dots i:nth-child(3) { background: var(--dot3); animation-delay: .3s; }
@@ -638,7 +644,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .app-footer p { margin: 0; }
 .app-footer p:first-child { font-weight: 700; }
 /* Light mode: the small MK1 badge in indigo on a golden-earth tint (golden text alone is too faint) */
-:root[data-theme='light'] .stage-badge { color: #17183b; background: color-mix(in srgb, #a27035 20%, transparent); border-color: color-mix(in srgb, #a27035 55%, transparent); }
+:root[data-theme='light'] .stage-badge { color: #3e6a0b; background: color-mix(in srgb, #3e6a0b 12%, transparent); border-color: color-mix(in srgb, #3e6a0b 40%, transparent); }
 
 /* ---------- Home (1.3.0 critique fixes) ---------- */
 .hero-days { display: grid; justify-items: center; align-content: center; min-width: 56px; padding: 6px 10px; border-radius: 14px; flex: none;
@@ -671,3 +677,142 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .fab span { transition: opacity .15s; }
 .fab.is-compact { width: 52px; padding: 0; justify-content: center; }
 .fab.is-compact span { display: none; }
+/* ==========================================================================
+   Masrofy 2026 redesign: flat ledger (see Figma "Masrofy redesign 2026").
+   Flat cards with a 1px border, one brand green, big left-aligned titles,
+   a solid green "left to spend" card, neutral spending amounts.
+   ========================================================================== */
+.card, .list { border: 1px solid var(--line); border-radius: var(--radius); }
+.card { padding: 16px; }
+.section-title h2 { font-size: 17px; }
+
+/* Titles: large and left-aligned (Android style), actions on the right */
+.page-header { grid-template-columns: auto 1fr auto; gap: 4px; height: 64px; }
+.page-header h1 { text-align: start; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; padding-inline: 2px; }
+.ph-side:empty { display: none; }
+.ph-side.right { gap: 8px; }
+.page-header .icon-btn { border-radius: 14px; }
+.page-header .ph-side.right .icon-btn { background: var(--card); border: 1px solid var(--line); }
+.brand { align-items: flex-start; }
+.brand .brand-name, .page-header .brand { font-size: 26px; }
+
+/* Month switcher: one bordered bar with the arrows inside it */
+.month-bar { justify-content: space-between; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 2px; margin-bottom: 14px; }
+.month-bar .icon-btn { border-radius: 14px; }
+.month-pick { font-size: 15.5px; }
+
+/* Bottom navigation */
+.bottom-nav { background: var(--nav-bg); border-top: 1px solid var(--line); backdrop-filter: none; }
+.tab-icon { width: 56px; height: 32px; border-radius: 14px; }
+.tab.active .tab-icon { background: color-mix(in srgb, var(--accent-text) 15%, transparent); }
+
+/* Buttons: rounded rectangles, 52px tall */
+.btn { height: 52px; border-radius: 16px; }
+.btn.small { height: 40px; border-radius: 12px; }
+.btn.text { height: auto; }
+.btn.outline { border: 1.5px solid var(--line); }
+.btn.tonal { background: var(--card2); color: var(--text); }
+.icon-btn { border-radius: 14px; }
+.fab { border-radius: 18px; height: 54px; box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent); }
+.fab.is-compact { width: 54px; }
+.add-btn { height: 36px; border-radius: 99px; border: 0; padding: 0 14px 0 12px;
+  background: color-mix(in srgb, var(--accent-text) 13%, transparent); color: var(--accent-text); }
+.add-btn:active { background: color-mix(in srgb, var(--accent-text) 24%, transparent); }
+
+/* Inputs: white (card) fields with a border instead of grey wells */
+.input { height: 52px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.input:focus { border-color: var(--accent-text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-text) 18%, transparent); }
+.sheet .input, .login-card .input { background: var(--card); }
+.calc-keys button { height: 44px; border-radius: 12px; }
+.search { background: var(--card); border: 1px solid var(--line); border-radius: 14px; min-height: 50px; }
+.check, .fx-box, .split-box { background: var(--card2); border-radius: 14px; }
+.field-label { font-size: 12.5px; font-weight: 600; }
+
+/* Segmented control: active segment is a raised card, not a green pill */
+.segmented { background: var(--card2); border: 0; border-radius: 16px; padding: 4px; }
+.segmented button { height: 42px; border-radius: 12px; }
+.segmented button.active { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+
+/* Chips */
+.chip { padding: 9px 14px; font-weight: 700; }
+
+/* Lists and rows */
+.avatar { border-radius: 14px; }
+.list-main { padding: 12px 14px; border-radius: 0; }
+.txn { padding: 10px 0; }
+.txn-title { font-weight: 700; }
+.budget-row .bar { height: 8px; background: var(--card2); }
+.pill { padding: 4px 10px; }
+
+/* Stat tiles: flat, the ring stays as the small progress mark */
+.stat-tile { border-radius: 18px; padding: 14px; }
+.stat-label { margin-top: 12px; font-size: 13px; }
+
+/* Alerts */
+.alert-banner { border-radius: 18px; padding: 14px 16px; }
+
+/* Sheets and dialogs */
+.sheet { border-radius: 28px 28px 0 0; padding: 10px 24px calc(24px + var(--safe-b)); }
+.sheet-title { font-size: 24px; letter-spacing: -0.02em; }
+.dialog { background: var(--card); border: 1px solid var(--line); }
+.backdrop { background: rgba(8, 12, 10, 0.62); }
+
+/* ---------- Home: Option E's open hero (the number sits on the page, no card) ---------- */
+.hero { background: none; border: 0; padding: 4px 2px 8px; border-radius: 0; }
+.hero-label { font-size: 13.5px; color: var(--mute); font-weight: 600; }
+.hero .hero-value { font-size: 48px; font-weight: 800; letter-spacing: -0.055em; line-height: 1.05; margin-top: 4px; }
+.hero-cur { font-size: 17px; font-weight: 700; letter-spacing: 0; color: var(--accent-text); margin-inline-start: 6px; }
+.hero-sub { font-size: 13px; color: var(--mute); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.hero .bar { background: var(--card2); }
+.hero .hero-days { background: var(--card); border: 1px solid var(--line); color: var(--text); }
+.hero .hero-days span { color: var(--mute); }
+.hero .hero-sum { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 2px 14px; margin-top: 14px; }
+.hero .sum-row:last-child { border-bottom: 0; }
+.hero .allowance { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-top: 10px; }
+.hero .allowance svg { color: var(--accent-text); }
+.hero .over-note { color: var(--red) !important; font-weight: 700; }
+.first-step { border-radius: 22px; }
+
+/* "This week": Option E's bar chart, one bar per day (week starts Saturday), today in lime */
+.week { padding: 14px 14px 10px; }
+.week-head { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; }
+.week-head .num { color: var(--accent-text); }
+.week-bars { display: flex; align-items: flex-end; gap: 8px; height: 92px; margin-top: 10px; }
+.week-day { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; height: 100%; font-size: 11px; color: var(--mute); }
+.week-bar { width: 100%; min-height: 6px; border-radius: 6px; background: var(--card2); }
+.week-day.today .week-bar { background: var(--lime); }
+.week-day.today { color: var(--text); font-weight: 800; }
+/* "Where it went": one stacked bar instead of a donut, then a ranked list */
+.stackbar { display: flex; gap: 3px; height: 12px; border-radius: 6px; overflow: hidden; margin: 4px 0 14px; }
+.stackbar span { display: block; height: 100%; min-width: 4px; }
+.where .legend { gap: 11px; font-size: 14px; }
+.where-total { font-weight: 800; }
+/* Expenses grouped by day */
+.day-group + .day-group { margin-top: 4px; }
+.day-head { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 4px 8px; font-size: 12.5px; font-weight: 700; color: var(--mute); font-family: var(--font-body); letter-spacing: 0; }
+.day-group .list { margin-bottom: 10px; }
+.where .legend-pct { font-size: 12.5px; color: var(--mute); min-width: 34px; text-align: end; }
+.where .legend-amount { min-width: 84px; text-align: end; }
+
+/* Sign in: no boxed card, a big logo and the tagline (Figma "Sign in · light") */
+.login-card { background: none; border: 0; padding: 12px 4px; max-width: 400px; gap: 16px; }
+.login-brand { font-size: 40px; letter-spacing: -0.03em; line-height: 1.05; }
+.login-brand .stage-badge { font-size: 10px; }
+.login-tagline { margin: -10px 0 4px; color: var(--mute); font-size: 15.5px; font-weight: 600; }
+.lang-switch { align-self: flex-start; }
+/* Dark: the selected segment sits lighter than its track, so it reads as raised */
+:root:not([data-theme='light']) .segmented button.active { background: #2e3833; }
+
+/* Lists, Option E style: each entry is its own rounded Carbon row with a little space between */
+.list { background: none; border: 0; padding: 0; display: grid; gap: 8px; overflow: visible; --swipe-bg: var(--card); }
+.list > .swipe, .list > .list-item { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.list-item + .list-item, .list .swipe + .swipe { border-top: 1px solid var(--line); }
+.list > .tiny { padding: 4px 6px; }
+.avatar { background-color: var(--card2); }
+
+/* Masrofy mark (mark 11) beside the wordmark */
+:root { --mark-track: #2e3833; }
+:root[data-theme='light'] { --mark-track: #c9d1cc; }
+.brand-row { flex-direction: row; align-items: center; gap: 8px; }
+.brand-mark { flex: none; display: block; }
+.login-brand .brand-mark { margin-bottom: 6px; }

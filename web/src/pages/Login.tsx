@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import Brand from '../components/Brand';
-import { Eye, EyeOff, Languages, Wallet } from 'lucide-react';
+import Brand, { BrandMark } from '../components/Brand';
+import { Eye, EyeOff, Languages } from 'lucide-react';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
@@ -183,9 +183,13 @@ export default function Login() {
     <main className="login">
       <form className="login-card" onSubmit={submit} noValidate>
         <div className="row between">
-          <span className="login-logo">
-            <Wallet size={30} style={{ color: 'var(--on-accent)' }} />
-          </span>
+          <h1 className="brand login-brand">
+            <BrandMark size={44} />
+            <Brand />
+            <span className="stage-badge" title={t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}>
+              {MARK}
+            </span>
+          </h1>
           <label className="lang-switch" title={t('Language')}>
             <Languages size={15} aria-hidden="true" />
             <select aria-label={t('Language')} value={langPref} onChange={(e) => setLangPref(e.target.value as LangPref)}>
@@ -197,12 +201,7 @@ export default function Login() {
             </select>
           </label>
         </div>
-        <h1 className="brand">
-          <Brand />
-          <span className="stage-badge" title={t(VERSION_KEY, { mark: MARK, v: APP_VERSION })}>
-            {MARK}
-          </span>
-        </h1>
+        <p className="login-tagline">{t('See where every pound goes')}</p>
 
         {signupEnabled && (
           <Segmented

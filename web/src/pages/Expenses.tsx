@@ -44,6 +44,25 @@ interface Filters { scope: Scope; from: string; to: string; search: string; catI
  */
 const rememberedFilters = new Map<number, Filters>();
 
+/** Expenses (already newest first) split into [date, rows] groups, keeping the order. */
+function groupByDay(items: Expense[]): [string, Expense[]][] {
+  const out: [string, Expense[]][] = [];
+  for (const e of items) {
+    const last = out[out.length - 1];
+    if (last && last[0] === e.date) last[1].push(e);
+    else out.push([e.date, [e]]);
+  }
+  return out;
+}
+
+/** "Today", "Yesterday" or the short date. */
+function dayLabel(iso: string) {
+  const today = todayIso();
+  const [y, m, d] = today.split('-').map(Number);
+  const yd = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+  return iso === today ? t('Today') : iso === yd ? t('Yesterday') : shortDate(iso);
+}
+
 export default function Expenses() {
   const { data, fmt, month, startDay, user } = useApp();
   const undoDelete = useUndoDelete();
@@ -173,7 +192,7 @@ export default function Expenses() {
             <div className="tiny mute">
               {scope === 'month' ? t('Spent in {month}', { month: monthLabel(month) }) : t('Total for this filter')}
             </div>
-            <div className="big-value" style={{ color: COLORS.red }}>{fmt(list.data?.total ?? 0)}</div>
+            <div className="big-value">{fmt(list.data?.total ?? 0)}</div>
           </div>
           <div className="stack-end">
             <Pill color={COLORS.blue}>{count === 1 ? t('1 expense') : t('{n} expenses', { n: count })}</Pill>
@@ -193,15 +212,22 @@ export default function Expenses() {
       {list.isLoading && <div className="spinner small" role="status" aria-label={t('Loading')} />}
       {list.isError && <p className="form-error">{(list.error as Error).message}</p>}
       {!list.isLoading && items.length === 0 && <Empty text={t('No expenses match. Tap "+ Add" to log one.')} />}
+      {/* Grouped by day (newest first): the date is said once in the heading instead of on every row */}
+      {groupByDay(items).map(([day, rows]) => (
+      <section key={day} className="day-group" aria-label={dayLabel(day)}>
+      <h3 className="day-head">
+        <span>{dayLabel(day)}</span>
+        <span>{fmt(rows.reduce((s, e) => s + e.amount, 0))}</span>
+      </h3>
       <div className="list">
-        {items.map((e) => (
+        {rows.map((e) => (
           <SwipeRow key={e.id} className="list-item" onDelete={() => del(e)} onEdit={() => setForm({ edit: e })}>
             <button className="list-main" onClick={() => setForm({ edit: e })}>
-              <CategoryIcon cat={data?.categories.find((c) => c.id === e.categoryId) ?? { name: e.categoryName }} fallbackColor={COLORS.red} />
+              <CategoryIcon cat={data?.categories.find((c) => c.id === e.categoryId) ?? { name: e.categoryName }} fallbackColor={COLORS.text} />
               <span className="grow">
                 <span className="txn-title">{e.description || e.categoryName}</span>
                 <span className="tiny mute block">
-                  {e.categoryName} · {shortDate(e.date)}
+                  {e.categoryName}
                   {e.split ? ` · ${t('Split with {name}', { name: e.split.person })}` : ''}
                   {e.foreign ? ` · ${fmtMoney(e.foreign.amount, e.foreign.currency)}` : ''}
                 </span>
@@ -213,7 +239,7 @@ export default function Expenses() {
                   </span>
                 )}
               </span>
-              <span className="txn-amount" style={{ color: COLORS.red }}>−{fmt(e.amount)}</span>
+              <span className="txn-amount">−{fmt(e.amount)}</span>
             </button>
             {e.hasReceipt && (
               <button type="button" className="receipt-btn" aria-label={t('View receipt')} title={t('View receipt')} onClick={() => setViewing(e)}>
@@ -223,12 +249,14 @@ export default function Expenses() {
             <DeleteButton label={t('Delete expense')} onClick={() => del(e)} />
           </SwipeRow>
         ))}
-        {count > items.length && (
-          <p className="tiny mute center">
-            {t('Showing the newest {shown} of {count}. Narrow the filter to see others.', { shown: items.length, count })}
-          </p>
-        )}
       </div>
+      </section>
+      ))}
+      {count > items.length && (
+        <p className="tiny mute center">
+          {t('Showing the newest {shown} of {count}. Narrow the filter to see others.', { shown: items.length, count })}
+        </p>
+      )}
 
       <Sheet open={!!form} onClose={() => setForm(null)} title={form?.edit ? t('Edit expense') : t('Add expense')}>
         {form && (

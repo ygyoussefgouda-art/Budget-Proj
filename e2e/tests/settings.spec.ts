@@ -46,10 +46,10 @@ test.describe('settings, language and navigation', () => {
     await page.getByRole('tab', { name: 'Light' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-    expect(bg).toBe('rgb(245, 245, 247)'); // #f5f5f7
+    expect(bg).toBe('rgb(237, 240, 238)'); // #edf0ee (Option E light page)
     await page.getByRole('tab', { name: 'Dark' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(11, 12, 31)'); // #0b0c1f
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(11, 15, 13)'); // #0b0f0d (Option E Night)
   });
 
   test('month start day changes the budget month range', async ({ page }) => {

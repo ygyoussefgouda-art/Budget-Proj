@@ -136,8 +136,8 @@ const TXN: Record<string, { icon: LucideIcon; color: string }> = {
   withdrawal: { icon: Undo2, color: COLORS.amber },
   borrow: { icon: ArrowDownLeft, color: COLORS.purple },
   received: { icon: ArrowDownLeft, color: COLORS.purple },
-  repay: { icon: HandCoins, color: COLORS.red },
-  lend: { icon: ArrowUpRight, color: COLORS.red },
+  repay: { icon: HandCoins, color: COLORS.accent }, // a debt getting smaller is good
+  lend: { icon: ArrowUpRight, color: COLORS.purple },
 };
 
 /** Titles of savings/loan activity come from the server in English: rebuild them in the user's language. */
@@ -171,10 +171,11 @@ export function TxnTile({ t: x }: { t: Txn }) {
   return (
     <div className="txn">
       {cat ? (
-        <CategoryIcon cat={cat} fallbackColor={COLORS.red} />
+        <CategoryIcon cat={cat} fallbackColor={COLORS.text} />
       ) : (
         <span className="badge" style={{ background: color, borderRadius: '50%' }} aria-hidden="true">
-          <Icon size={19} color="#fff" />
+          {/* on the brand colour (lime) the icon needs dark ink; other badges are dark enough for white */}
+          <Icon size={19} color={color === COLORS.accent ? 'var(--on-accent)' : '#fff'} />
         </span>
       )}
       <div className="txn-main">
@@ -183,7 +184,8 @@ export function TxnTile({ t: x }: { t: Txn }) {
           {text.sub} · {shortDate(x.date)}
         </div>
       </div>
-      <span className="txn-amount" style={{ color: pos ? COLORS.accent : COLORS.red }}>
+      {/* Spending is ordinary, so it's ink, not alarm red; money coming in is green */}
+      <span className="txn-amount" style={{ color: pos ? COLORS.accent : COLORS.text }}>
         {pos ? '+' : '−'}
         {fmt(Math.abs(x.amount))}
       </span>
