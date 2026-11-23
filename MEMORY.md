@@ -37,6 +37,21 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-22: **Tutorial must cover every feature** (owner asked for it). When you add a user-facing feature, add a tip (or step) in `web/src/components/Tutorial.tsx` with its Arabic, and update the step list in `e2e/tests/auth.spec.ts`. Playwright `getByText('…')` is a case-insensitive substring match: use `{ exact: true }` for step titles.
 - 2026-11-21: (history) Alpha versions: one patch number per phase (0.5.2…0.6.6). A short plain summary for the owner after every phase.
 
+## 2.0.0 "fintech" update (owner's 10 answers, 2026-11-23)
+- **Where it came from:** four Figma community kits: Financy, Fintech Update 1.0, Coinpay, and the dark "Financial Mobile iOS App". Their pages are only readable in a real browser (automated fetches get 403).
+- **Owner's answers:**
+  1. Dark first, plus pastel accents (sky, lavender, mint, sand, coral, pink; tokens `--sky`… in styles.css, dark ink on them).
+  2. Home balance in a full-width **Lime band** (Coinpay-style).
+  3. **Quick actions:** Expense, Income, Save, Pay back. They replace the floating button.
+  4. **Bottom bar:** Home · Expenses · centre **+** (quick add from any tab, via `/?add=expense`) · Budget · **More**. More (`/more`) holds Savings, Loans, Reports, Settings (and Admin), and its tab stays highlighted on those pages. The E2E helper `tab()` opens Savings/Loans through More.
+  5. **Pastel icon circles** for categories with no colour of their own (`pastelFor(name)` in `CategoryIcon.tsx`). A user-picked colour still wins.
+  6. **Pastel goal cards:** a sideways strip on Home, and goal rows on the Savings tab.
+  7. **Ring chart** ("Where it went") with the total in the middle, then a ranked list.
+  8. **Simple line illustrations** (`components/Illustration.tsx`: wallet, receipt, goal) for the first step and every empty list.
+  9. **Greeting** "Good morning, {name}" under the month switcher; the logo stays in the header.
+  10. **Extras** (owner had no preference; picked here): an "Upcoming payments" card on Home (next 3 recurring) and pill-shaped Deposit/Withdraw buttons.
+- **No glow anywhere** (owner): no coloured shadows or halos. Focus shows as a plain solid outline. Neutral drop shadows under menus, toasts and the tutorial stay.
+- **Version:** 2.0.0, Android versionCode 6.
 ## 2026 redesign: owner's "Option E" look (2026-11-23)
 - **Where it came from:**
   - The owner chose Option E from the "Masrofy Branding Options" canvas (claude.ai artifact `NKrajw1ozYckw33Dci3vkW`, page "Round 2": "use everything here BUT the logo").

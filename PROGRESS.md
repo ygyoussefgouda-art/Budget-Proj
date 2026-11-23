@@ -3,7 +3,7 @@
 Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (say why).
 Update at the end of every session. Phases come from `HANDOFF.md` §4.
 
-**Current version:** Masrofy MK1 (1.3.0) · **Current phase:** all HANDOFF phases built; left: things only the owner can do (phone test, signing key, VPS setup, LICENSE) · **Last updated:** 2026-11-22
+**Current version:** Masrofy MK1 (2.0.0) · **Current phase:** all HANDOFF phases built; left: things only the owner can do (phone test, signing key, VPS setup, LICENSE) · **Last updated:** 2026-11-22
 
 ## Phase 0: Hand-off setup
 - [-] Clone repo, branch `phase-0-handoff`: worked on `main` in the existing checkout; the owner commits/pushes only when they say so (see `MEMORY.md`)
@@ -94,7 +94,10 @@ Phase 1 test results: see the Log below.
 - 2026-11-21: Review of alpha 0.5.6 done; hand-off files written; gaps re-prioritised for a personal sideloaded Android app.
 - 2026-11-21: Phase 0 + Phase 1 done → alpha 0.6.0 (committed `e83525e`, CI green).
 - 2026-11-21: alpha 0.6.2 polish: erase/restore need the password; offline retries answered before caps (and "deleted" items not revived); receipt quota counts the Undo trash and locks; undo checks the quota; backup download is one snapshot; error logs drop DB row details; housekeeping clears expired sessions/codes and old audit entries (`AUDIT_KEEP_DAYS`); overpaid people don't lower loan totals; no duplicate category on retry; month-start change refreshes every report; no lock after camera/file picker; account deletion clears the offline queue; service worker precaches the build (opens offline after first visit) with a per-build cache; "new version" only for a newer server; focus handling in sheets/dialogs; Budget menu closes on tap outside; loading/error states; missing translations; RTL minus in KV rows; tutorial tips; `.gitignore` keystores; README/CODEMAP/CLAUDE fixes. New `server/test/security.test.ts` (10: cross-account, untested routes, offline, quota, housekeeping, headers, CSRF).
-- 2026-11-23: **2026 redesign, Option E look** (owner's pick from the branding canvas, every screen; layout first drawn in Figma "Masrofy redesign 2026"). Done:
+- 2026-11-23: **2.0.0 fintech update** (learned from four Figma fintech kits, owner's 10 answers):
+  - New bottom bar (centre + and More); Lime balance band; greeting; quick actions; pastel goal cards on Home and Savings;
+  - "Upcoming payments" card; ring chart; pastel category circles; line illustrations for empty states; pill buttons;
+  - no glow anywhere. Android versionCode 6.- 2026-11-23: **2026 redesign, Option E look** (owner's pick from the branding canvas, every screen; layout first drawn in Figma "Masrofy redesign 2026"). Done:
   - Night/Lime/Carbon/Fog palette in both themes; Manrope + Almarai (Montserrat and Cairo removed); new tagline "See where every pound goes";
   - open Home hero with lime currency; "This week" chart; stacked bar instead of the donut;
   - neutral spending amounts; rounded row lists; Expenses grouped by day; new sign-in;

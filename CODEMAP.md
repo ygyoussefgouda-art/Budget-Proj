@@ -95,10 +95,10 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `widget.ts` | Android home-screen widget text (`widgetText`, no amounts while App lock is on) |
 | `update.ts` | Android update check (6 h), `updateNeed` (optional / required), download + install flow (unit-tested) |
 
-`pages/`: `Dashboard`, `Budget`, `Expenses` (largest), `Loans`, `Savings` (+ GoalDetail), `Reports`, `Settings`, `Admin`, `Login`.
+`pages/`: `Dashboard`, `Budget`, `Expenses` (largest), `Loans`, `Savings` (+ GoalDetail), `Reports`, `Settings`, `Admin`, `Login`, `More` (2.0.0: the More tab, links to Savings, Loans, Reports, Settings).
 `Permissions` (first-run permissions screen, Android app only).
 
-`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Brand` (the "Masrofy"/"مصروفي" logo text), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `CategoryIcon` (category icon/colour badge + picker), `PullToRefresh`, `BudgetForms`,
+`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Brand` (the "Masrofy"/"مصروفي" logo text + `BrandMark`), `Illustration` (2.0.0 line drawings for empty states), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `CategoryIcon` (category icon/colour badge + picker), `PullToRefresh`, `BudgetForms`,
 `charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour), `AppLock` +
 `AppLockSettings`, `OfflineApp` + `OfflineQueue`, `ExportLinks`, `MonthStartPicker`, `ContactCard` (contact email constant),
 `PasswordRules` (live new-password checklist, `newPasswordError`), `ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).

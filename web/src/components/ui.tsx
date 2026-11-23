@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Plus, Trash2, type LucideIcon } from 'lucide-react';
 import { evalMoney, fmtMoney, hasMaths, plain } from '../domain/money';
+import Illustration from './Illustration';
 import { t } from '../i18n';
 
 /** Theme colours as CSS variables, so they follow light/dark mode (see styles.css). */
@@ -20,7 +21,7 @@ export const COLORS = {
 export const tint = (color: string, percent: number) => `color-mix(in srgb, ${color} ${percent}%, transparent)`;
 
 /** Chart colours (readable on both light and dark cards). */
-export const PALETTE = ['#b8f25c', '#8fa39a', '#5b7fe0', '#e3a33b', '#e06c5a', '#38a9c4', '#a77fe0', '#6e7d76'];
+export const PALETTE = ['#b8f25c', '#8ec8f5', '#b9a6f5', '#f5d76e', '#f4a28c', '#7edddb', '#f2a7c9', '#8fa39a']; // 2.0.0: lime + pastels
 
 export function Card({ children, onClick, className = '', style }: { children: ReactNode; onClick?: () => void; className?: string; style?: CSSProperties }) {
   if (onClick) {
@@ -63,10 +64,11 @@ export function SectionTitle({ children, trailing }: { children: ReactNode; trai
   );
 }
 
-export function Empty({ text, icon: Icon }: { text: string; icon?: LucideIcon }) {
+/** Empty list: a small line illustration and one line of text (2.0.0; `icon` is kept for old call sites). */
+export function Empty({ text, art = 'receipt' }: { text: string; icon?: LucideIcon; art?: 'wallet' | 'receipt' | 'goal' }) {
   return (
     <div className="empty">
-      {Icon && <Icon size={36} strokeWidth={1.5} />}
+      <Illustration name={art} size={112} />
       <p>{text}</p>
     </div>
   );

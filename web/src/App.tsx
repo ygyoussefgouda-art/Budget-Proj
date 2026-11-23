@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Home, PieChart, PiggyBank, ReceiptText, HandCoins } from 'lucide-react';
+import { Home, LayoutGrid, PieChart, Plus, ReceiptText } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, type ReactNode } from 'react';
 import PullToRefresh from './components/PullToRefresh';
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api, ApiError } from './api';
 import { AppLock } from './components/AppLock';
 import OfflineApp from './components/OfflineApp';
@@ -20,6 +20,7 @@ import Budget from './pages/Budget';
 import Dashboard from './pages/Dashboard';
 import Expenses from './pages/Expenses';
 import Loans from './pages/Loans';
+import More from './pages/More';
 import Login from './pages/Login';
 import Reports from './pages/Reports';
 import Savings, { GoalDetail } from './pages/Savings';
@@ -150,28 +151,45 @@ function Shell() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/more" element={<More />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
       <Tutorial />
       <FirstRunPermissions userId={user.id} />
       <nav className="bottom-nav" aria-label={t('Main')}>
+        {/* 2.0.0: four tabs around a centre + (quick add from anywhere); Savings, Loans, Reports and Settings live under More */}
         <Tab to="/" icon={Home} label={t('Home')} end />
-        <Tab to="/budget" icon={PieChart} label={t('Budget')} badge={alertBadge} />
         <Tab to="/expenses" icon={ReceiptText} label={t('Expenses')} />
-        <Tab to="/loans" icon={HandCoins} label={t('Loans')} />
-        <Tab to="/savings" icon={PiggyBank} label={t('Savings')} />
+        <CenterAdd />
+        <Tab to="/budget" icon={PieChart} label={t('Budget')} badge={alertBadge} />
+        <Tab to="/more" icon={LayoutGrid} label={t('More')} also={MORE_PATHS} />
       </nav>
     </div>
   );
 }
 
-function Tab({ to, icon: Icon, label, end, badge }: { to: string; icon: typeof Home; label: string; end?: boolean; badge?: { n: number; red: boolean } }) {
+/** Pages reached from More: the More tab stays highlighted on them. */
+const MORE_PATHS = ['/savings', '/loans', '/reports', '/settings', '/admin'];
+
+/** The raised + in the middle of the bar: quick add an expense from any tab (opens it on Home). */
+function CenterAdd() {
+  const nav = useNavigate();
+  return (
+    <button type="button" className="tab-add" aria-label={t('New expense')} title={t('New expense')} onClick={() => nav('/?add=expense')}>
+      <Plus size={26} strokeWidth={2.6} aria-hidden="true" />
+    </button>
+  );
+}
+
+function Tab({ to, icon: Icon, label, end, badge, also }: { to: string; icon: typeof Home; label: string; end?: boolean; badge?: { n: number; red: boolean }; also?: string[] }) {
+  const { pathname } = useLocation();
+  const extra = also?.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ?? false;
   return (
     <NavLink
       to={to}
       end={end}
-      className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}
+      className={({ isActive }) => `tab ${isActive || extra ? 'active' : ''}`}
       aria-label={badge ? `${label}, ${badge.n === 1 ? t('1 budget alert') : t('{n} budget alerts', { n: badge.n })}` : undefined}
     >
       <span className="tab-icon">

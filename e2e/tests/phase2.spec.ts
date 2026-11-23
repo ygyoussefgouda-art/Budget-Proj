@@ -3,7 +3,7 @@ import { setUpBudget, sheet, signUpAndSkipTutorial, tab } from './helpers';
 
 async function quickAdd(page: Page, amount: string, description: string, category: string) {
   await tab(page, 'Home').click();
-  await page.getByRole('button', { name: 'Quick add an expense' }).click();
+  await page.getByRole('button', { name: 'New expense' }).click();
   const f = sheet(page, 'Quick add');
   await f.getByLabel('Amount').fill(amount);
   await f.getByLabel('Category').selectOption({ label: category });

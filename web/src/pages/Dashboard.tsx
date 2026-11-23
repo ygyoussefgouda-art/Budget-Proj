@@ -7,23 +7,29 @@ import {
   LineChart,
   PieChart,
   PiggyBank,
-  Plus,
+  ReceiptText,
   Settings,
   Wallet,
+  type LucideIcon,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { api } from '../api';
 import { SettingsForm } from '../components/BudgetForms';
+import { Donut } from '../components/charts';
+import { CategoryIcon } from '../components/CategoryIcon';
+import Illustration from '../components/Illustration';
 import Brand, { BrandMark } from '../components/Brand';
 import { Sheet } from '../components/Overlays';
 import { QueuedList } from '../components/OfflineQueue';
 import { DueList } from '../components/Recurring';
 import { ExpenseForm } from './Expenses';
-import { alertLevel, dailyAllowance, type Expense } from '../domain/calc';
+import { alertLevel, dailyAllowance, goalProgress, type Expense, type RecurringRule } from '../domain/calc';
 import { wholeUnits } from '../domain/money';
 import { locale, t } from '../i18n';
 import { BudgetAlerts, MonthBar, TxnTile } from '../components/rows';
-import { Card, COLORS, Empty, Fab, IconButton, PageHeader, PALETTE, SectionTitle, StatTile } from '../components/ui';
+import { Card, COLORS, Empty, IconButton, PageHeader, PALETTE, SectionTitle, StatTile } from '../components/ui';
 import { monthLabel, shortDate, thisMonth, todayIso, useApp } from '../state';
 
 
@@ -35,6 +41,8 @@ export default function Dashboard() {
   // Home-screen shortcut "Add expense" opens /?add=expense: show the quick-add sheet right away.
   const [quickAdd, setQuickAdd] = useState(() => params.get('add') === 'expense');
   useEffect(() => {
+    // Also when already on Home: the centre + in the bottom bar opens /?add=expense
+    if (params.get('add') === 'expense') setQuickAdd(true);
     if (params.has('add')) setParams({}, { replace: true });
   }, [params, setParams]);
   if (!data || !s) return null;
@@ -55,7 +63,7 @@ export default function Dashboard() {
   const atRisk = spendRows.filter((r) => alertLevel(r) !== null).length;
 
   return (
-    <div className="page has-fab">
+    <div className="page">
       <PageHeader
         title={
           <span className="brand brand-row">
@@ -71,12 +79,11 @@ export default function Dashboard() {
         }
       />
       <MonthBar />
+      <p className="greeting">{t(greeting(), { name: user.username })}</p>
 
       {fresh ? (
         <Card className="first-step">
-          <span className="first-step-icon" aria-hidden="true">
-            <Wallet size={22} />
-          </span>
+          <Illustration name="wallet" />
           <h2 className="first-step-title">{t("Start with this month's income")}</h2>
           <p className="mute small">
             {t('Enter what you get for {month}. Masrofy then shows what is left and how much you can spend each day.', { month: monthLabel(month) })}
@@ -86,8 +93,8 @@ export default function Dashboard() {
           </button>
         </Card>
       ) : (
-        <Card className="hero">
-          {/* Option E: the number itself is the hero, currency small in the brand colour */}
+        <section className="hero home-band" aria-label={t('Your budget left')}>
+          {/* 2.0.0: a full-width Lime band (Coinpay-style) with the number as the hero, currency small */}
           <div className="hero-label">{t('Your budget left')}</div>
           <div className="hero-value" style={{ color: left < 0 ? COLORS.red : undefined }}>
             <HeroAmount text={fmt(left)} />
@@ -119,8 +126,16 @@ export default function Dashboard() {
                 : t('{amount} of income is not planned yet.', { amount: fmt(s.unallocated) })}
             </div>
           )}
-        </Card>
+        </section>
       )}
+
+      {/* Quick actions (Fintech-style): the four everyday entries, one tap each */}
+      <div className="quick-actions" role="group" aria-label={t('Quick actions')}>
+        <QuickAction icon={ReceiptText} label={t('Expense')} tone="mint" onClick={() => setQuickAdd(true)} />
+        <QuickAction icon={Wallet} label={t('Income')} tone="sand" onClick={() => setSettingsOpen(true)} />
+        <QuickAction icon={PiggyBank} label={t('Save')} tone="sky" onClick={() => nav('/savings')} />
+        <QuickAction icon={HandCoins} label={t('Pay back')} tone="lavender" onClick={() => nav('/loans')} />
+      </div>
 
       {!fresh && month === thisMonth(startDay) && <WeekChart expenses={data.expenses} />}
       <BudgetAlerts rows={s.rows} onOpen={() => nav('/budget')} />
@@ -156,6 +171,9 @@ export default function Dashboard() {
         </div>
       )}
 
+      <GoalStrip />
+      <Upcoming />
+
       <Card className="where">
         <SectionTitle trailing={slices.length > 0 ? <span className="where-total">{fmt(sliceTotal)}</span> : <span className="mute small">{monthLabel(month)}</span>}>
           {t('Where it went')}
@@ -164,11 +182,12 @@ export default function Dashboard() {
           <Empty text={t('No expenses logged in this month.')} icon={PieChart} />
         ) : (
           <>
-            {/* One stacked bar reads faster on a phone than a donut, and lines up with the ranked list under it */}
-            <div className="stackbar" role="img" aria-label={t('Spending by category, biggest first')}>
-              {slices.map((x, i) => (
-                <span key={x.catId} style={{ flexGrow: x.actual, background: PALETTE[i % PALETTE.length] }} />
-              ))}
+            {/* 2.0.0: a thick ring with the total in the middle, then the ranked list (biggest first) */}
+            <div className="ring-wrap">
+              <Donut values={slices.map((x) => x.actual)} colors={PALETTE} size={176} thickness={26}>
+                <strong className="donut-total">{fmt(sliceTotal)}</strong>
+                <span className="tiny mute">{t('Spent')}</span>
+              </Donut>
             </div>
             <ul className="legend">
               {slices.map((x, i) => (
@@ -202,17 +221,6 @@ export default function Dashboard() {
           </span>
         </Link>
       )}
-      {/* Reports was only reachable from the unlabelled chart icon in the header */}
-      {!fresh && (
-        <Link to="/reports" className="card budget-glance">
-          <LineChart size={20} className="mute" aria-hidden="true" />
-          <div className="grow">
-            <strong className="block">{t('Reports')}</strong>
-            <span className="small mute">{t('Compare with last month, see your year')}</span>
-          </div>
-          <ChevronRight size={16} className="flip-rtl glance-link" aria-hidden="true" />
-        </Link>
-      )}
 
       <Card>
         <SectionTitle
@@ -231,7 +239,7 @@ export default function Dashboard() {
         {settingsOpen && <SettingsForm onDone={() => setSettingsOpen(false)} />}
       </Sheet>
 
-      <Fab icon={Plus} label={t('Expense')} title={t('Quick add an expense')} onClick={() => setQuickAdd(true)} />
+
       <Sheet open={quickAdd} onClose={() => setQuickAdd(false)} title={t('Quick add')}>
         {quickAdd && <ExpenseForm quick onDone={() => setQuickAdd(false)} />}
       </Sheet>
@@ -299,5 +307,83 @@ function SumRow({ label, value, hint, onClick }: { label: string; value: string;
       <span className="sum-value">{value}</span>
       <ChevronRight size={15} className="flip-rtl mute" aria-hidden="true" />
     </button>
+  );
+}
+
+/** "Good morning, {name}" by the phone's clock. */
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning, {name}' : h < 17 ? 'Good afternoon, {name}' : 'Good evening, {name}';
+}
+
+/** One round quick-action button with a pastel icon and its label underneath. */
+function QuickAction({ icon: Icon, label, tone, onClick }: { icon: LucideIcon; label: string; tone: string; onClick: () => void }) {
+  return (
+    <button type="button" className="quick-action" onClick={onClick}>
+      <span className={`qa-icon tone-${tone}`} aria-hidden="true">
+        <Icon size={22} />
+      </span>
+      <span className="qa-label">{label}</span>
+    </button>
+  );
+}
+
+const GOAL_TONES = ['sky', 'lavender', 'mint', 'sand', 'coral', 'pink'];
+
+/** Savings goals as pastel cards in a sideways row (Financy-style). Hidden when there are none. */
+function GoalStrip() {
+  const { data, fmt } = useApp();
+  const goals = data?.goals ?? [];
+  if (!goals.length) return null;
+  return (
+    <section className="goal-strip-wrap" aria-label={t('Savings goals')}>
+      <SectionTitle trailing={<Link to="/savings" className="link">{t('See all')}</Link>}>{t('Savings goals')}</SectionTitle>
+      <div className="goal-strip">
+        {goals.map((g, i) => {
+          const bal = g.balance ?? 0;
+          const p = goalProgress(g, bal);
+          return (
+            <Link key={g.id} to={`/savings/${g.id}`} className={`goal-card tone-${GOAL_TONES[i % GOAL_TONES.length]}`}>
+              <strong className="goal-name">{g.name}</strong>
+              <span className="goal-amount">{fmt(bal)}</span>
+              <span className="goal-of">{t('of {amount}', { amount: fmt(g.target) })}</span>
+              <span className="goal-bar" aria-hidden="true">
+                <span style={{ width: `${Math.round(p * 100)}%` }} />
+              </span>
+              <span className="goal-pct">{Math.round(p * 100)}%</span>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/** Fintech's "Scheduled payments": the next recurring expenses with their dates. Hidden when there are none. */
+function Upcoming() {
+  const { data, fmt } = useApp();
+  const q = useQuery({ queryKey: ['recurring'], queryFn: () => api<{ rules: RecurringRule[] }>('/recurring') });
+  const next = (q.data?.rules ?? [])
+    .filter((r) => !r.paused && r.nextDate)
+    .sort((a, b) => (a.nextDate! < b.nextDate! ? -1 : 1))
+    .slice(0, 3);
+  if (!next.length) return null;
+  return (
+    <Card className="upcoming">
+      <SectionTitle trailing={<Link to="/expenses" className="link">{t('View all')}</Link>}>{t('Upcoming payments')}</SectionTitle>
+      {next.map((r) => {
+        const cat = data?.categories.find((c) => c.id === r.categoryId);
+        return (
+          <div key={r.id} className="txn">
+            <CategoryIcon cat={cat ?? { name: r.description }} fallbackColor={COLORS.text} />
+            <div className="txn-main">
+              <div className="txn-title">{r.description || cat?.name}</div>
+              <div className="tiny mute">{t('Next: {date}', { date: shortDate(r.nextDate!) })}</div>
+            </div>
+            <span className="txn-amount">{fmt(r.amount)}</span>
+          </div>
+        );
+      })}
+    </Card>
   );
 }

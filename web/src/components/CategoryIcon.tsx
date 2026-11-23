@@ -74,13 +74,33 @@ export interface CategoryLook {
   color?: string | null;
 }
 
-/** The round badge in lists: the category's icon in its colour, or its first letter. */
+/**
+ * 2.0.0 pastels (from the dark fintech kit): categories without a colour of their own get one of these,
+ * picked from the name so a category keeps the same one everywhere. Dark ink on them (all ≥ 9:1).
+ */
+export const PASTELS = ['#7edddb', '#b9a6f5', '#f5d76e', '#f4a28c', '#8ec8f5', '#f2a7c9', '#a8e38a'];
+export const pastelFor = (name: string) => {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.codePointAt(0)!) >>> 0;
+  return PASTELS[h % PASTELS.length];
+};
+
+/** The round badge in lists: the category's icon in its colour, or (no colour set) a pastel circle. */
 export function CategoryIcon({ cat, fallbackColor, size = 18 }: { cat: CategoryLook | undefined; fallbackColor: string; size?: number }) {
-  const color = (cat?.color && CATEGORY_COLORS[cat.color]?.hex) || fallbackColor;
+  const own = cat?.color && CATEGORY_COLORS[cat.color]?.hex;
   const Icon = cat?.icon ? CATEGORY_ICONS[cat.icon]?.icon : undefined;
+  const glyph = Icon ? <Icon size={size} /> : (cat?.name ?? '?').slice(0, 1).toUpperCase();
+  if (!own && cat?.name) {
+    return (
+      <span className="avatar is-pastel" style={{ color: '#0b0f0d', background: pastelFor(cat.name) }} aria-hidden="true">
+        {glyph}
+      </span>
+    );
+  }
+  const color = own || fallbackColor;
   return (
     <span className="avatar" style={{ color, background: tint(color, 16) }} aria-hidden="true">
-      {Icon ? <Icon size={size} /> : (cat?.name ?? '?').slice(0, 1).toUpperCase()}
+      {glyph}
     </span>
   );
 }

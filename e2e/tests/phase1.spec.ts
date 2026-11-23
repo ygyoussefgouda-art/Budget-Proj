@@ -6,7 +6,7 @@ const todayInCairo = () => new Date().toLocaleDateString('en-CA', { timeZone: 'A
 
 async function quickAdd(page: Page, amount: string, description: string, category?: string) {
   await tab(page, 'Home').click();
-  await page.getByRole('button', { name: 'Quick add an expense' }).click();
+  await page.getByRole('button', { name: 'New expense' }).click();
   const f = sheet(page, 'Quick add');
   await f.getByLabel('Amount').fill(amount);
   if (category) await f.getByLabel('Category').selectOption({ label: category });
@@ -25,7 +25,7 @@ test.describe('phase 1: quick add, daily allowance, undo, recurring, same as las
     await quickAdd(page, '45', 'Koshary', 'Uni');
     await expect(page.getByText('Koshary').first()).toBeVisible(); // in Recent transactions
 
-    await page.getByRole('button', { name: 'Quick add an expense' }).click();
+    await page.getByRole('button', { name: 'New expense' }).click();
     const f = sheet(page, 'Quick add');
     await expect(f.getByLabel('Category').locator('option:checked')).toHaveText('Uni'); // last used
     await expect(f.getByText('Receipt (optional)')).toHaveCount(0); // the short form

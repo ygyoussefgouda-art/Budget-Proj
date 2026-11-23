@@ -713,7 +713,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .btn.outline { border: 1.5px solid var(--line); }
 .btn.tonal { background: var(--card2); color: var(--text); }
 .icon-btn { border-radius: 14px; }
-.fab { border-radius: 18px; height: 54px; box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent); }
+.fab { border-radius: 18px; height: 54px; box-shadow: none; }
 .fab.is-compact { width: 54px; }
 .add-btn { height: 36px; border-radius: 99px; border: 0; padding: 0 14px 0 12px;
   background: color-mix(in srgb, var(--accent-text) 13%, transparent); color: var(--accent-text); }
@@ -721,7 +721,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 
 /* Inputs: white (card) fields with a border instead of grey wells */
 .input { height: 52px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
-.input:focus { border-color: var(--accent-text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-text) 18%, transparent); }
+.input:focus { border-color: var(--accent-text); box-shadow: none; outline: 2px solid var(--accent-text); outline-offset: -1px; }
 .sheet .input, .login-card .input { background: var(--card); }
 .calc-keys button { height: 44px; border-radius: 12px; }
 .search { background: var(--card); border: 1px solid var(--line); border-radius: 14px; min-height: 50px; }
@@ -731,7 +731,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 /* Segmented control: active segment is a raised card, not a green pill */
 .segmented { background: var(--card2); border: 0; border-radius: 16px; padding: 4px; }
 .segmented button { height: 42px; border-radius: 12px; }
-.segmented button.active { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+.segmented button.active { background: var(--card); color: var(--text); box-shadow: none; }
 
 /* Chips */
 .chip { padding: 9px 14px; font-weight: 700; }
@@ -816,3 +816,94 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .brand-row { flex-direction: row; align-items: center; gap: 8px; }
 .brand-mark { flex: none; display: block; }
 .login-brand .brand-mark { margin-bottom: 6px; }
+
+/* ==========================================================================
+   2.0.0 "fintech" update (from four Figma fintech kits, owner's 10 answers).
+   Dark first + pastels, no glow anywhere (owner): no coloured shadows, no halos.
+   ========================================================================== */
+:root {
+  --sky: #8ec8f5; --lavender: #b9a6f5; --mint: #7edddb; --sand: #f5d76e; --coral: #f4a28c; --pink: #f2a7c9;
+  --on-pastel: #0b0f0d;
+}
+.tone-sky { background: var(--sky); } .tone-lavender { background: var(--lavender); } .tone-mint { background: var(--mint); }
+.tone-sand { background: var(--sand); } .tone-coral { background: var(--coral); } .tone-pink { background: var(--pink); }
+
+/* Bottom bar: Home · Expenses · (+) · Budget · More, the + raised in the middle */
+.bottom-nav { align-items: center; padding-inline: 6px; }
+.tab-add { flex: none; width: 56px; height: 56px; margin: -22px 6px 0; border-radius: 20px; border: 0;
+  background: var(--lime); color: #0b0f0d; display: grid; place-items: center; box-shadow: none; }
+.tab-add:active { transform: scale(0.96); }
+.tab-add:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+/* More page */
+.more-list { display: grid; gap: 10px; }
+.more-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 18px; background: var(--card);
+  border: 1px solid var(--line); text-decoration: none; color: inherit; min-height: 72px; }
+.more-item:active { background: var(--press); }
+.more-item:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.more-icon { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; color: var(--on-pastel); flex: none; }
+
+/* Greeting under the month switcher */
+.greeting { margin: -4px 2px 12px; font-size: 15px; font-weight: 700; color: var(--text2); }
+
+/* Home: full-width Lime band with the balance (Coinpay-style), dark ink on it */
+.home-band { background: var(--lime); color: #0b0f0d; margin-inline: -16px; padding: 22px 20px 18px; border-radius: 0 0 28px 28px; margin-bottom: 14px; }
+.home-band .hero-label { color: #2e3833; }
+.home-band .hero-value { color: #0b0f0d !important; }
+.home-band .hero-cur { color: #2e3833; }
+.home-band .hero-sub { color: #2e3833; }
+.home-band .bar { background: rgba(11, 15, 13, 0.16); }
+.home-band .bar-fill { background: #0b0f0d !important; }
+.home-band .hero-sum { background: rgba(255, 255, 255, 0.55); border: 0; }
+.home-band .sum-row, .home-band .sum-row .mute, .home-band .sum-hint { color: #0b0f0d !important; border-bottom-color: rgba(11, 15, 13, 0.12); }
+.home-band .sum-row svg { color: #2e3833; }
+.home-band .allowance { background: rgba(255, 255, 255, 0.55); border: 0; color: #0b0f0d !important; }
+.home-band .allowance svg { color: #0b0f0d; }
+.home-band .tiny, .home-band .over-note { color: #0b0f0d !important; }
+@media (min-width: 592px) { .home-band { margin-inline: 0; border-radius: 28px; } }
+
+/* Quick actions */
+.quick-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 2px 0 16px; }
+.quick-action { display: grid; justify-items: center; gap: 6px; background: none; border: 0; padding: 4px 0; color: var(--text); min-height: 76px; }
+.qa-icon { width: 54px; height: 54px; border-radius: 18px; display: grid; place-items: center; color: var(--on-pastel); }
+.quick-action:active .qa-icon { transform: scale(0.95); }
+.quick-action:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 14px; }
+.qa-label { font-size: 12.5px; font-weight: 700; }
+
+/* Savings goals: pastel cards, sideways on Home */
+.goal-strip-wrap { margin-bottom: 14px; }
+.goal-strip { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; scroll-snap-type: x mandatory; }
+.goal-strip::-webkit-scrollbar { display: none; }
+.goal-card { flex: none; width: 168px; display: grid; gap: 2px; padding: 14px; border-radius: 20px; color: var(--on-pastel); text-decoration: none; scroll-snap-align: start; }
+.goal-card:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.goal-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.goal-amount { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; margin-top: 8px; }
+.goal-of { font-size: 12px; font-weight: 600; opacity: 0.8; }
+.goal-bar { display: block; height: 6px; border-radius: 3px; background: rgba(11, 15, 13, 0.16); margin-top: 10px; overflow: hidden; }
+.goal-bar span { display: block; height: 100%; background: #0b0f0d; border-radius: 3px; }
+.goal-pct { font-size: 12px; font-weight: 800; margin-top: 4px; }
+/* Savings tab: the goal rows themselves are pastel cards (beat the list's card colour) */
+.list > .goal-card-row { border: 0; }
+.list > .goal-card-row.tone-sky { background: var(--sky); } .list > .goal-card-row.tone-lavender { background: var(--lavender); }
+.list > .goal-card-row.tone-mint { background: var(--mint); } .list > .goal-card-row.tone-sand { background: var(--sand); }
+.list > .goal-card-row.tone-coral { background: var(--coral); } .list > .goal-card-row.tone-pink { background: var(--pink); }
+.goal-card-row, .goal-card-row .mute, .goal-card-row .tiny, .goal-card-row .small, .goal-card-row .big-name, .goal-card-row .del-btn { color: var(--on-pastel) !important; }
+.goal-card-row .pill { background: rgba(11, 15, 13, 0.12) !important; color: var(--on-pastel) !important; }
+.goal-card-row .ring-track circle:first-child { stroke: rgba(11, 15, 13, 0.16) !important; }
+.goal-card-row .ring-track circle + circle { stroke: #0b0f0d !important; }
+.goal-card-row .ring-icon { color: var(--on-pastel); }
+.goal-card-row .list-row:active { background: rgba(11, 15, 13, 0.08); }
+
+/* Pill buttons (Deposit / Withdraw) */
+.pill-btn { border-radius: 99px; padding: 0 22px; }
+
+/* Ring chart */
+.ring-wrap { display: grid; place-items: center; margin: 6px 0 16px; }
+.ring-wrap .donut-total { font-size: 17px; font-weight: 800; }
+
+/* Pastel category circles; line illustrations */
+.avatar.is-pastel { font-weight: 800; }
+.illustration { display: block; margin: 0 auto; }
+.first-step .illustration { margin: 0 0 4px; }
+.empty { padding: 18px 0 22px; }
+.goal-card-row .forecast svg, .goal-card-row svg { color: var(--on-pastel) !important; stroke: currentColor; }

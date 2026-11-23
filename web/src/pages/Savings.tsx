@@ -70,6 +70,9 @@ function ForecastLines({ g, balance, planned, compact = false }: { g: Goal; bala
   );
 }
 
+/** 2.0.0: each goal is a pastel card (Financy-style); same order of tones as the cards on Home. */
+const GOAL_TONES = ['sky', 'lavender', 'mint', 'sand', 'coral', 'pink'];
+
 export default function Savings() {
   const { data, summary, fmt, totals, month } = useApp();
   const nav = useNavigate();
@@ -92,16 +95,16 @@ export default function Savings() {
       </Card>
 
       <SectionTitle trailing={<AddButton onClick={() => setForm(true)} title={t('Add a savings goal')} />}>{t('Goals')}</SectionTitle>
-      {data.goals.length === 0 && <Empty text={t('No savings goals yet. Tap "+ Add" to create one.')} icon={PiggyBank} />}
+      {data.goals.length === 0 && <Empty text={t('No savings goals yet. Tap "+ Add" to create one.')} art="goal" />}
       <div className="list">
-        {data.goals.map((g) => {
+        {data.goals.map((g, i) => {
           const bal = g.balance ?? 0;
           const rem = remaining(g, bal);
           const prog = goalProgress(g, bal);
           const monthly = goalMonthly(g, data.goals, data.budget.savePlan);
           const months = monthsToGoal(rem, monthly);
           return (
-            <div key={g.id} className="list-item">
+            <div key={g.id} className={`list-item goal-card-row tone-${GOAL_TONES[i % GOAL_TONES.length]}`}>
               <button type="button" className="list-row grow" onClick={() => nav(`/savings/${g.id}`)}>
                 <div className="row gap">
                   <RingIcon icon={PiggyBank} color={COLORS.highlight} progress={prog} size={52} />
@@ -196,10 +199,10 @@ export function GoalDetail() {
       </Card>
 
       <div className="grid2">
-        <button className="btn primary" onClick={() => setEntryForm({ deposit: true })}>
+        <button className="btn primary pill-btn" onClick={() => setEntryForm({ deposit: true })}>
           <Plus size={18} /> {t('Deposit')}
         </button>
-        <button className="btn outline" onClick={() => setEntryForm({ deposit: false })}>
+        <button className="btn outline pill-btn" onClick={() => setEntryForm({ deposit: false })}>
           <Minus size={18} /> {t('Withdraw')}
         </button>
       </div>

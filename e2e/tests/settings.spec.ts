@@ -20,8 +20,8 @@ test.describe('settings, language and navigation', () => {
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     const nav = page.getByRole('navigation');
     await expect(nav).toContainText('المصاريف');
-    await expect(nav).toContainText('التحويش');
-    await expect(nav).toContainText('السلف');
+    await expect(nav).toContainText('الميزانية');
+    await expect(nav).toContainText('المزيد'); // 2.0.0: Savings and Loans are under More
 
     await page.getByRole('tab', { name: 'English' }).click();
     await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
@@ -83,7 +83,7 @@ test.describe('settings, language and navigation', () => {
     await expect(page.locator('.stage-badge').first()).toHaveText('MK1');
     const footer = page.locator('footer.app-footer');
     await expect(footer).toContainText('Developed by Youssef Gouda');
-    await expect(footer).toContainText('Masrofy MK1 · Version 1.3.0');
+    await expect(footer).toContainText('Masrofy MK1 · Version 2.0.0');
     await expect(page.getByText(/alpha/i)).toHaveCount(0);
   });
 

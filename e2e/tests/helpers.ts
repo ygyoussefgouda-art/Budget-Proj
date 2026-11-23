@@ -39,9 +39,22 @@ export async function signIn(page: Page, username: string, password = PASSWORD) 
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 }
 
-/** Bottom navigation. */
-export const tab = (page: Page, name: 'Home' | 'Budget' | 'Expenses' | 'Loans' | 'Savings') =>
-  page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name });
+/**
+ * Bottom navigation (2.0.0: Home · Expenses · + · Budget · More). Savings and Loans live on the More page,
+ * so for those two this opens More and then the entry there.
+ */
+export const tab = (page: Page, name: 'Home' | 'Budget' | 'Expenses' | 'Loans' | 'Savings' | 'More') => {
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  if (name === 'Loans' || name === 'Savings') {
+    return {
+      click: async () => {
+        await nav.getByRole('link', { name: 'More' }).click();
+        await page.locator('.more-list').getByRole('link', { name: new RegExp(`^${name}`) }).click();
+      },
+    };
+  }
+  return nav.getByRole('link', { name });
+};
 
 /** The open bottom sheet (form). */
 export const sheet = (page: Page, title: string | RegExp) => page.getByRole('dialog', { name: title });
