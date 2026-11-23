@@ -74,6 +74,21 @@ describe('Android app downloads', () => {
     expect(r.headers.location).toBe('/api/app/android/apk/budget-me-0.6.5.apk');
   });
 
+  it('2.0.0 releases are named masrofy-<version>.apk; the older budget-me name still downloads', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'bm-masrofy-'));
+    mkdirSync(path.join(dir, 'android'));
+    writeFileSync(path.join(dir, 'android', 'latest.json'), JSON.stringify({ ...manifest, versionCode: 6, versionName: '2.0.0', apk: 'masrofy-2.0.0.apk' }));
+    writeFileSync(path.join(dir, 'android', 'masrofy-2.0.0.apk'), apk);
+    writeFileSync(path.join(dir, 'android', 'budget-me-0.6.5.apk'), apk);
+    const app = mkApp(dir);
+    expect((await request(app).get('/download/android').expect(302)).headers.location).toBe('/api/app/android/apk/masrofy-2.0.0.apk');
+    const r = await request(app).get('/api/app/android/apk/masrofy-2.0.0.apk').expect(200);
+    expect(r.headers['content-disposition']).toBe('attachment; filename="masrofy-2.0.0.apk"');
+    expect((await request(app).get('/api/app/android/apk/budget-me-0.6.5.apk')).status).toBe(200);
+    expect((await request(app).get('/api/app/android/apk/masrofy-2.0.0.apk.json')).status).toBe(404);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   it('no release yet (or a broken manifest): a clear 404', async () => {
     expect((await request(mkApp(undefined)).get('/api/app/android/latest')).status).toBe(404);
     const broken = mkdtempSync(path.join(tmpdir(), 'bm-broken-'));

@@ -52,7 +52,7 @@ jobs:
           cd android && chmod +x gradlew && ./gradlew --no-daemon assembleDebug
       - uses: actions/upload-artifact@v7
         with:
-          name: budget-me-debug-apk
+          name: masrofy-debug-apk
           path: mobile/android/app/build/outputs/apk/debug/*.apk
           retention-days: 14
 
@@ -103,7 +103,7 @@ jobs:
         run: sh mobile/scripts/release.sh "${VERSION#android-v}"
       - uses: actions/upload-artifact@v7
         with:
-          name: budget-me-release
+          name: masrofy-release
           path: |
             mobile/dist/*.apk
             mobile/dist/latest.json

@@ -199,7 +199,7 @@ boundary (a user agent can be faked), so accounts stay protected exactly as befo
 phone or computer browser, run with `APP_ONLY=false`.
 
 **Where the APK lives:** `/opt/budget-me/downloads/android/` on the VPS (mounted read-only into the app):
-`latest.json` plus `budget-me-<version>.apk` (the last 3 are kept). People download it from the
+`latest.json` plus `masrofy-<version>.apk` (the last 3 are kept; releases before 2.0.0 were named `budget-me-<version>.apk`). People download it from the
 "Get the app" page at `https://<your site>` (with `APP_ONLY=true`), or the short link
 `https://<your site>/download/android`. Installed apps check `/api/app/android/latest` and update themselves.
 

@@ -20,7 +20,7 @@ echo "$VERSION_NAME" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "versionNam
 
 # 1. versionCode + 1 (Android refuses an update with a lower or equal number)
 CODE=$(node -e "const v=require('./version.json');if(process.env.KEEP_VERSION_CODE!=='true')v.versionCode+=1;v.versionName=process.argv[1];require('fs').writeFileSync('version.json',JSON.stringify(v,null,2)+'\n');console.log(v.versionCode)" "$VERSION_NAME")
-echo "==> Building Budget me $VERSION_NAME (versionCode $CODE)"
+echo "==> Building Masrofy $VERSION_NAME (versionCode $CODE)"
 
 # 2. Build the signed release APK
 npm ci --no-audit --no-fund
@@ -29,7 +29,7 @@ npx cap sync android
 APK_IN=android/app/build/outputs/apk/release/app-release.apk
 [ -f "$APK_IN" ] || { echo "No signed APK was built (is the keystore set?)"; exit 1; }
 mkdir -p dist
-APK="dist/budget-me-$VERSION_NAME.apk"
+APK="dist/masrofy-$VERSION_NAME.apk"
 cp "$APK_IN" "$APK"
 
 # 3. Check who signed it
@@ -54,7 +54,7 @@ const m = {
   versionName: name,
   minVersionCode: Number(process.env.MIN_VERSION_CODE || 0),
   mandatory: process.env.MANDATORY === 'true',
-  apk: 'budget-me-' + name + '.apk',
+  apk: 'masrofy-' + name + '.apk',
   size: Number(size),
   sha256: sha,
   releasedAt: new Date().toISOString(),
@@ -70,7 +70,7 @@ if [ -n "${VPS:-}" ]; then
   ssh "$VPS" "mkdir -p '$VPS_DIR'"
   scp "$APK" "$VPS:$VPS_DIR/"
   scp dist/latest.json "$VPS:$VPS_DIR/latest.json.part"
-  ssh "$VPS" "mv '$VPS_DIR/latest.json.part' '$VPS_DIR/latest.json' && cd '$VPS_DIR' && ls -1t budget-me-*.apk | tail -n +4 | xargs -r rm --"
+  ssh "$VPS" "mv '$VPS_DIR/latest.json.part' '$VPS_DIR/latest.json' && cd '$VPS_DIR' && ls -1t masrofy-*.apk budget-me-*.apk 2>/dev/null | tail -n +4 | xargs -r rm --"
   echo "==> Published to $VPS:$VPS_DIR"
 else
   echo "==> Not published (set VPS=user@host to upload). Files are in mobile/dist/."

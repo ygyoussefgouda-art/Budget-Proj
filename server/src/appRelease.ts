@@ -8,9 +8,9 @@ import { ah, HttpError } from './http.js';
  * Android app downloads (docs/ANDROID_SELF_UPDATE.md). The owner chose an open download link, so
  * these routes are public; the phone checks the SHA-256 and Android checks the signature, so a
  * tampered file can't replace the real app. Files live in DOWNLOADS_DIR/android:
- *   latest.json + budget-me-<versionName>.apk (the last few kept).
+ *   latest.json + masrofy-<versionName>.apk (the last few kept). Releases before 2.0.0 were named budget-me-<versionName>.apk; both are served.
  */
-const APK_NAME = /^budget-me-\d+\.\d+\.\d+\.apk$/;
+const APK_NAME = /^(masrofy|budget-me)-\d+\.\d+\.\d+\.apk$/;
 
 const manifestSchema = z.object({
   appId: z.string(),
@@ -48,7 +48,7 @@ export function appReleaseRoutes(downloadsDir: string | undefined): Router {
     res.json({ ...m, downloadUrl: `/api/app/android/apk/${m.apk}` });
   });
 
-  // The APK file itself. Only names like budget-me-1.2.3.apk, only from the android folder.
+  // The APK file itself. Only names like masrofy-1.2.3.apk (or the older budget-me-1.2.3.apk), only from the android folder.
   r.get(
     '/app/android/apk/:file',
     ah(async (req, res) => {
