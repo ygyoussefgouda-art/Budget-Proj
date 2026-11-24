@@ -999,3 +999,4 @@ html { scrollbar-color: var(--field-line) transparent; scrollbar-width: thin; }
 .table th, .table td { padding: 9px 6px; font-size: 13px; }
 .table th:first-child, .table td:first-child { padding-inline-start: 12px; }
 .hero-cur { margin-left: 2px; } /* the amount is always left-to-right, so a physical margin */
+.tutorial-done { display: flex; align-items: center; gap: 8px; color: var(--accent-text); font-weight: 700; }

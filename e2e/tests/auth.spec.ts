@@ -132,7 +132,7 @@ test.describe('accounts', () => {
   test('first-run tour (2.1.0): payday, income, where things are, then the first expense', async ({ page }) => {
     await signUp(page);
     const dlg = page.getByRole('dialog');
-    await expect(dlg.getByText('Step 1 of 5')).toBeVisible();
+    await expect(dlg.getByText('Step 1 of 6')).toBeVisible();
     await expect(dlg.getByRole('button', { name: 'Back' })).toHaveCount(0); // nothing to go back to
     await dlg.getByRole('button', { name: 'Next' }).click();
 
@@ -146,7 +146,7 @@ test.describe('accounts', () => {
     // Arrow keys move between days; they don't change the step
     await dlg.getByRole('radio', { name: '25' }).press('ArrowRight');
     await expect(dlg.getByRole('radio', { name: '26' })).toBeFocused();
-    await expect(dlg.getByText('Step 2 of 5')).toBeVisible();
+    await expect(dlg.getByText('Step 2 of 6')).toBeVisible();
     await dlg.getByRole('button', { name: 'Next' }).click();
 
     // Step 3: the monthly income, saved when going on
@@ -154,19 +154,38 @@ test.describe('accounts', () => {
     await dlg.getByLabel(/Income for/).fill('4500');
     await dlg.getByRole('button', { name: 'Next' }).click();
 
-    // Step 4: where things are (the bottom bar shows above the dim layer)
+    // Step 4 (2.1.3): app lock. A mismatch is refused, then the PIN turns the lock on.
+    await expect(dlg.getByText('Lock the app with a PIN')).toBeVisible();
+    await dlg.getByLabel('PIN (4–6 digits)').fill('2468');
+    await dlg.getByLabel('Repeat the PIN').fill('2469');
+    await dlg.getByRole('button', { name: 'Next' }).click();
+    await expect(dlg.getByText('The two PINs do not match.')).toBeVisible();
+    await dlg.getByLabel('Repeat the PIN').fill('2468');
+    await dlg.getByRole('button', { name: 'Turn on app lock' }).click();
+    await expect(dlg.getByText('App lock is on.')).toBeVisible();
+    await dlg.getByRole('button', { name: 'Next' }).click();
+
+    // Step 5: where things are (the bottom bar shows above the dim layer)
     await expect(dlg.getByText('Where things are')).toBeVisible();
     await expect(page).toHaveURL(/\/$/);
     await dlg.getByRole('button', { name: 'Next' }).click();
 
-    // Step 5: log the first expense; the tour ends on Home with quick add open
-    await expect(dlg.getByText('Step 5 of 5')).toBeVisible();
+    // Step 6: log the first expense; the tour ends on Home with quick add open
+    await expect(dlg.getByText('Step 6 of 6')).toBeVisible();
     await dlg.getByRole('button', { name: 'Log an expense' }).click();
     await expect(page.getByRole('dialog', { name: 'Quick add' })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByText('Your budget left').locator('..')).toContainText('4,500 EGP');
+
+    // The PIN set in the tour really locks the app (switch Settings to "lock right away", then reopen)
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByLabel('Lock the app').selectOption({ label: 'Right away' });
     await page.reload();
-    await expect(page.getByText('Step 1 of 5')).toHaveCount(0); // finished: not shown again
+    const lock = page.getByRole('dialog', { name: 'App locked' });
+    await expect(lock).toBeVisible();
+    for (const d of '2468') await lock.getByRole('button', { name: d, exact: true }).click();
+    await expect(lock).toHaveCount(0);
+    await expect(page.getByText('Step 1 of 6')).toHaveCount(0); // finished: not shown again
   });
 
   test('the tour card fits a small phone: Skip and the buttons stay on screen', async ({ page }) => {

@@ -74,8 +74,8 @@ export default function AppLockSettings() {
   );
 }
 
-/** Android app: unlock with fingerprint / face. Shown only when the phone can do it. */
-function BiometricToggle() {
+/** Android app: unlock with fingerprint / face. Shown only when the phone can do it. Also in the first-run tour. */
+export function BiometricToggle() {
   const { user } = useApp();
   const { toast } = useOverlay();
   const [on, setOn] = useState(() => bioEnabled(user.id));

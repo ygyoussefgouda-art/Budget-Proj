@@ -424,6 +424,18 @@ export const AR: Record<string, string> = {
   'Tap the day your salary or allowance usually arrives. Your budget month starts on that day.':
     'دوس على اليوم اللي مرتبك أو مصروفك بييجي فيه عادةً. شهر ميزانيتك بيبدأ من اليوم ده.',
   'How much do you get a month?': 'بتاخد كام في الشهر؟',
+  'Masrofy shows what is left of your money this month and how much you can spend each day. A few quick steps and you are ready.':
+    'مصروفي بيوريك فاضل معاك كام الشهر ده وتقدر تصرف قد إيه كل يوم. كام خطوة سريعة وتبقى جاهز.',
+  // 2.1.3 tour: app lock step
+  'Lock the app with a PIN': 'اقفل التطبيق برقم سري',
+  'Keep your budget private on this phone: the app asks for the PIN when it is opened again. It stays on this phone and is separate from your password.':
+    'خلّي ميزانيتك سر على الموبايل ده: التطبيق هيطلب الرقم السري لما تفتحه تاني. الرقم بيفضل على الموبايل ده بس ومالوش دعوة بكلمة السر.',
+  'PIN (4–6 digits)': 'الرقم السري (4–6 أرقام)',
+  'Change the PIN or when it locks in Settings → App lock.': 'تقدر تغيّر الرقم أو إمتى يتقفل من الإعدادات ← قفل التطبيق.',
+  'Next you can unlock with your fingerprint instead of typing it. Not now? Leave it empty.':
+    'بعدها تقدر تفتح ببصمتك بدل ما تكتبه. مش دلوقتي؟ سيبه فاضي.',
+  'Not now? Leave it empty. You can turn it on later in Settings → App lock.':
+    'مش دلوقتي؟ سيبه فاضي. تقدر تشغّله بعدين من الإعدادات ← قفل التطبيق.',
   'Your allowance or salary. Masrofy uses it to work out what is left and your daily amount.':
     'مصروفك أو مرتبك. مصروفي بيحسب منه اللي فاضل معاك والمبلغ اللي تقدر تصرفه كل يوم.',
   'Not sure yet? Leave it empty and set it later from Home.': 'مش متأكد؟ سيبها فاضية وحطها بعدين من الرئيسية.',

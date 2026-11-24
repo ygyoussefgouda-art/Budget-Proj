@@ -1,4 +1,6 @@
-import { CalendarClock, LayoutGrid, Plus, Sparkles, Wallet, type LucideIcon } from 'lucide-react';
+import { CalendarClock, LayoutGrid, Lock, Plus, ShieldCheck, Sparkles, Wallet, type LucideIcon } from 'lucide-react';
+import { BiometricToggle } from './AppLockSettings';
+import { makeLock, PIN_RE, readLock, saveLock } from '../pin';
 import MonthStartPicker from './MonthStartPicker';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -14,7 +16,7 @@ import { APP_NAME } from '../version';
 const KEY = 'bm-tutorial-done'; // + ':<user id>'
 const EVENT = 'bm-show-tutorial';
 
-type Kind = 'welcome' | 'payday' | 'income' | 'places' | 'first';
+type Kind = 'welcome' | 'payday' | 'income' | 'lock' | 'places' | 'first';
 
 interface Step {
   kind: Kind;
@@ -32,7 +34,7 @@ const STEPS: Step[] = [
     kind: 'welcome',
     icon: Sparkles,
     title: 'Welcome to {app}',
-    text: 'Masrofy shows what is left of your money this month and how much you can spend each day. Two quick questions and you are ready.',
+    text: 'Masrofy shows what is left of your money this month and how much you can spend each day. A few quick steps and you are ready.',
   },
   {
     kind: 'payday',
@@ -45,6 +47,13 @@ const STEPS: Step[] = [
     icon: Wallet,
     title: 'How much do you get a month?',
     text: 'Your allowance or salary. Masrofy uses it to work out what is left and your daily amount.',
+  },
+  {
+    // 2.1.3 (owner's request): offer the app lock in the tour; fingerprint unlock in the Android app.
+    kind: 'lock',
+    icon: Lock,
+    title: 'Lock the app with a PIN',
+    text: 'Keep your budget private on this phone: the app asks for the PIN when it is opened again. It stays on this phone and is separate from your password.',
   },
   {
     kind: 'places',
@@ -84,6 +93,9 @@ export default function Tutorial() {
   const [income, setIncome] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pin, setPin] = useState('');
+  const [pin2, setPin2] = useState('');
+  const [locked, setLocked] = useState(() => !!readLock(user.id));
   const nav = useNavigate();
   const loc = useLocation();
   const card = useRef<HTMLDivElement>(null);
@@ -143,8 +155,23 @@ export default function Tutorial() {
     nav('/');
   }, [done, nav]);
 
+  /** Turns the app lock on from the tour (locks 5 minutes after leaving, as in Settings). False = not valid. */
+  const setLock = async () => {
+    if (!PIN_RE.test(pin)) return setErr(t('Use 4 to 6 digits.')), false;
+    if (pin !== pin2) return setErr(t('The two PINs do not match.')), false;
+    setBusy(true);
+    saveLock(user.id, await makeLock(pin, 5));
+    setBusy(false);
+    setPin('');
+    setPin2('');
+    setLocked(true);
+    return true;
+  };
+
   const go = async (to: number) => {
     setErr(null);
+    // Leaving the lock step forwards with a PIN typed in turns the lock on (nothing typed = skip it).
+    if (s.kind === 'lock' && to > i && !locked && (pin || pin2) && !(await setLock())) return;
     // Leaving the income step forwards saves the amount (empty = leave it as it is).
     if (s.kind === 'income' && to > i && income.trim()) {
       const v = parseMoneyOrZero(income);
@@ -240,6 +267,37 @@ export default function Tutorial() {
               <p className="tiny mute">{t('Not sure yet? Leave it empty and set it later from Home.')}</p>
             </div>
           )}
+
+          {s.kind === 'lock' &&
+            (locked ? (
+              <div style={{ marginTop: 12 }} className="stack">
+                <p className="tutorial-done">
+                  <ShieldCheck size={18} aria-hidden="true" /> {t('App lock is on.')}
+                </p>
+                {/* Android app only (hidden in a browser or on a phone without fingerprint / face). */}
+                <BiometricToggle />
+                <p className="tiny mute">{t('Change the PIN or when it locks in Settings → App lock.')}</p>
+              </div>
+            ) : (
+              <div style={{ marginTop: 12 }}>
+                <div className="grid2">
+                  <Field label={t('PIN (4–6 digits)')}>
+                    <input className="input pin-input" type="password" inputMode="numeric" autoComplete="off" maxLength={6} dir="ltr" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} />
+                  </Field>
+                  <Field label={t('Repeat the PIN')}>
+                    <input className="input pin-input" type="password" inputMode="numeric" autoComplete="off" maxLength={6} dir="ltr" value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ''))} />
+                  </Field>
+                </div>
+                <button type="button" className="btn tonal block" style={{ marginTop: 10 }} disabled={busy} onClick={() => void (async () => { setErr(null); await setLock(); })()}>
+                  <Lock size={18} aria-hidden="true" /> {t('Turn on app lock')}
+                </button>
+                <p className="tiny mute">
+                  {isNative()
+                    ? t('Next you can unlock with your fingerprint instead of typing it. Not now? Leave it empty.')
+                    : t('Not now? Leave it empty. You can turn it on later in Settings → App lock.')}
+                </p>
+              </div>
+            ))}
 
           {s.kind === 'places' && (
             <ul className="tutorial-tips">
