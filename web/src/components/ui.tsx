@@ -55,6 +55,21 @@ export function Pill({ children, color }: { children: ReactNode; color: string }
   );
 }
 
+/**
+ * A hero amount: big number, small currency ("3,100 EGP"). Reads and copies as one amount. Used by every
+ * screen's top number (Home, Savings, a goal, Loans) so they all look the same (2.1.2).
+ */
+export function HeroAmount({ text }: { text: string }) {
+  const i = text.lastIndexOf(' ');
+  if (i < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, i)}
+      <span className="hero-cur">{' '}{text.slice(i + 1)}</span>
+    </>
+  );
+}
+
 export function SectionTitle({ children, trailing }: { children: ReactNode; trailing?: ReactNode }) {
   return (
     <div className="section-title">

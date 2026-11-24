@@ -25,7 +25,7 @@ import { dailyAllowance, goalProgress, type Expense, type RecurringRule } from '
 import { wholeUnits } from '../domain/money';
 import { locale, t } from '../i18n';
 import { BudgetAlerts, MonthBar, TxnTile } from '../components/rows';
-import { Card, COLORS, Empty, IconButton, PageHeader, PALETTE, SectionTitle } from '../components/ui';
+import { Card, COLORS, Empty, HeroAmount, IconButton, PageHeader, PALETTE, SectionTitle } from '../components/ui';
 import { monthLabel, shortDate, thisMonth, todayIso, useApp } from '../state';
 
 
@@ -87,7 +87,7 @@ export default function Dashboard() {
         <section className="hero home-band" aria-label={t('Your budget left')}>
           {/* 2.0.0: a full-width Lime band (Coinpay-style) with the number as the hero, currency small */}
           <div className="hero-label">{t('Your budget left')}</div>
-          <div className="hero-value" style={{ color: left < 0 ? COLORS.red : undefined }}>
+          <div className={`hero-value ${left < 0 ? 'is-over' : ''}`}>
             <HeroAmount text={fmt(left)} />
           </div>
           <div className="hero-sub">
@@ -104,7 +104,7 @@ export default function Dashboard() {
             {s.repaid !== 0 && <SumRow label={t('Repaid')} value={fmt(s.repaid)} onClick={() => nav('/loans')} />}
           </div>
           {allowance && (s.income > 0 || s.actualTotal > 0) && (
-            <div className="allowance small" style={{ color: allowance.perDay < 0 ? COLORS.highlight : undefined }}>
+            <div className={`allowance small ${allowance.perDay < 0 ? 'is-over' : ''}`}>
               <CalendarDays size={15} aria-hidden="true" />
               <span>
                 {t('You can spend {amount} a day until {date}', { amount: fmt(wholeUnits(allowance.perDay)), date: shortDate(allowance.until) })}
@@ -112,7 +112,7 @@ export default function Dashboard() {
             </div>
           )}
           {s.unallocated !== 0 && s.income > 0 && (
-            <div className={`tiny ${s.unallocated < 0 ? 'over-note' : ''}`} style={{ marginTop: 8 }}>
+            <div className={`tiny ${s.unallocated < 0 ? 'over-note is-over' : ''}`} style={{ marginTop: 8 }}>
               {s.unallocated < 0
                 ? t('Your plan is {amount} over your income. Lower a category.', { amount: fmt(-s.unallocated) })
                 : t('{amount} of income is not planned yet.', { amount: fmt(s.unallocated) })}
@@ -159,7 +159,7 @@ export default function Dashboard() {
         <SectionTitle
           trailing={
             <Link to="/expenses" className="link">
-              {t('View all')}
+              {t('See all')}
             </Link>
           }
         >
@@ -180,18 +180,6 @@ export default function Dashboard() {
   );
 }
 
-/** "3,100 EGP" → big number + small currency (kept as text with a space, so it reads and copies as "3,100 EGP"). */
-function HeroAmount({ text }: { text: string }) {
-  const i = text.lastIndexOf(' ');
-  if (i < 0) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, i)}
-      <span className="hero-cur"> {text.slice(i + 1)}</span>
-    </>
-  );
-}
-
 /** Option E's "This week": spending per day, Saturday to Friday (the Egyptian week), today in lime. */
 function WeekChart({ expenses }: { expenses: Expense[] }) {
   const { fmt } = useApp();
@@ -203,7 +191,7 @@ function WeekChart({ expenses }: { expenses: Expense[] }) {
   const sums = days.map((iso) => expenses.filter((e) => e.date === iso).reduce((s, e) => s + e.amount, 0));
   const total = sums.reduce((s, v) => s + v, 0);
   const max = Math.max(1, ...sums);
-  const label = (iso: string) => new Intl.DateTimeFormat(locale(), { weekday: 'narrow', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
+  const label = (iso: string) => new Intl.DateTimeFormat(locale(), { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
   return (
     <Card className="week">
       <div className="week-head">
@@ -227,7 +215,8 @@ function Bar2({ value, over }: { value: number; over: boolean }) {
   const v = over ? 1 : 1 - Math.max(0, Math.min(1, value));
   return (
     <div className="bar" style={{ margin: '16px 0 10px' }}>
-      <div className="bar-fill" style={{ width: `${v * 100}%`, background: over ? COLORS.red : COLORS.accent }} />
+      {/* Over budget: the whole bar turns red ("nothing left"), never a full dark bar that reads as "all left". */}
+      <div className={`bar-fill ${over ? 'is-over' : ''}`} style={{ width: `${v * 100}%`, background: over ? COLORS.red : COLORS.accent }} />
     </div>
   );
 }
@@ -304,7 +293,7 @@ function Upcoming() {
   if (!next.length) return null;
   return (
     <Card className="upcoming">
-      <SectionTitle trailing={<Link to="/expenses" className="link">{t('View all')}</Link>}>{t('Upcoming payments')}</SectionTitle>
+      <SectionTitle trailing={<Link to="/expenses?recurring=1" className="link">{t('See all')}</Link>}>{t('Upcoming payments')}</SectionTitle>
       {next.map((r) => {
         const cat = data?.categories.find((c) => c.id === r.categoryId);
         return (

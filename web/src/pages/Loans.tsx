@@ -1,5 +1,6 @@
-import { ArrowDownLeft, ArrowUpRight, HandCoins, Plus } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeft, ArrowUpRight, HandCoins, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api, saveWithConfirm } from '../api';
 import { Sheet, useOverlay } from '../components/Overlays';
 import { SwipeRow } from '../components/SwipeRow';
@@ -13,6 +14,8 @@ import {
   Empty,
   Field,
   FormError,
+  HeroAmount,
+  IconButton,
   MoneyInput,
   PageHeader,
   Pill,
@@ -28,6 +31,7 @@ import { defaultDate, shortDate, useApp } from '../state';
 
 export default function Loans() {
   const { data, fmt } = useApp();
+  const nav = useNavigate();
   const { toast } = useOverlay();
   const undoDelete = useUndoDelete();
   const [borrowed, setBorrowed] = useState(true); // true = money I owe
@@ -51,7 +55,7 @@ export default function Loans() {
 
   return (
     <div className="page">
-      <PageHeader title={t('Loans')} />
+      <PageHeader title={t('Loans')} left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/more')} flip />} />
       <Segmented
         value={borrowed ? 'owe' : 'owed'}
         onChange={(v) => setBorrowed(v === 'owe')}
@@ -64,7 +68,7 @@ export default function Loans() {
       <Card className="hero">
         <div className="mute small">{borrowed ? t('Still owed by you') : t('Still owed to you')}</div>
         <div className="hero-value" style={{ color: owed > 0 ? accent : COLORS.accent }}>
-          {fmt(Math.max(0, owed))}
+          <HeroAmount text={fmt(Math.max(0, owed))} />
         </div>
         <div style={{ margin: '12px 0 8px' }}>
           <Bar value={principal === 0 ? 0 : repaid / principal} />

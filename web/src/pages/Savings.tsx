@@ -15,6 +15,7 @@ import {
   Empty,
   Field,
   FormError,
+  HeroAmount,
   IconButton,
   MoneyInput,
   PageHeader,
@@ -94,10 +95,12 @@ export default function Savings() {
 
   return (
     <div className="page">
-      <PageHeader title={t('Savings')} />
+      <PageHeader title={t('Savings')} left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/more')} flip />} />
       <Card className="hero">
         <div className="mute small">{t('Total savings')}</div>
-        <div className="hero-value" style={{ color: COLORS.accent }}>{fmt(totals.totalSavings)}</div>
+        <div className="hero-value" style={{ color: COLORS.accent }}>
+          <HeroAmount text={fmt(totals.totalSavings)} />
+        </div>
         <div className="tiny mute">
           {t('{amount} net saved in {month}', { amount: fmt(summary.netSaved), month: monthLabel(month) })}
         </div>
@@ -188,7 +191,7 @@ export function GoalDetail() {
         title={g.name}
         left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/savings')} flip />}
         right={
-          <div className="row">
+          <div className="row gap">
             <IconButton icon={Pencil} label={t('Edit goal')} onClick={() => setEditGoal(true)} />
             <IconButton icon={Trash2} label={t('Delete goal')} onClick={delGoal} />
           </div>
@@ -196,7 +199,9 @@ export function GoalDetail() {
       />
       <Card className="hero">
         <div className="mute small">{t('{pct}% there', { pct: Math.round(prog * 100) })}</div>
-        <div className="hero-value" style={{ color: COLORS.accent }}>{fmt(bal)}</div>
+        <div className="hero-value" style={{ color: COLORS.accent }}>
+          <HeroAmount text={fmt(bal)} />
+        </div>
         <div style={{ margin: '12px 0 8px' }}>
           <Bar value={prog} />
         </div>
@@ -234,7 +239,8 @@ export function GoalDetail() {
       <div className="list">
         {[...entries].reverse().map((e) => {
           const color = e.deposit ? COLORS.accent : COLORS.text; // same rule as everywhere: "+" green, "−" ink
-          const Icon = e.deposit ? ArrowUpRight : ArrowDownLeft;
+          // Same arrows as Loans: money coming in ↙, going out ↗.
+          const Icon = e.deposit ? ArrowDownLeft : ArrowUpRight;
           return (
             <SwipeRow key={e.id} className="list-item" onDelete={() => delEntry(e)} onEdit={() => setEntryForm({ deposit: e.deposit, edit: e })}>
               <button className="list-main" onClick={() => setEntryForm({ deposit: e.deposit, edit: e })}>

@@ -7,16 +7,18 @@ import { PairBars } from '../components/charts';
 import { MonthCompare, TagSpending, WeekdaySpending, WhereItWent } from '../components/ReportCards';
 import { Card, COLORS, IconButton, KV, PageHeader, SectionTitle } from '../components/ui';
 import { isRtl, locale, t } from '../i18n';
-import { wholeUnits } from '../domain/money';
-import { useApp } from '../state';
+import { fmtMoney, wholeUnits } from '../domain/money';
+import { tidyDate, useApp } from '../state';
 
 interface MonthTotals { month: string; hasBudget: boolean; income: number; spent: number; saved: number; repaid: number }
 
 /** Short month names in the current language ("Jan" / "يناير"). */
-const shortMonths = () => Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleDateString(locale(), { month: 'short' }));
+const shortMonths = () => Array.from({ length: 12 }, (_, i) => tidyDate(new Date(2000, i, 1).toLocaleDateString(locale(), { month: 'short' })));
 
 export default function Reports() {
-  const { fmt, startDay } = useApp();
+  const { fmt, startDay, user } = useApp();
+  // Year table: numbers only (the currency is said once under it), so all six columns fit a phone (2.1.2).
+  const num = (minor: number) => fmtMoney(minor, '');
   const nav = useNavigate();
   const [year, setYear] = useState(new Date().getFullYear());
   const q = useQuery({
@@ -112,11 +114,11 @@ export default function Reports() {
                 return (
                   <tr key={m.month}>
                     <td>{names[i]}</td>
-                    <td>{m.hasBudget ? fmt(m.income) : '—'}</td>
-                    <td>{fmt(m.spent)}</td>
-                    <td>{fmt(m.saved)}</td>
-                    <td>{fmt(m.repaid)}</td>
-                    <td style={{ color: m.hasBudget && left < 0 ? COLORS.red : undefined }}>{m.hasBudget ? fmt(left) : '—'}</td>
+                    <td>{m.hasBudget ? num(m.income) : '—'}</td>
+                    <td>{num(m.spent)}</td>
+                    <td>{num(m.saved)}</td>
+                    <td>{num(m.repaid)}</td>
+                    <td style={{ color: m.hasBudget && left < 0 ? COLORS.red : undefined }}>{m.hasBudget ? num(left) : '—'}</td>
                   </tr>
                 );
               })}
@@ -124,7 +126,7 @@ export default function Reports() {
           </table>
         </div>
       </Card>
-      <p className="tiny mute">{t('Income comes from the budget of each month. Months you never opened show a dash.')}</p>
+      <p className="tiny mute">{t('Amounts in {currency}.', { currency: user.currency })} {t('Income comes from the budget of each month. Months you never opened show a dash.')}</p>
     </div>
   );
 }

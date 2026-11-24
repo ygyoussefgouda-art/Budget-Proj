@@ -134,8 +134,8 @@ describe('workbook formulas', () => {
     expect(parseMoney('')).toBeNull();
     expect(parseMoney('abc')).toBeNull();
     expect(parseMoney('-5')).toBeNull();
-    expect(fmtMoney(120000, 'EGP')).toBe('1,200 EGP');
-    expect(fmtMoney(-5050, 'EGP')).toBe('−50.50 EGP');
+    expect(fmtMoney(120000, 'EGP')).toBe('1,200 EGP'); // no-break space: EGP never wraps alone
+    expect(fmtMoney(-5050, 'EGP')).toBe('−50.50 EGP');
   });
 });
 

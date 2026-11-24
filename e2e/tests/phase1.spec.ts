@@ -52,7 +52,7 @@ test.describe('phase 1: quick add, daily allowance, undo, recurring, same as las
   test('Home shows how much can be spent per day', async ({ page }) => {
     await setUpBudget(page);
     await tab(page, 'Home').click();
-    await expect(page.getByText(/You can spend [\d,.]+ EGP a day until/)).toBeVisible();
+    await expect(page.getByText(/You can spend [\d,.]+\sEGP a day until/)).toBeVisible();
   });
 
   test('deleting an expense is instant, and Undo brings it back', async ({ page }) => {

@@ -50,7 +50,7 @@ test.describe('phase 2: budget alerts, reports, savings forecast', () => {
 
     await expect(page.getByRole('heading', { name: 'Spending by weekday' })).toBeVisible();
     await expect(page.getByRole('img', { name: 'Average spending per weekday' })).toBeVisible();
-    await expect(page.getByText(/You spend the most on \w+: [\d,.]+ EGP on average\./)).toBeVisible();
+    await expect(page.getByText(/You spend the most on \w+: [\d,.]+\sEGP on average\./)).toBeVisible();
     const weekdays = page.locator('.weekday-card');
     await weekdays.getByRole('button', { name: 'Last 3 months' }).click();
     await expect(weekdays.getByRole('button', { name: 'Last 3 months' })).toHaveAttribute('aria-pressed', 'true');

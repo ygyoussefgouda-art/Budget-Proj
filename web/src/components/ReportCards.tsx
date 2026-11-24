@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { changePct, periodRange } from '../domain/calc';
 import { wholeUnits } from '../domain/money';
-import { locale, t } from '../i18n';
+import { isRtl, locale, t } from '../i18n';
 import { monthLabel, shiftMonth, thisMonth, useApp } from '../state';
 import { Bars, Donut } from './charts';
 import { Card, COLORS, Empty, PALETTE, SectionTitle } from './ui';
@@ -143,7 +143,7 @@ export function MonthCompare() {
             {rows.map((c) => (
               <div key={c.categoryId} className="compare-row">
                 <span className="grow ellipsis">{c.name}</span>
-                <span className="tiny mute">{fmt(c.previous)} →</span>
+                <span className="tiny mute">{fmt(c.previous)} {isRtl() ? '←' : '→'}</span>
                 <strong className="small">{fmt(c.current)}</strong>
                 <Change current={c.current} previous={c.previous} />
               </div>

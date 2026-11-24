@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarDays, Camera, CopyPlus, Download, FileText, Image as ImageIcon, Paperclip, Repeat, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, receiptUrl, saveWithConfirm, uploadReceipt } from '../api';
 import { Sheet, useOverlay } from '../components/Overlays';
 import { SwipeRow } from '../components/SwipeRow';
@@ -110,7 +111,12 @@ export default function Expenses() {
   const { data, fmt, month, startDay, user } = useApp();
   const undoDelete = useUndoDelete();
   const saved = rememberedFilters.get(user.id);
-  const [recurringOpen, setRecurringOpen] = useState(false);
+  // Home's "Upcoming payments → See all" opens /expenses?recurring=1: the recurring list straight away.
+  const [urlParams, setUrlParams] = useSearchParams();
+  const [recurringOpen, setRecurringOpen] = useState(() => urlParams.get('recurring') === '1');
+  useEffect(() => {
+    if (urlParams.has('recurring')) setUrlParams({}, { replace: true });
+  }, [urlParams, setUrlParams]);
   const [scope, setScope] = useState<Scope>(saved?.scope ?? 'month');
   const [from, setFrom] = useState(saved?.from ?? '');
   const [to, setTo] = useState(saved?.to ?? '');
@@ -290,10 +296,13 @@ export default function Expenses() {
               </span>
               <span className="txn-amount">−{fmt(e.amount)}</span>
             </button>
-            {e.hasReceipt && (
+            {/* The slot is kept on every row of a day with a receipt, so the amounts line up (2.1.2) */}
+            {e.hasReceipt ? (
               <button type="button" className="receipt-btn" aria-label={t('View receipt')} title={t('View receipt')} onClick={() => setViewing(e)}>
                 <Paperclip size={16} />
               </button>
+            ) : (
+              rows.some((x) => x.hasReceipt) && <span className="receipt-btn receipt-slot" aria-hidden="true" />
             )}
             <DeleteButton label={t('Delete expense')} onClick={() => del(e)} />
           </SwipeRow>

@@ -59,7 +59,7 @@ test.describe('settings, language and navigation', () => {
     await expect(page.getByRole('radio', { name: '10' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByText(/Each month starts on the 10th/)).toBeVisible();
     await tab(page, 'Home').click();
-    await expect(page.locator('.month-range')).toHaveText(/^10 \w{3} – 9 \w{3}$/);
+    await expect(page.locator('.month-range')).toHaveText(/^10\s\w{3} – 9\s\w{3}$/);
   });
 
   test('every tab opens at the top', async ({ page }) => {
@@ -83,7 +83,7 @@ test.describe('settings, language and navigation', () => {
     await expect(page.locator('.stage-badge').first()).toHaveText('MK1');
     const footer = page.locator('footer.app-footer');
     await expect(footer).toContainText('Developed by Youssef Gouda');
-    await expect(footer).toContainText('Masrofy MK1 · Version 2.1.1');
+    await expect(footer).toContainText('Masrofy MK1 · Version 2.1.2');
     await expect(page.getByText(/alpha/i)).toHaveCount(0);
   });
 

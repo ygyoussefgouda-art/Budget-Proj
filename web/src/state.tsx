@@ -76,7 +76,7 @@ export const periodLabel = (month: string, startDay: number) => {
   const r = periodRange(month, startDay);
   const f = (iso: string) => {
     const [y, m, d] = iso.split('-').map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
+    return tidyDate(new Date(y, m - 1, d).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }));
   };
   return `${f(r.from)} – ${f(r.last)}`;
 };
@@ -99,10 +99,16 @@ export const monthLabel = (month: string) => {
   return new Date(y, m - 1, 1).toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
 };
 
+/**
+ * 2.1.2: British English writes September "Sept" but every other month in three letters: use "Sep".
+ * No-break spaces keep a date on one line ("30 Nov 2026" never leaves "2026" alone).
+ */
+export const tidyDate = (s: string) => s.replace(/\bSept\b/g, 'Sep').replace(/ /g, ' ');
+
 export const shortDate = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number);
   if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
+  return tidyDate(new Date(y, m - 1, d).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' }));
 };
 
 interface AppCtx {
