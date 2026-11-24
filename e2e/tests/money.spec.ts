@@ -52,7 +52,8 @@ test.describe('budget, expenses and receipts', () => {
     await tab(page, 'Home').click();
     await expect(page.getByText('Your budget left').locator('..')).toContainText('4,945 EGP');
     await expect(page.locator('.hero-sum')).toContainText('Spent');
-    await expect(page.locator('.hero-sum')).toContainText('− 55 EGP');
+    await expect(page.locator('.hero-sum')).toContainText('55 EGP');
+    await expect(page.locator('.hero-sum')).not.toContainText('−'); // 2.1.0: a breakdown, not losses
 
     // Edit: change the amount and remove the receipt
     await tab(page, 'Expenses').click();

@@ -38,7 +38,8 @@ test.describe('accounts', () => {
   test('a new account starts empty, signs out and back in', async ({ page }) => {
     const user = await signUpAndSkipTutorial(page);
     await tab(page, 'Home').click();
-    await expect(page.getByText('No expenses logged in this month.')).toBeVisible();
+    // 2.1.0: Home no longer shows an empty "Where it went" (the ring moved to Reports)
+    await expect(page.getByText('Where it went')).toHaveCount(0);
     await expect(page.getByText('Nothing logged yet.')).toBeVisible();
 
     await page.getByRole('button', { name: 'Settings' }).click();

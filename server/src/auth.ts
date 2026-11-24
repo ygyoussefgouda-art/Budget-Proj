@@ -3,7 +3,7 @@ import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual, type Scry
 import type { CookieOptions, Request, RequestHandler, Response } from 'express';
 import type { Db, Queryable } from './db.js';
 import { ah, HttpError } from './http.js';
-import { seedStartingData } from './seed.js';
+import { insertStarterCategories, seedStartingData } from './seed.js';
 import { passwordProblems } from './validation.js';
 import { startChallenge } from './twoFactor.js';
 
@@ -271,16 +271,20 @@ export function loginHandler(db: Db, parse: (b: unknown) => { username?: string;
   });
 }
 
-/** Create a new account (starts empty) and sign it in. Can be turned off. */
+/**
+ * Create a new account and sign it in. Can be turned off. With `starter` (2.1.0, on in production) it
+ * comes with a few everyday categories so the first expense can be logged at once; otherwise it starts empty.
+ */
 export function signupHandler(
   db: Db,
-  parse: (b: unknown) => { username: string; email?: string; password: string },
+  parse: (b: unknown) => { username: string; email?: string; password: string; lang?: 'en' | 'ar' },
   opts: () => Promise<{ allowed: boolean }>,
+  starter = false,
 ) {
   return ah(async (req: Request, res: Response) => {
     const o = await opts();
     if (!o.allowed) throw new HttpError(403, 'Creating new accounts is turned off on this server.', 'signup_disabled');
-    const { username, email, password } = parse(req.body);
+    const { username, email, password, lang } = parse(req.body);
     if (policy.requireEmail && !email) throw new HttpError(400, 'Enter your email address.', 'email_required');
     checkNewPassword(password, username);
     if (isListedAdminName(username)) throw new HttpError(403, 'That username is reserved, please choose another one.', 'reserved');
@@ -296,6 +300,7 @@ export function signupHandler(
     );
     if (!ins.rows.length) throw new HttpError(409, 'That username is already taken. Try another one.', 'username_taken');
     const user = ins.rows[0] as AuthUser;
+    if (starter) await insertStarterCategories(db, user.id, lang);
     const token = await createSession(db, user.id);
     res.cookie(COOKIE, token, cookieOptions(req));
     res.status(201).json({ user: publicUser(user) });

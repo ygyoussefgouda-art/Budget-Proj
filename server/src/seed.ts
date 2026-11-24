@@ -2,6 +2,22 @@ import type { Queryable } from './db.js';
 
 export const DEFAULT_CATEGORIES = ['Uni Transport & Food', 'Transportation', 'ETC', 'Hangouts'];
 
+/**
+ * 2.1.0: a new account starts with a few everyday categories (icon set, no budget), in the language
+ * the sign-up screen was in, so the first expense can be logged right away. Users rename or delete them.
+ */
+const STARTER_CATEGORIES: Record<'en' | 'ar', [string, string][]> = {
+  en: [['Food', 'food'], ['Transport', 'transport'], ['Coffee', 'coffee'], ['Going out', 'movies'], ['Phone & internet', 'phone'], ['Uni', 'uni']],
+  ar: [['أكل', 'food'], ['مواصلات', 'transport'], ['قهوة', 'coffee'], ['خروجات', 'movies'], ['موبايل ونت', 'phone'], ['الجامعة', 'uni']],
+};
+
+export async function insertStarterCategories(q: Queryable, userId: number, lang: 'en' | 'ar' = 'en') {
+  const list = STARTER_CATEGORIES[lang];
+  for (let i = 0; i < list.length; i++) {
+    await q.query('INSERT INTO categories(user_id, name, icon, sort) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [userId, list[i][0], list[i][1], i]);
+  }
+}
+
 /** Inserts the default categories (the first one is the uni category). Returns their ids in order. */
 export async function insertDefaultCategories(q: Queryable, userId: number): Promise<number[]> {
   const ids: number[] = [];

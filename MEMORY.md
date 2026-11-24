@@ -174,6 +174,13 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - 2026-11-21: Android refuses to install an update with a lower `versionCode` or a different signing key. Losing the keystore = users must uninstall.
 - 2026-11-23: Release key on the owner's PC: `D:\keys\masrofy-release.jks` (outside the repo); `mobile/android/keystore.properties` points at it with empty passwords, which are given as env vars at build time. GitHub has the non-secret signing values (`ANDROID_KEY_ALIAS`, `BUDGET_ME_URL`, `EXPECTED_CERT_SHA256`); the owner adds the keystore and the passwords.
 - 2026-11-23: Browsers keep a site's tab icon even after the file changes: when the logo changes, bump the `?v=` on the icon links (`index.html`, `get-app.html`, `manifest.webmanifest`).
+- 2026-11-24 (2.1.0, owner chose "Both" after the critique): new accounts get six starter categories (icons, no budget) in the sign-up screen's language (`insertStarterCategories`, `STARTER_CATEGORIES` env, on unless "false"; E2E turns it off), AND Add expense has "+ New category" so an empty account never dead-ends.
+- 2026-11-24 (2.1.0): one sign rule everywhere: "+" (money coming to you / into a goal) in green, "−" (going out) in ink. The Home band's breakdown (Spent / Saved / Repaid) has no signs: it is where the income went, not losses. The band's bar fills with what is LEFT.
+- 2026-11-24 (2.1.0): Home is a glance: band, quick actions, This week, alerts, goals, upcoming, top-3 "Where it went", recent. The four number tiles and "Budget usage" were removed; the ring is on Reports (`WhereItWent`).
+- 2026-11-24 (2.1.0): a goal shows one timeline: with deposits, the real-pace forecast; the "About N months at <plan>" line only before that.
+- 2026-11-24 (2.1.0): money in Arabic is wrapped in a left-to-right isolate (U+2066…U+2069) by `fmtMoney`, so "6,000 EGP" never shows as "EGP 6,000". Only when the page is RTL: English text and E2E strings are unchanged.
+- 2026-11-24 (2.1.0): expense date = Today / Yesterday / another day chips; the native date input sits invisibly over the third chip (aria-label "Date"), so dates show as "22 Nov", never 11/22/2026.
+- 2026-11-24 (2.1.0): form fields use `--field-line` (≥3:1) and every control is ≥44 px to tap (pseudo-element hit areas on chips and small icon buttons).
 - 2026-11-23: Owner's request: an Android phone's browser is asked once, before sign-in, to download the app (`AppOffer` in `AndroidApp.tsx`; the answer is kept in localStorage `masrofy.appOffer`). Not shown on iPhone or computers (the APK can't run there), nor inside the app.
 
 ## Dependencies added (with reason)

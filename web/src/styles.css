@@ -907,3 +907,37 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .first-step .illustration { margin: 0 0 4px; }
 .empty { padding: 18px 0 22px; }
 .goal-card-row .forecast svg, .goal-card-row svg { color: var(--on-pastel) !important; stroke: currentColor; }
+
+/* ==========================================================================
+   2.1.0 critique fixes
+   ========================================================================== */
+/* "+ New category" inside Add expense */
+.new-cat-btn { align-self: flex-start; justify-self: start; min-height: 44px; margin-top: -6px; font-size: 14px; }
+.new-cat .row { gap: 8px; align-items: stretch; }
+.new-cat .btn { flex: none; min-width: 72px; }
+
+/* Field edges you can see (WCAG 1.4.11: 3:1 against the card and the page) and readable placeholders */
+:root { --field-line: #66736d; }
+:root[data-theme='light'] { --field-line: #7f8b85; }
+.input:not(.bare), .search, .lang-switch { border-color: var(--field-line); }
+.input:not(.bare):focus { border-color: var(--accent-text); }
+.input::placeholder { color: var(--mute); opacity: 1; }
+
+/* Every control is at least 44 px to tap (visual size kept where a smaller one reads better) */
+.del-btn { width: 44px; }
+.add-btn { min-height: 44px; }
+.btn.text.small { min-height: 44px; }
+.segmented button { min-height: 44px; }
+.lang-switch { min-height: 44px; }
+.show-btn { padding: 13px 6px; margin: -13px -6px; }
+.chips .chip, .suggestion-chips .chip { position: relative; min-height: 40px; }
+.chips .chip::after, .suggestion-chips .chip::after { content: ''; position: absolute; inset: -2px 0; }
+.icon-btn.small, .receipt-btn { position: relative; }
+.icon-btn.small::after { content: ''; position: absolute; inset: -4px; }
+.receipt-btn::after { content: ''; position: absolute; inset: -5px; }
+.lang-switch select { align-self: stretch; min-height: 42px; }
+
+/* Expense date: Today / Yesterday / another day (the native picker sits invisibly over the third chip) */
+.date-chips { margin-bottom: 0; }
+.date-pick { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.date-overlay { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }

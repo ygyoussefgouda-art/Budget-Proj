@@ -101,6 +101,8 @@ export const schemas = {
       .refine((u) => !RESERVED_USERNAMES.has(u), 'is reserved, please choose another one'),
     email: email.optional(),
     password: newPassword,
+    /** Language of the sign-up screen: names the starter categories. */
+    lang: z.enum(['en', 'ar']).optional(),
   }),
   changePassword: z.object({ current: z.string().min(1).max(200), next: newPassword }),
   deleteAccount: z.object({ password: z.string().min(1).max(200) }),

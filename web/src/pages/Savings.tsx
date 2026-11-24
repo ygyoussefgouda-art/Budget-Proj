@@ -38,6 +38,15 @@ function monthsText(m: number, monthly: string) {
     : t('About {n} months at {amount} a month', { n: m, amount: monthly });
 }
 
+/**
+ * 2.1.0: a goal shows one timeline. Once there are deposits with a real pace, the forecast below says when;
+ * the "About N months at <plan> a month" line only shows before that (it disagreed with the forecast).
+ */
+function hasPace(g: Goal, balance: number, entries: GoalEntry[], startDay: number, planned: number) {
+  const fc = goalForecast(g, balance, entries, thisMonth(startDay), planned, startDay);
+  return !!fc && !fc.reached && fc.pace > 0;
+}
+
 /** "At this pace you'll reach Laptop in March 2027" + a "behind plan" hint, from the last 3 budget periods. */
 function ForecastLines({ g, balance, planned, compact = false }: { g: Goal; balance: number; planned: number; compact?: boolean }) {
   const { data, fmt, startDay } = useApp();
@@ -74,7 +83,7 @@ function ForecastLines({ g, balance, planned, compact = false }: { g: Goal; bala
 const GOAL_TONES = ['sky', 'lavender', 'mint', 'sand', 'coral', 'pink'];
 
 export default function Savings() {
-  const { data, summary, fmt, totals, month } = useApp();
+  const { data, summary, fmt, totals, month, startDay } = useApp();
   const nav = useNavigate();
   const [form, setForm] = useState(false);
   const undoDelete = useUndoDelete();
@@ -117,7 +126,8 @@ export default function Savings() {
                       {t('{a} of {b}', { a: fmt(bal), b: fmt(g.target) })}
                     </div>
                     <div className="tiny mute">
-                      {t('{amount} to go', { amount: fmt(rem) })} · {monthsText(months, fmt(monthly))}
+                      {t('{amount} to go', { amount: fmt(rem) })}
+                      {!hasPace(g, bal, data.goalEntries, startDay, monthly) && <> · {monthsText(months, fmt(monthly))}</>}
                     </div>
                     <ForecastLines g={g} balance={bal} planned={monthly} compact />
                   </div>
@@ -191,7 +201,7 @@ export function GoalDetail() {
           <Bar value={prog} />
         </div>
         <div className="tiny mute">{t('Target {a} · {b} remaining', { a: fmt(g.target), b: fmt(rem) })}</div>
-        <div className="tiny mute">{monthsText(months, fmt(monthly))}</div>
+        {!hasPace(g, bal, data.goalEntries, startDay, monthly) && <div className="tiny mute">{monthsText(months, fmt(monthly))}</div>}
         <div className="tiny mute">
           {t('{amount} net saved in {month}', { amount: fmt(netSaved(data.goalEntries, month, goalId, startDay)), month: monthLabel(month) })}
         </div>
@@ -223,7 +233,7 @@ export function GoalDetail() {
       {entries.length === 0 && <Empty text={t('No deposits or withdrawals yet.')} />}
       <div className="list">
         {[...entries].reverse().map((e) => {
-          const color = e.deposit ? COLORS.highlight : COLORS.text; // deposits in savings blue, withdrawals neutral
+          const color = e.deposit ? COLORS.accent : COLORS.text; // same rule as everywhere: "+" green, "−" ink
           const Icon = e.deposit ? ArrowUpRight : ArrowDownLeft;
           return (
             <SwipeRow key={e.id} className="list-item" onDelete={() => delEntry(e)} onEdit={() => setEntryForm({ deposit: e.deposit, edit: e })}>

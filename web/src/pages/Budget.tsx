@@ -135,7 +135,7 @@ export default function Budget() {
 
       <Card onClick={() => setSettingsOpen(true)}>
         <div className="section-title">
-          <h3>{t('Income & plans')}</h3>
+          <h2>{t('Income & plans')}</h2>
           <span className="edit-hint">
             <Pencil size={14} /> {t('Edit')}
           </span>
@@ -159,7 +159,7 @@ export default function Budget() {
             </div>
           );
         })}
-        <p className="tiny mute">{t('Tap a category to rename it or change its budget.')}</p>
+        {catRows.length > 0 && <p className="tiny mute">{t('Tap a category to rename it or change its budget.')}</p>}
       </Card>
 
       <Card>

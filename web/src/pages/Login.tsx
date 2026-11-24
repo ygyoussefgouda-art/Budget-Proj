@@ -8,7 +8,7 @@ import { AppOffer, GetAndroidAppLink, useAppOffer } from '../components/AndroidA
 import Splash from '../components/Splash';
 import { newPasswordError, PasswordRules } from '../components/PasswordRules';
 import { FormError, Segmented } from '../components/ui';
-import { langOptions, t, useI18n, type LangPref } from '../i18n';
+import { getLang, langOptions, t, useI18n, type LangPref } from '../i18n';
 import { APP_VERSION, MARK, VERSION_KEY } from '../version';
 
 type Mode = 'signin' | 'signup';
@@ -124,7 +124,7 @@ export default function Login() {
     setErr(null);
     try {
       const body = signup
-        ? { username: name, password, ...(mail ? { email: mail } : {}) }
+        ? { username: name, password, lang: getLang(), ...(mail ? { email: mail } : {}) }
         : { username: name, password };
       const r = await api<{ user?: unknown; twoFactor?: boolean; ticket?: string }>(signup ? '/auth/signup' : '/auth/login', 'POST', body);
       if (r.twoFactor && r.ticket) {
@@ -238,7 +238,8 @@ export default function Login() {
               maxLength={254}
               onChange={(e) => setEmail(e.target.value)}
             />
-            <span className="field-hint">{t('Used only to send you a code if you forget your password.')}</span>
+            {/* Only promise an emailed code when the server can send one (it contradicted "Forgot password?" otherwise). */}
+            {cfg?.emailReset && <span className="field-hint">{t('Used only to send you a code if you forget your password.')}</span>}
           </label>
         )}
 

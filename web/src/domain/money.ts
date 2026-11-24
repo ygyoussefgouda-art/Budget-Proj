@@ -129,8 +129,13 @@ export function fmtMoney(minor: number, cur: string): string {
   const neg = minor < 0;
   const a = Math.abs(minor);
   const s = a % 100 === 0 ? whole.format(a / 100) : cents.format(a / 100);
-  return `${neg ? '−' : ''}${s}${cur ? ` ${cur}` : ''}`;
+  const out = `${neg ? '−' : ''}${s}${cur ? ` ${cur}` : ''}`;
+  // 2.1.0: in Arabic (right-to-left) the browser drew "6,000 EGP" as "EGP 6,000" in some places and not
+  // in others. A left-to-right isolate keeps it "6,000 EGP" everywhere. English text is unchanged.
+  return rtlPage() ? `⁦${out}⁩` : out;
 }
+
+const rtlPage = () => typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
 
 /**
  * Whole units for computed figures (averages, paces, per-day amounts): "2,167 EGP" reads better than

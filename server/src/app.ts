@@ -50,6 +50,8 @@ export interface AppOptions {
   adminUsernames?: string[];
   /** Installed Android apps below this versionCode must update first (GET /api/version). Default 0. */
   minNativeVersionCode?: number;
+  /** New accounts get a few starter categories (STARTER_CATEGORIES, on unless "false"). Default false here, for tests. */
+  starterCategories?: boolean;
   /** Sign-up needs an email (default true). Older tests switch it off. */
   requireEmail?: boolean;
   /** New passwords need 8+ characters with lower, upper, number and special (default true). */
@@ -254,7 +256,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   api.post(
     '/auth/signup',
     signupLimiter,
-    signupHandler(db, (b) => schemas.signup.parse(b), () => signupConfig(db, signupDefaults)),
+    signupHandler(db, (b) => schemas.signup.parse(b), () => signupConfig(db, signupDefaults), opts.starterCategories ?? false),
   );
   // "Forgot password?": a one-time code from an admin. Same limits as sign-in (per network + failures per account).
   api.post('/auth/reset', loginIpLimiter, loginAccountLimiter, resetPasswordHandler(db));

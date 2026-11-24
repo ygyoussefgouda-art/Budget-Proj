@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { PairBars } from '../components/charts';
-import { MonthCompare, TagSpending, WeekdaySpending } from '../components/ReportCards';
+import { MonthCompare, TagSpending, WeekdaySpending, WhereItWent } from '../components/ReportCards';
 import { Card, COLORS, IconButton, KV, PageHeader, SectionTitle } from '../components/ui';
 import { isRtl, locale, t } from '../i18n';
 import { wholeUnits } from '../domain/money';
@@ -37,6 +37,7 @@ export default function Reports() {
     <div className="page">
       <PageHeader title={t('Reports')} left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/')} flip />} />
       {/* A new month start day starts the comparison again from this month. */}
+      <WhereItWent />
       <MonthCompare key={startDay} />
       <WeekdaySpending year={year} />
       <TagSpending year={year} />

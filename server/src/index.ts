@@ -93,6 +93,7 @@ async function main() {
     contactEmail: process.env.CONTACT_EMAIL || undefined,
     downloadsDir: process.env.DOWNLOADS_DIR || path.join(root, 'downloads'),
     appOnly: process.env.APP_ONLY === 'true',
+    starterCategories: process.env.STARTER_CATEGORIES !== 'false',
   });
   if (process.env.APP_ONLY === 'true') log.info('APP_ONLY: only the Android app can use Masrofy; browsers see the "Get the app" page.');
   const port = Number(process.env.PORT ?? 3000);

@@ -51,6 +51,8 @@ export default defineConfig({
       MAIL_OUTBOX_DIR: path.join(here, 'mail-outbox'),
       // A fake Android release (latest.json + tiny APK) for the download tests.
       DOWNLOADS_DIR: path.join(here, 'fixtures', 'downloads'),
+      // Tests build their own categories from an empty account; tests/onboarding.spec.ts covers the picker.
+      STARTER_CATEGORIES: 'false',
       LOGIN_RATE_LIMIT: '1000',
       SIGNUP_RATE_LIMIT: '1000',
     },

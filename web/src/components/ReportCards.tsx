@@ -3,10 +3,46 @@ import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from 'lucide-reac
 import { useState, type ReactNode } from 'react';
 import { api } from '../api';
 import { changePct, periodRange } from '../domain/calc';
+import { wholeUnits } from '../domain/money';
 import { locale, t } from '../i18n';
 import { monthLabel, shiftMonth, thisMonth, useApp } from '../state';
-import { Bars } from './charts';
-import { Card, COLORS, Empty, SectionTitle } from './ui';
+import { Bars, Donut } from './charts';
+import { Card, COLORS, Empty, PALETTE, SectionTitle } from './ui';
+
+/** The ring of this budget month's spending by category (moved here from Home in 2.1.0). */
+export function WhereItWent() {
+  const { summary, fmt, month } = useApp();
+  if (!summary) return null;
+  const slices = summary.rows.filter((r) => r.catId !== null && r.actual > 0).sort((a, b) => b.actual - a.actual);
+  const total = slices.reduce((s, r) => s + r.actual, 0);
+  return (
+    <Card className="where">
+      <SectionTitle trailing={<span className="mute small">{monthLabel(month)}</span>}>{t('Where it went')}</SectionTitle>
+      {slices.length === 0 ? (
+        <Empty text={t('No expenses logged in this month.')} />
+      ) : (
+        <>
+          <div className="ring-wrap">
+            <Donut values={slices.map((x) => x.actual)} colors={PALETTE} size={176} thickness={26}>
+              <strong className="donut-total">{fmt(total)}</strong>
+              <span className="tiny mute">{t('Spent')}</span>
+            </Donut>
+          </div>
+          <ul className="legend">
+            {slices.map((x, i) => (
+              <li key={x.catId}>
+                <span className="dot" style={{ background: PALETTE[i % PALETTE.length] }} />
+                <span className="grow ellipsis">{x.name}</span>
+                <span className="legend-pct">{Math.round((x.actual / total) * 100)}%</span>
+                <strong className="legend-amount">{fmt(x.actual)}</strong>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Card>
+  );
+}
 
 interface CompareRow { categoryId: number; name: string; current: number; previous: number }
 interface Compare { month: string; previous: string; categories: CompareRow[]; total: { current: number; previous: number } }
@@ -190,7 +226,7 @@ export function WeekdaySpending({ year }: { year: number }) {
           </div>
           {topDow !== null && (
             <p className="small">
-              {t('You spend the most on {day}: {amount} on average.', { day: weekdayName(topDow, 'long'), amount: fmt(top) })}
+              {t('You spend the most on {day}: {amount} on average.', { day: weekdayName(topDow, 'long'), amount: fmt(wholeUnits(top)) })}
             </p>
           )}
           <p className="tiny mute">{t('Average = everything spent on that weekday ÷ how many of that weekday the range has (up to today).')}</p>

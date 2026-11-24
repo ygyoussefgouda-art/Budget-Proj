@@ -1,7 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Camera, CopyPlus, Download, FileText, Image as ImageIcon, Paperclip, Repeat, Search, X } from 'lucide-react';
+import { CalendarDays, Camera, CopyPlus, Download, FileText, Image as ImageIcon, Paperclip, Repeat, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 import { api, receiptUrl, saveWithConfirm, uploadReceipt } from '../api';
 import { Sheet, useOverlay } from '../components/Overlays';
 import { SwipeRow } from '../components/SwipeRow';
@@ -55,12 +54,56 @@ function groupByDay(items: Expense[]): [string, Expense[]][] {
   return out;
 }
 
+const yesterdayIso = () => {
+  const [y, m, d] = todayIso().split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+};
+
 /** "Today", "Yesterday" or the short date. */
 function dayLabel(iso: string) {
+  return iso === todayIso() ? t('Today') : iso === yesterdayIso() ? t('Yesterday') : shortDate(iso);
+}
+
+/**
+ * 2.1.0: the expense date as Today / Yesterday / another day. The phone's own date picker opens from the
+ * third chip, and the chosen day is shown the app's way ("22 Nov"), never as 11/22/2026.
+ */
+function DateChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const today = todayIso();
-  const [y, m, d] = today.split('-').map(Number);
-  const yd = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
-  return iso === today ? t('Today') : iso === yd ? t('Yesterday') : shortDate(iso);
+  const yd = yesterdayIso();
+  const other = value !== today && value !== yd;
+  return (
+    <div className="field">
+      <span className="field-label">{t('Date')}</span>
+      <div className="chips wrap date-chips">
+        <button type="button" className={`chip ${value === today ? 'on' : ''}`} aria-pressed={value === today} onClick={() => onChange(today)}>
+          {t('Today')}
+        </button>
+        <button type="button" className={`chip ${value === yd ? 'on' : ''}`} aria-pressed={value === yd} onClick={() => onChange(yd)}>
+          {t('Yesterday')}
+        </button>
+        <label className={`chip date-pick ${other ? 'on' : ''}`}>
+          <CalendarDays size={15} aria-hidden="true" />
+          <span>{other && value ? shortDate(value) : t('Another day')}</span>
+          <input
+            type="date"
+            className="date-overlay"
+            aria-label={t('Date')}
+            value={value}
+            onChange={(e) => e.target.value && onChange(e.target.value)}
+            onClick={(e) => {
+              try {
+                e.currentTarget.showPicker?.();
+              } catch {
+                /* older browsers open it themselves */
+              }
+            }}
+            required
+          />
+        </label>
+      </div>
+    </div>
+  );
 }
 
 export default function Expenses() {
@@ -207,11 +250,13 @@ export default function Expenses() {
       <QueuedList categories={data?.categories ?? []} currency={user.currency} />
 
       <SectionTitle trailing={<AddButton label={t('Add')} onClick={() => setForm({})} title={t('Add an expense')} />}>
-        {t('Expenses')}
+        {scope === 'month' ? t('This month') : t('Results')}
       </SectionTitle>
       {list.isLoading && <div className="spinner small" role="status" aria-label={t('Loading')} />}
       {list.isError && <p className="form-error">{(list.error as Error).message}</p>}
-      {!list.isLoading && items.length === 0 && <Empty text={t('No expenses match. Tap "+ Add" to log one.')} />}
+      {!list.isLoading && items.length === 0 && (
+        <Empty text={filtered || q ? t('No expenses match. Tap "+ Add" to log one.') : t('No expenses yet. Tap "+ Add" to log your first one.')} />
+      )}
       {/* Grouped by day (newest first): the date is said once in the heading instead of on every row */}
       {groupByDay(items).map(([day, rows]) => (
       <section key={day} className="day-group" aria-label={dayLabel(day)}>
@@ -351,6 +396,66 @@ function rememberCategory(u: User, id: number) {
 }
 
 interface Suggestion { description: string; categoryId: number; count: number }
+
+/**
+ * "New category" inside Add expense (2.1.0): a name, then it is picked. No budget asked here; the
+ * category shows on Budget with "No plan" until one is set.
+ */
+function NewCategory({ month, open: startOpen = false, onCreated }: { month: string; open?: boolean; onCreated: (id: number) => void }) {
+  const { refresh } = useApp();
+  const [open, setOpen] = useState(startOpen);
+  const [name, setName] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!open) {
+    return (
+      <button type="button" className="link-btn new-cat-btn" onClick={() => setOpen(true)}>
+        {t('+ New category')}
+      </button>
+    );
+  }
+  const add = async () => {
+    const n = name.trim();
+    if (!n) return setErr(t('Enter a name.'));
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await api<{ id: number }>('/categories', 'POST', { name: n, month });
+      await refresh();
+      onCreated(r.id);
+      setName('');
+      if (!startOpen) setOpen(false);
+    } catch (x) {
+      setErr((x as Error).message);
+    }
+    setBusy(false);
+  };
+  return (
+    <div className="new-cat">
+      <Field label={t('New category name')}>
+        <div className="row">
+          <input
+            className="input grow"
+            value={name}
+            maxLength={60}
+            autoFocus={!startOpen}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void add();
+              }
+            }}
+          />
+          <button type="button" className="btn primary" disabled={busy} onClick={() => void add()}>
+            {t('Add')}
+          </button>
+        </div>
+      </Field>
+      <FormError text={err} />
+    </div>
+  );
+}
 
 /**
  * Add or edit an expense. `quick` is the short version opened from the "+" on Home:
@@ -504,13 +609,12 @@ export function ExpenseForm({
     }
   };
 
+  // No categories yet: make one right here instead of sending the user to Budget first.
   if (cats.length === 0) {
     return (
       <div className="form">
-        <p className="mute">{t('You have no spending categories yet. Add one on the Budget screen first.')}</p>
-        <Link to="/budget" className="btn primary block" onClick={onDone}>
-          {t('Go to Budget')}
-        </Link>
+        <p className="mute">{t('Name your first spending category, like Food or Transport. You can set a budget for it later.')}</p>
+        <NewCategory month={month} open onCreated={setCatId} />
       </div>
     );
   }
@@ -558,6 +662,7 @@ export function ExpenseForm({
           ))}
         </select>
       </Field>
+      <NewCategory month={month} onCreated={setCatId} />
       <Field label={t('What for? (optional)')}>
         <input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={200} />
       </Field>
@@ -578,9 +683,7 @@ export function ExpenseForm({
           ))}
         </div>
       )}
-      <Field label={t('Date')}>
-        <input type="date" className="input" value={date} onChange={(e) => setDate(e.target.value)} required />
-      </Field>
+      <DateChips value={date} onChange={setDate} />
 
       {!quick && (
         <>

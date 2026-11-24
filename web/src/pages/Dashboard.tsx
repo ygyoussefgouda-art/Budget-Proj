@@ -1,11 +1,8 @@
 import {
   CalendarDays,
   ChevronRight,
-  ClipboardCheck,
   HandCoins,
-  Landmark,
   LineChart,
-  PieChart,
   PiggyBank,
   ReceiptText,
   Settings,
@@ -17,7 +14,6 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { SettingsForm } from '../components/BudgetForms';
-import { Donut } from '../components/charts';
 import { CategoryIcon } from '../components/CategoryIcon';
 import Illustration from '../components/Illustration';
 import Brand, { BrandMark } from '../components/Brand';
@@ -25,16 +21,16 @@ import { Sheet } from '../components/Overlays';
 import { QueuedList } from '../components/OfflineQueue';
 import { DueList } from '../components/Recurring';
 import { ExpenseForm } from './Expenses';
-import { alertLevel, dailyAllowance, goalProgress, type Expense, type RecurringRule } from '../domain/calc';
+import { dailyAllowance, goalProgress, type Expense, type RecurringRule } from '../domain/calc';
 import { wholeUnits } from '../domain/money';
 import { locale, t } from '../i18n';
 import { BudgetAlerts, MonthBar, TxnTile } from '../components/rows';
-import { Card, COLORS, Empty, IconButton, PageHeader, PALETTE, SectionTitle, StatTile } from '../components/ui';
+import { Card, COLORS, Empty, IconButton, PageHeader, PALETTE, SectionTitle } from '../components/ui';
 import { monthLabel, shortDate, thisMonth, todayIso, useApp } from '../state';
 
 
 export default function Dashboard() {
-  const { data, summary: s, fmt, totals, month, startDay, user } = useApp();
+  const { data, summary: s, fmt, month, startDay, user } = useApp();
   const nav = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [params, setParams] = useSearchParams();
@@ -49,18 +45,13 @@ export default function Dashboard() {
 
   const left = s.moneyLeft;
   const usageIncome = s.income === 0 ? (s.actualTotal > 0 ? 1 : 0) : s.actualTotal / s.income;
-  const usagePlan = s.plannedTotal === 0 ? 0 : s.actualTotal / s.plannedTotal;
-  const savePlan = s.budget.savePlan;
-  // Biggest first, so the legend reads like a ranking and matches the donut's largest slices.
+  // Biggest first: "Where it went" shows the top three.
   const slices = s.rows.filter((r) => r.catId !== null && r.actual > 0).sort((a, b) => b.actual - a.actual);
   const sliceTotal = slices.reduce((sum, r) => sum + r.actual, 0);
   // Only for the budget month we're in: what's left ÷ days remaining (today included).
   const allowance = dailyAllowance(left, todayIso(), month, startDay);
   // A month with no income and nothing logged: show the first step instead of a wall of zeros.
   const fresh = s.income === 0 && s.actualTotal === 0 && s.plannedTotal === 0;
-  const nothingElse = fresh && totals.totalSavings === 0 && totals.owedByMe === 0 && totals.owedToMe === 0;
-  const spendRows = s.rows.filter((r) => r.catId !== null);
-  const atRisk = spendRows.filter((r) => alertLevel(r) !== null).length;
 
   return (
     <div className="page">
@@ -107,9 +98,10 @@ export default function Dashboard() {
           {/* The sum behind "budget left": income minus everything spent or set aside this month. */}
           <div className="hero-sum">
             <SumRow label={t('Income')} value={fmt(s.income)} hint={t('Change')} onClick={() => setSettingsOpen(true)} />
-            <SumRow label={t('Spent')} value={`− ${fmt(s.spending)}`} onClick={() => nav('/expenses')} />
-            {s.netSaved !== 0 && <SumRow label={t('Saved')} value={`− ${fmt(s.netSaved)}`} onClick={() => nav('/savings')} />}
-            {s.repaid !== 0 && <SumRow label={t('Repaid')} value={`− ${fmt(s.repaid)}`} onClick={() => nav('/loans')} />}
+            {/* 2.1.0: no minus signs here. These are what the income went to; saving isn't a loss. */}
+            <SumRow label={t('Spent')} value={fmt(s.spending)} onClick={() => nav('/expenses')} />
+            {s.netSaved !== 0 && <SumRow label={t('Saved')} value={fmt(s.netSaved)} onClick={() => nav('/savings')} />}
+            {s.repaid !== 0 && <SumRow label={t('Repaid')} value={fmt(s.repaid)} onClick={() => nav('/loans')} />}
           </div>
           {allowance && (s.income > 0 || s.actualTotal > 0) && (
             <div className="allowance small" style={{ color: allowance.perDay < 0 ? COLORS.highlight : undefined }}>
@@ -142,84 +134,25 @@ export default function Dashboard() {
       <DueList />
       <QueuedList categories={data.categories} currency={user.currency} />
 
-      {!nothingElse && (
-        <div className="grid2 tiles">
-          <StatTile
-            label={t('Saved this month')}
-            value={fmt(s.netSaved)}
-            color={COLORS.highlight}
-            icon={PiggyBank}
-            progress={savePlan > 0 ? Math.max(0, Math.min(1, s.netSaved / savePlan)) : undefined}
-            progressLabel={t('of your saving plan')}
-          />
-          <StatTile
-            label={t('Planned spending')}
-            value={fmt(s.plannedTotal)}
-            color={usagePlan > 1 ? COLORS.red : usagePlan >= 0.8 ? COLORS.amber : COLORS.accent}
-            icon={ClipboardCheck}
-            progress={s.plannedTotal > 0 ? Math.max(0, Math.min(1, usagePlan)) : undefined}
-            progressLabel={t('of the plan used')}
-          />
-          <StatTile label={t('Total savings')} value={fmt(totals.totalSavings)} color={COLORS.highlight} icon={Landmark} />
-          <StatTile
-            label={t('Outstanding debts')}
-            value={fmt(totals.owedByMe)}
-            color={totals.owedByMe > 0 ? COLORS.amber : COLORS.accent}
-            icon={HandCoins}
-            sub={totals.owedToMe > 0 ? t('Owed to you: {amount}', { amount: fmt(totals.owedToMe) }) : undefined}
-          />
-        </div>
-      )}
-
+      {/* 2.1.0: Home is a glance. The four number tiles (they repeated the band above), the big ring and
+          "Budget usage" (the alert above says the same) are gone; the ring lives on Reports. */}
       <GoalStrip />
       <Upcoming />
 
-      <Card className="where">
-        <SectionTitle trailing={slices.length > 0 ? <span className="where-total">{fmt(sliceTotal)}</span> : <span className="mute small">{monthLabel(month)}</span>}>
-          {t('Where it went')}
-        </SectionTitle>
-        {slices.length === 0 ? (
-          <Empty text={t('No expenses logged in this month.')} icon={PieChart} />
-        ) : (
-          <>
-            {/* 2.0.0: a thick ring with the total in the middle, then the ranked list (biggest first) */}
-            <div className="ring-wrap">
-              <Donut values={slices.map((x) => x.actual)} colors={PALETTE} size={176} thickness={26}>
-                <strong className="donut-total">{fmt(sliceTotal)}</strong>
-                <span className="tiny mute">{t('Spent')}</span>
-              </Donut>
-            </div>
-            <ul className="legend">
-              {slices.map((x, i) => (
-                <li key={x.catId}>
-                  <span className="dot" style={{ background: PALETTE[i % PALETTE.length] }} />
-                  <span className="grow ellipsis">{x.name}</span>
-                  <span className="legend-pct">{Math.round((x.actual / sliceTotal) * 100)}%</span>
-                  <strong className="legend-amount">{fmt(x.actual)}</strong>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </Card>
-
-      {/* Home is the glance: the full list (and editing it) lives on the Budget tab. */}
-      {spendRows.length > 0 && !fresh && (
-        <Link to="/budget" className="card budget-glance">
-          <div className="grow">
-            <strong className="block">{t('Budget usage')}</strong>
-            <span className="small mute">
-              {atRisk === 0
-                ? t('All {n} categories are within budget.', { n: spendRows.length })
-                : t('{n} of {total} categories need a look.', { n: atRisk, total: spendRows.length })}
-              {s.plannedTotal > 0 && ` · ${t('{pct}% of plan', { pct: Math.round(usagePlan * 100) })}`}
-            </span>
-          </div>
-          <span className="glance-link">
-            {t('See all')}
-            <ChevronRight size={16} className="flip-rtl" aria-hidden="true" />
-          </span>
-        </Link>
+      {slices.length > 0 && (
+        <Card className="where">
+          <SectionTitle trailing={<Link to="/reports" className="link">{t('See all')}</Link>}>{t('Where it went')}</SectionTitle>
+          <ul className="legend">
+            {slices.slice(0, 3).map((x, i) => (
+              <li key={x.catId}>
+                <span className="dot" style={{ background: PALETTE[i % PALETTE.length] }} />
+                <span className="grow ellipsis">{x.name}</span>
+                <span className="legend-pct">{Math.round((x.actual / sliceTotal) * 100)}%</span>
+                <strong className="legend-amount">{fmt(x.actual)}</strong>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
 
       <Card>
@@ -289,8 +222,9 @@ function WeekChart({ expenses }: { expenses: Expense[] }) {
   );
 }
 
+/** 2.1.0: the bar under "Your budget left" fills with what is left (it used to fill with what was used). */
 function Bar2({ value, over }: { value: number; over: boolean }) {
-  const v = Math.max(0, Math.min(1, value));
+  const v = over ? 1 : 1 - Math.max(0, Math.min(1, value));
   return (
     <div className="bar" style={{ margin: '16px 0 10px' }}>
       <div className="bar-fill" style={{ width: `${v * 100}%`, background: over ? COLORS.red : COLORS.accent }} />

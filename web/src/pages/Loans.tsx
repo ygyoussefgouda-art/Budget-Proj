@@ -114,7 +114,8 @@ export default function Loans() {
         {history.map((l) => {
           const inflow = l.borrowed ? !l.repayment : l.repayment;
           // Green = a debt getting smaller (paid back / received back); a new loan is neutral. The sign still shows cash in or out.
-          const color = l.repayment ? COLORS.accent : COLORS.text;
+          // 2.1.0: one rule on every screen: "+" (money coming to you) in green, "−" (money going out) in ink.
+          const color = inflow ? COLORS.accent : COLORS.text;
           const label = l.borrowed ? (l.repayment ? t('Paid back') : t('Borrowed')) : l.repayment ? t('Received back') : t('Lent');
           const Icon = inflow ? ArrowDownLeft : ArrowUpRight;
           // An entry made by splitting an expense is changed on that expense (Expenses tab), not here.
