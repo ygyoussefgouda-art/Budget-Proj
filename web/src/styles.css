@@ -941,3 +941,21 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .date-chips { margin-bottom: 0; }
 .date-pick { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .date-overlay { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+
+/* First-run tour (2.1.0): the card never runs off the screen. Head (Skip) and buttons stay put, the middle scrolls. */
+.tutorial { display: flex; flex-direction: column; max-height: calc(100dvh - 24px - var(--safe-b)); }
+.tutorial:focus { outline: none; }
+.tutorial-head { display: flex; align-items: center; gap: 12px; flex: none; }
+.tutorial-skip { margin-inline-start: auto; }
+.tutorial-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-top: 10px; }
+.tutorial-dots, .tutorial-actions { flex: none; }
+.tutorial-note { margin-top: 10px; font-size: 13.5px; color: var(--mute); }
+.tutorial .btn:focus:not(:focus-visible) { outline: none; }
+/* On "Where things are" and "Log your first expense" the bottom bar shows above the dim layer, the + outlined */
+body.tutorial-nav .bottom-nav { z-index: 71; pointer-events: none; }
+body.tutorial-nav .tutorial-backdrop { padding-bottom: calc(var(--nav-h) + 12px + var(--safe-b)); }
+body.tutorial-nav .tutorial { max-height: calc(100dvh - var(--nav-h) - 24px - var(--safe-b)); }
+body.tutorial-nav .tab-add { outline: 3px solid var(--text); outline-offset: 3px; }
+/* Month-start days: 44 px tall to tap; "Saved" after a pick */
+.day-grid .day { aspect-ratio: auto; min-height: 44px; border-radius: 14px; }
+.saved-tick { display: inline-flex; align-items: center; gap: 4px; color: var(--accent-text); font-weight: 700; font-size: 12px; }

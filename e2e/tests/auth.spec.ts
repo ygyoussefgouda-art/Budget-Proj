@@ -129,41 +129,56 @@ test.describe('accounts', () => {
     }
   });
 
-  test('first-run tutorial walks through every tab and the month-start calendar', async ({ page }) => {
+  test('first-run tour (2.1.0): payday, income, where things are, then the first expense', async ({ page }) => {
     await signUp(page);
     const dlg = page.getByRole('dialog');
-    await expect(dlg.getByText('Step 1 of 11')).toBeVisible();
+    await expect(dlg.getByText('Step 1 of 5')).toBeVisible();
+    await expect(dlg.getByRole('button', { name: 'Back' })).toHaveCount(0); // nothing to go back to
     await dlg.getByRole('button', { name: 'Next' }).click();
 
-    // Step 2: choose the day the money arrives on the calendar
+    // Step 2: the day the money arrives, saved at once
     await expect(dlg.getByText('When do you get your money?')).toBeVisible();
     await dlg.getByRole('radio', { name: '25' }).click();
     await expect(dlg.getByRole('radio', { name: '25' })).toHaveAttribute('aria-checked', 'true');
+    await expect(dlg.getByText('Day saved')).toBeVisible();
     await expect(dlg.getByRole('radio', { name: '30' })).toBeDisabled();
+    await expect(dlg.getByText('Paid on the 29th–31st? Choose the 28th.')).toBeVisible();
+    // Arrow keys move between days; they don't change the step
+    await dlg.getByRole('radio', { name: '25' }).press('ArrowRight');
+    await expect(dlg.getByRole('radio', { name: '26' })).toBeFocused();
+    await expect(dlg.getByText('Step 2 of 5')).toBeVisible();
+    await dlg.getByRole('button', { name: 'Next' }).click();
 
-    // Every tab, Reports, then Settings, account safety and the phone features
-    const expected: [string, string][] = [
-      ['/', 'Your month at a glance'],
-      ['/budget', 'Set up your budget'],
-      ['/expenses', 'Log your expenses'],
-      ['/savings', 'Save for goals'],
-      ['/loans', 'Keep track of loans'],
-      ['/reports', 'See where your money goes'],
-      ['/settings', 'Make it yours'],
-      ['/settings', 'Keep your account safe'],
-      ['/settings', 'On your phone'],
-    ];
-    for (const [p, title] of expected) {
-      await dlg.getByRole('button', { name: 'Next' }).click();
-      await expect(page).toHaveURL(new RegExp(`${p === '/' ? '/$' : `${p}$`}`));
-      await expect(dlg.getByText(title, { exact: true })).toBeVisible();
+    // Step 3: the monthly income, saved when going on
+    await expect(dlg.getByText('How much do you get a month?')).toBeVisible();
+    await dlg.getByLabel(/Income for/).fill('4500');
+    await dlg.getByRole('button', { name: 'Next' }).click();
+
+    // Step 4: where things are (the bottom bar shows above the dim layer)
+    await expect(dlg.getByText('Where things are')).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    await dlg.getByRole('button', { name: 'Next' }).click();
+
+    // Step 5: log the first expense; the tour ends on Home with quick add open
+    await expect(dlg.getByText('Step 5 of 5')).toBeVisible();
+    await dlg.getByRole('button', { name: 'Log an expense' }).click();
+    await expect(page.getByRole('dialog', { name: 'Quick add' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByText('Your budget left').locator('..')).toContainText('4,500 EGP');
+    await page.reload();
+    await expect(page.getByText('Step 1 of 5')).toHaveCount(0); // finished: not shown again
+  });
+
+  test('the tour card fits a small phone: Skip and the buttons stay on screen', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 600 });
+    await signUp(page);
+    const dlg = page.getByRole('dialog');
+    await dlg.getByRole('button', { name: 'Next' }).click(); // the payday step is the tallest
+    for (const name of ['Skip', 'Next', 'Back']) {
+      const box = (await dlg.getByRole('button', { name }).boundingBox())!;
+      expect(box.y, name).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height, name).toBeLessThanOrEqual(600);
     }
-    await expect(dlg.getByText('Step 11 of 11')).toBeVisible();
-    await expect(dlg.getByText(/updates itself/)).toBeVisible();
-    await expect(dlg.getByRole('button', { name: 'Get started' })).toBeVisible();
-    await dlg.getByRole('button', { name: 'Get started' }).click();
-    await expect(page).toHaveURL(/\/budget$/);
-    await expect(page.getByRole('dialog')).toHaveCount(0);
   });
 
   test('change password, then the old one stops working; delete account', async ({ page }) => {

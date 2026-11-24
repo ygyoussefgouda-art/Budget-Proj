@@ -417,6 +417,33 @@ export const AR: Record<string, string> = {
   'In the Android app, exports and backups open the share sheet, so you can save them to Files or Drive.':
     'في أبلكيشن أندرويد، التصدير والنسخ الاحتياطي بيفتحوا قايمة المشاركة، فتقدر تحفظهم في الملفات أو Drive.',
   'Step {n} of {total}': 'خطوة {n} من {total}',
+  // 2.1.0 tour (5 steps)
+  'Masrofy shows what is left of your money this month and how much you can spend each day. Two quick questions and you are ready.':
+    'مصروفي بيوريك فاضل معاك كام الشهر ده وتقدر تصرف قد إيه كل يوم. سؤالين سريعين وتبقى جاهز.',
+  'Tap the day your salary or allowance usually arrives. Your budget month starts on that day.':
+    'دوس على اليوم اللي مرتبك أو مصروفك بييجي فيه عادةً. شهر ميزانيتك بيبدأ من اليوم ده.',
+  'How much do you get a month?': 'بتاخد كام في الشهر؟',
+  'Your allowance or salary. Masrofy uses it to work out what is left and your daily amount.':
+    'مصروفك أو مرتبك. مصروفي بيحسب منه اللي فاضل معاك والمبلغ اللي تقدر تصرفه كل يوم.',
+  'Not sure yet? Leave it empty and set it later from Home.': 'مش متأكد؟ سيبها فاضية وحطها بعدين من الرئيسية.',
+  'Where things are': 'كل حاجة فين',
+  'Home, Expenses and Budget are in the bar at the bottom. Savings, Loans, Reports and Settings are under More.':
+    'الرئيسية والمصاريف والميزانية في الشريط اللي تحت. التحويش والسلف والتقارير والإعدادات جوه "المزيد".',
+  'Tap any number on Home to see where it comes from.': 'دوس على أي رقم في الرئيسية عشان تشوف جاي منين.',
+  'You can replay this tour from Settings → About.': 'تقدر تعيد الجولة دي من الإعدادات ← عن التطبيق.',
+  'Reminders, fingerprint lock and the home-screen widget are in Settings.': 'التذكيرات وقفل البصمة وويدجت الشاشة الرئيسية موجودين في الإعدادات.',
+  'Get the Android app from Settings for reminders, fingerprint lock and a home-screen widget.':
+    'نزّل أبلكيشن أندرويد من الإعدادات عشان التذكيرات وقفل البصمة وويدجت الشاشة الرئيسية.',
+  'Log your first expense': 'سجّل أول مصروف',
+  'Whenever you spend money, tap the + in the middle of the bar. It takes a few seconds.': 'كل ما تصرف فلوس، دوس على الـ + اللي في نص الشريط. بتاخد ثواني.',
+  'Pick a category, type the amount, done. You can attach a receipt, split it with a friend or add #tags later.':
+    'اختار الفئة، اكتب المبلغ، وخلاص. تقدر بعدين تضيف صورة الإيصال، أو تقسمه مع صاحبك، أو تحط #وسوم.',
+  'We added a few everyday categories, like Food and Transport. Rename or remove them any time on Budget.':
+    'ضفنالك كام فئة بتتصرف كل يوم، زي الأكل والمواصلات. تقدر تغيّر اسمها أو تشيلها من الميزانية في أي وقت.',
+  'Log an expense': 'سجّل مصروف',
+  'Day saved': 'اتحفظ',
+  'Tip: swipe a row left to delete it or right to edit it. Open one to log it again today.':
+    'نصيحة: اسحب السطر شمال عشان تمسحه أو يمين عشان تعدّله. افتح أي مصروف عشان تسجّله تاني النهارده.',
   'Get started': 'يلا نبدأ',
 
   // ---- account security ----

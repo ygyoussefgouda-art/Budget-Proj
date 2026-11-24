@@ -70,8 +70,8 @@ export function SettingsForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-/** Saves the month's budget settings, keeping any field not given. */
-function saveBudget(month: string, b: MonthBudget, patch: Partial<Omit<MonthBudget, 'month' | 'plans'>>) {
+/** Saves the month's budget settings, keeping any field not given. Also used by the first-run tutorial. */
+export function saveBudget(month: string, b: MonthBudget, patch: Partial<Omit<MonthBudget, 'month' | 'plans'>>) {
   const next = { ...b, ...patch };
   return api(`/budget/${month}`, 'PUT', {
     income: next.income,

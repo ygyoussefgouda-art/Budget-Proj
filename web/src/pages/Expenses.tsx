@@ -257,6 +257,10 @@ export default function Expenses() {
       {!list.isLoading && items.length === 0 && (
         <Empty text={filtered || q ? t('No expenses match. Tap "+ Add" to log one.') : t('No expenses yet. Tap "+ Add" to log your first one.')} />
       )}
+      {/* 2.1.0: these used to be tutorial tips; they now sit where they apply */}
+      {items.length > 0 && items.length <= 5 && !filtered && (
+        <p className="tiny mute">{t('Tip: swipe a row left to delete it or right to edit it. Open one to log it again today.')}</p>
+      )}
       {/* Grouped by day (newest first): the date is said once in the heading instead of on every row */}
       {groupByDay(items).map(([day, rows]) => (
       <section key={day} className="day-group" aria-label={dayLabel(day)}>

@@ -99,7 +99,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `Permissions` (first-run permissions screen, Android app only).
 
 `components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Brand` (the "Masrofy"/"مصروفي" logo text + `BrandMark`), `Illustration` (2.0.0 line drawings for empty states), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `CategoryIcon` (category icon/colour badge + picker), `PullToRefresh`, `BudgetForms`,
-`charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour), `AppLock` +
+`charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour, 5 steps since 2.1.1; saves payday via `MonthStartPicker` and income via `saveBudget` from `BudgetForms`), `AppLock` +
 `AppLockSettings`, `OfflineApp` + `OfflineQueue`, `ExportLinks`, `MonthStartPicker`, `ContactCard` (contact email constant),
 `PasswordRules` (live new-password checklist, `newPasswordError`), `ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).
 `AndroidApp` (`NativeLayer`: back button / shortcut / resume; `UpdateGate`, `UpdateOffer`, `UpdateCard`, `GetAndroidAppCard`/`Link`), `RemindersCard`, `TwoFactorCard`.

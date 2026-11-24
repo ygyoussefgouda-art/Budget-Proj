@@ -29,6 +29,8 @@ export async function signUpAndSkipTutorial(page: Page, username = newUsername()
   await signUp(page, username);
   await page.getByRole('button', { name: 'Skip' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  // 2.1.0: the tour ends on Home; the tests start from Budget, as before.
+  await tab(page, 'Budget').click();
   return username;
 }
 
