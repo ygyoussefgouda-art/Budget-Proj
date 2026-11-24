@@ -2,151 +2,142 @@
 
 *See where every pound goes.*
 
-![Masrofy MK1: Home, Budget, Expenses, Savings, Reports, light mode and Arabic](design/screenshots/overview.png)
-
-> **MK1** is the first full release (after the 0.x alphas). Developed by Youssef Gouda, with Mohamed Gouda. Formerly "Budget me": the technical names (`budget-me`, `com.budgetme.app`) stay as they were so installed apps and the running server keep working.
-
-An Android app for managing a budget: monthly budget, expenses, savings goals, loans and yearly reports, in English and Egyptian Arabic.
-It is built with **React** (Vite, TypeScript) and a **Node.js API** (Express, TypeScript) on **PostgreSQL**, runs in **Docker** on a VPS, and reaches phones as a sideloaded **Android app** (Capacitor). The signed APK is published on this repo's [GitHub Releases](https://github.com/ygyoussefgouda-art/Budget-Proj/releases) and on the app's own site; it is not on Google Play. Emails (password reset codes) go out from `no-reply@masrofy.online` through the app's own mail server.
-
-```
-web/        React app (mobile-first UI, installable PWA)
-server/     Node API + SQL migrations + API tests
-Dockerfile  builds web + server into one small image
-docker-compose.yml  app + Postgres, isolated from anything else on the server
-e2e/        Playwright tests in a phone-sized browser
-mobile/     Android app (Capacitor shell around the live site)
-deploy/     VPS scripts and reverse-proxy configs
-docs/       specs for upcoming work (Android app self-update)
-```
-
-Working on the code (people or Claude): read `CLAUDE.md` first, then `PROGRESS.md` (what's done/next), `MEMORY.md` (decisions), `CODEMAP.md` (where things live) and `HANDOFF.md` (the Android-app phase plan).
-
-## About the Android app (for users and app-store reviewers)
-
-| | |
-|---|---|
-| Package | `com.budgetme.app` (the app's earlier name; kept so installed copies keep updating) |
-| Download | [GitHub Releases](https://github.com/ygyoussefgouda-art/Budget-Proj/releases): `masrofy-X.Y.Z.apk`, signed with one release key (certificate SHA-256 `55:11:EA:85:38:6C:29:98:CF:8C:43:6A:EF:77:68:23:54:D8:26:F3:43:0E:2E:26:1E:AE:F7:42:E4:50:3F:1A`) |
-| Licence | [GPL-3.0](LICENSE) |
-
-**What it does.** Masrofy is a personal budget app for students and young earners, in English and Egyptian Arabic: set your monthly income, log what you spend (in seconds, even offline), see what is left and how much you can spend each day, save towards goals, keep track of money you lent or borrowed, and read monthly and yearly reports.
-
 <p>
-  <img src="docs/store/1-home.png" width="200" alt="Home: budget left and daily amount">
+  <img src="docs/store/1-home.png" width="200" alt="Home: budget left and how much you can spend each day">
   <img src="docs/store/2-add-expense.png" width="200" alt="Quick add an expense">
   <img src="docs/store/3-budget.png" width="200" alt="Budget categories with alerts">
   <img src="docs/store/4-savings-goal.png" width="200" alt="A savings goal with its forecast">
 </p>
 
-(Screenshots from a demo account with made-up data.)
+Masrofy is a personal budget app for students and young earners, in **English and Egyptian Arabic**. Set your monthly income, log what you spend in seconds (even offline), see what is left and how much you can spend each day, save towards goals, keep track of money you lent or borrowed, and read monthly and yearly reports. (Screenshots: a demo account with made-up data.)
 
-**How it works.** The app is a small [Capacitor](https://capacitorjs.com) shell (`mobile/`) around the web app (`web/`), which it loads from the Masrofy server ([masrofy.online](https://masrofy.online)). You need an account: your budget is stored on that server and only your account can see it (every row is tied to your user id; there are no shared or public data). Anyone can run their own server instead ([DEPLOY.md](DEPLOY.md)) and build the app against it.
+- **Android app:** download `masrofy-X.Y.Z.apk` from [GitHub Releases](https://github.com/ygyoussefgouda-art/Budget-Proj/releases) or from the site; it updates itself. Not on Google Play.
+- **In a browser:** [masrofy.online](https://masrofy.online) works as an installable web app too.
+- **Your data:** private to your account. No ads, no analytics, no trackers.
+- **Licence:** [GPL-3.0](LICENSE). Developed by Youssef Gouda, with Mohamed Gouda.
 
-**Privacy.** No ads, no analytics, no trackers and no third-party SDKs. The fonts are bundled, and the server's Content-Security-Policy only lets the app talk to its own server (`connect-src 'self'`). Passwords are stored as scrypt hashes. An optional app lock (PIN, and fingerprint or face in the Android app) stays on the phone. If the app crashes, the error message (not your data) is sent to the same server so it can be fixed. You can export your data or delete your account from Settings at any time.
+> The app used to be called "Budget me". Its technical names (`com.budgetme.app`, the `budget-me` Docker project, `/opt/budget-me` in the deploy guide) stay as they were, so installed apps keep updating and running servers keep working.
+
+## What's inside
+
+| Screen | What you can do |
+|---|---|
+| **Home** | A lime band with your budget left this month, what you can spend per day until the month ends, and where the income went (spent, saved, repaid). Quick actions (Expense, Income, Save, Pay back), this week's spending per day, budget alerts, your savings goals, upcoming recurring payments, the top 3 categories and recent activity |
+| **+ (centre of the bar)** | Quick add from any screen: amount (sums like `45+30` work), category (or a new one right there), what for (your usual descriptions as one-tap chips), Today / Yesterday / another day |
+| **Expenses** | Every expense by day: search; filter by month, date range, category or #tag; edit, log again, delete with Undo (or swipe). Receipt photo or PDF, up to 5 #tags, "split with someone" (their share goes to Loans), paid in another currency. Recurring expenses (rent, subscriptions). Export to CSV or Excel |
+| **Budget** | Monthly income and saving / repayment plans, a budget per category (or "per day" for uni or work days). Categories turn amber at 80% and red at 100%, with a badge on the tab. An empty month can copy the last one |
+| **More → Savings** | Goals with progress, a chart and one forecast ("at this pace you'll reach it in July 2027"), with a warning when you're behind plan |
+| **More → Loans** | "I owe" and "Owed to me": balance per person and the history |
+| **More → Reports** | Where the money went this month, this month against last month per category, spending per weekday, per #tag, and the whole year month by month |
+| **More → Settings** | Language, light or dark theme, the day your month starts, currency, app lock (PIN, plus fingerprint or face in the Android app), two-step sign-in, email, password, export, backup and restore, replay the tour, contact us, delete your account |
+
+**First run:** a new account starts with a few everyday categories (Food, Transport, Coffee…, in your language) and a short tour: when you get paid, how much, an optional app lock, where things are, then your first expense.
+
+**On the phone:** swipe a row left to delete it (with Undo) or right to edit it. Offline, the app opens with the data it last loaded and new expenses wait on the phone until you're back online (never sent twice). Long-press the app icon for an "Add expense" shortcut.
+
+## The Android app
+
+| | |
+|---|---|
+| Package | `com.budgetme.app` |
+| Download | [GitHub Releases](https://github.com/ygyoussefgouda-art/Budget-Proj/releases): `masrofy-X.Y.Z.apk`, always signed with the same release key (certificate SHA-256 `55:11:EA:85:38:6C:29:98:CF:8C:43:6A:EF:77:68:23:54:D8:26:F3:43:0E:2E:26:1E:AE:F7:42:E4:50:3F:1A`) |
+| Updates | The app checks its server, downloads the new APK, checks its SHA-256, package name and version, then opens Android's installer (you confirm) |
+
+**How it works.** The app is a small [Capacitor](https://capacitorjs.com) shell ([`mobile/`](mobile)) around the web app, loaded from the Masrofy server, so every deploy updates its screens. You need an account: your budget is stored on that server and only your account can see it (every row belongs to one user; nothing is shared or public). Anyone can run their own server instead ([DEPLOY.md](DEPLOY.md)) and build the app against it.
+
+**Privacy.** No ads, analytics, trackers or third-party SDKs. The fonts are bundled, and the server's Content-Security-Policy only lets the app talk to its own server (`connect-src 'self'`). Passwords are stored as scrypt hashes. The app lock PIN stays on the phone. If a screen crashes, the error message (not your data) is sent to the same server so it can be fixed. You can export your data or delete your account from Settings at any time.
 
 **Permissions** (asked on first run, all optional; the app works without them):
 
 | Permission | Why |
 |---|---|
-| `INTERNET`, `ACCESS_NETWORK_STATE` | Talk to the Masrofy server; notice when you are offline so expenses wait on the phone and sync later |
-| `CAMERA` | Take a photo of a receipt (optional) |
-| `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED` | Budget alerts, recurring expenses due and an optional daily reminder, also after a restart. All are scheduled on the phone; nothing is pushed from a server |
+| `INTERNET`, `ACCESS_NETWORK_STATE` | Talk to the Masrofy server; notice when you're offline so expenses wait on the phone and sync later |
+| `CAMERA` | Take a photo of a receipt |
+| `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED` | Budget alerts, recurring expenses due and an optional daily reminder, also after a restart. All scheduled on the phone; nothing is pushed from a server |
 | `USE_BIOMETRIC` | Unlock the app lock with your fingerprint or face (the PIN stays as the fallback) |
 | `VIBRATE` | A short buzz when an expense is saved |
-| `REQUEST_INSTALL_PACKAGES` | The app updates itself: it downloads the new APK from its own server, checks its SHA-256, package name and version, then opens Android's installer (you confirm) |
+| `REQUEST_INSTALL_PACKAGES` | Let the app install its own updates |
 
-**Build it yourself.** You need Node.js 22+ and JDK 21 with the Android SDK:
+**Build it yourself** (Node.js 22+, JDK 21 and the Android SDK):
 
 ```bash
 cd mobile && npm ci
 BUDGET_ME_URL=https://your-server npx cap sync android
-cd android && ./gradlew assembleDebug        # unsigned test APK in app/build/outputs/apk/debug/
+cd android && ./gradlew assembleDebug        # test APK in app/build/outputs/apk/debug/
 ```
 
-A signed release is built by GitHub Actions for a tag `android-vX.Y.Z` ([.github/workflows/android.yml](.github/workflows/android.yml)); it checks the APK is signed with the release key before it is published.
+**Releases** are built by GitHub Actions ([.github/workflows/android.yml](.github/workflows/android.yml)): raise `versionCode` and `versionName` in `mobile/version.json`, push, then push the tag `android-vX.Y.Z`. The workflow checks the tag matches, signs the APK, refuses it unless it is signed with the release key, and attaches it to a GitHub Release. Setup: [DEPLOY.md](DEPLOY.md#android-app-sideloaded-not-on-google-play) and [docs/ANDROID_SELF_UPDATE.md](docs/ANDROID_SELF_UPDATE.md).
 
-## Deploy on the VPS (Docker)
+## How it's built
 
-**Full step-by-step guide: [DEPLOY.md](DEPLOY.md)** (firewall, secrets, HTTPS proxy, backups, updates).
+**React** (Vite, TypeScript) web app and a **Node.js API** (Express, TypeScript) on **PostgreSQL**, in **Docker** on a VPS, plus the Capacitor Android app. Emails ("Forgot password?" codes) go out from `no-reply@masrofy.online` through the app's own mail server.
+
+```
+web/        React app (mobile-first UI, installable web app)
+server/     Node API, SQL migrations and API tests
+mobile/     Android app (Capacitor shell around the live site)
+e2e/        Playwright tests in a phone-sized browser
+deploy/     VPS scripts (update, backups, restore, rollback) and reverse-proxy configs
+docs/       specs and the store images (docs/store/)
+Dockerfile  builds web + server into one small image
+docker-compose.yml  app + Postgres (+ mail), isolated from anything else on the server
+```
+
+Working on the code (people or Claude): read `CLAUDE.md` first, then `PROGRESS.md` (what's done and next), `MEMORY.md` (decisions), `CODEMAP.md` (where things live) and `HANDOFF.md` (the Android phase plan).
+
+## Run your own server (Docker)
+
+**Full step-by-step guide: [DEPLOY.md](DEPLOY.md)** (firewall, secrets, HTTPS proxy, email, backups, updates).
 
 Short version:
 
 ```bash
 git clone https://github.com/ygyoussefgouda-art/Budget-Proj.git /opt/budget-me && cd /opt/budget-me
-cp .env.example .env && chmod 600 .env && nano .env   # strong POSTGRES_PASSWORD
+cp .env.example .env && chmod 600 .env && nano .env   # a strong POSTGRES_PASSWORD
 docker compose up -d --build
 curl http://127.0.0.1:8090/api/health                 # -> {"ok":true}
 ```
 
-It is a standalone Compose project (`budget-me`) with its own network, Postgres and volume, so it shares nothing with the other app on your VPS. The app listens only on `127.0.0.1:8090`; put your HTTPS reverse proxy in front of it (ready-made configs: [deploy/nginx-budget-me.conf](deploy/nginx-budget-me.conf), [deploy/Caddyfile](deploy/Caddyfile)). Daily database backups go to `backups/`; update with `sh deploy/update.sh`.
+It is a standalone Compose project with its own network, Postgres and volume, so it shares nothing with other apps on the server. The app listens only on `127.0.0.1:8090`; put your HTTPS reverse proxy in front of it ([deploy/nginx-budget-me.conf](deploy/nginx-budget-me.conf) or [deploy/Caddyfile](deploy/Caddyfile)). Database backups run daily; update with `sh deploy/update.sh`.
+
 ### Accounts
-Everyone creates their own account on the sign-in screen with **Create account** (email + username + password; the password needs 8+ characters with a lowercase letter, an uppercase letter, a number and a special character, ticked off live as you type). Sign in with the username or the email. Each account has its own budget, which starts empty, and nobody can see anyone else's data. Passwords are stored as scrypt hashes, sessions expire after 14 idle days (30 at most), and sign-in and sign-up attempts are rate-limited. There is no invite code: anyone who can open the app can sign up until sign-ups are closed (`ALLOW_SIGNUP=false` or the Admin page). In Settings each user can change their password, sign out everywhere and delete their account.
 
-- Once everyone who should use the app has an account, set `ALLOW_SIGNUP=false` in `.env` and run `docker compose up -d`. The sign-in screen then shows only "Sign in".
-- `APP_PASSWORD` (optional) creates a built-in account with the username `owner`. Changing it and restarting signs that account out everywhere.
-- **Admin page** (Settings → Admin) for `owner` and the accounts in `ADMIN_USERNAMES`: list accounts (joined, last active, storage used), open/close sign-ups while the app runs, remove an account (type its username + your password), and make **one-time password reset codes** (valid 1 hour, stored hashed, needs your own password). Only the built-in `owner` can reset or remove another admin. Every admin action is kept in an activity log. Create your account first, then list it in `ADMIN_USERNAMES` (see [DEPLOY.md](DEPLOY.md#admin-page)).
-- **Two-step sign-in** (Settings): password + a 6-digit code from any authenticator app (Google Authenticator, Aegis, 2FAS…), with 8 one-time backup codes. Recommended for admins; an admin can turn it off for someone who lost their phone.
-- **Forgot password?** on the sign-in screen: with email set up (any SMTP server, free options in [DEPLOY.md](DEPLOY.md#email-forgot-password-codes-free)), enter your email and get a one-time code; otherwise use a reset code from an admin. Then choose a new password; every session of that account is signed out. Older accounts can add an email in Settings.
+- **Create account** needs an email, a username and a password typed twice (8+ characters with a lowercase and an uppercase letter, a number and a special character, ticked off as you type). Sign in with the username or the email.
+- Each account has its own budget and nobody can see anyone else's. Sessions expire after 14 idle days (30 at most); sign-in and sign-up are rate-limited.
+- **Forgot password?** emails a one-time code (set up in [DEPLOY.md](DEPLOY.md#email-forgot-password-codes-from-no-replymasrofyonline)); without email, an admin can make a reset code. Choosing a new password signs that account out everywhere.
+- **Two-step sign-in** (Settings): a 6-digit code from any authenticator app, with 8 backup codes.
+- Anyone who can open the app can sign up until you close sign-ups (`ALLOW_SIGNUP=false` in `.env`, or the Admin page).
+- `APP_PASSWORD` (optional) creates a built-in `owner` account. **Admin page** (Settings → Admin, for `owner` and `ADMIN_USERNAMES`): list accounts, open or close sign-ups, remove an account, make one-time reset codes; every admin action is logged ([DEPLOY.md](DEPLOY.md#admin-page)).
+- New accounts get the starter categories; set `STARTER_CATEGORIES=false` to start them empty. With `SEED_EXAMPLE_DATA=true` on a brand-new database, the built-in `owner` account starts with example data.
 
-Every table has a `user_id` and sessions are stored in Postgres. Run **one** app container: rate limits and a few guards are kept in memory per container (migrations do take a database lock, so a second container won't break the schema, but its limits would be separate).
+Run **one** app container: rate limits and a few guards are kept in memory per container.
 
-## Android app
-
-A sideloaded Android app (not on Google Play) lives in [`mobile/`](mobile): a Capacitor shell that shows the live site, so every deploy updates its screens. On top of the web app it adds receipt photos with the camera, fingerprint/face unlock for the app lock (the PIN stays as the fallback), reminders as phone notifications (budget at 80%/100%, recurring expenses due, an optional daily reminder), saving exports and backups through the share sheet, the Android back button and an "Add expense" home-screen shortcut. A first-run screen asks for the permissions those features need ("Allow all" or one by one, never required).
-
-People get it from **Settings → Get the Android app** in the browser (or `https://<your site>/download/android`); after that it **updates itself**: it checks the server, downloads the new APK, verifies its SHA-256, package and version, and opens Android's installer. GitHub Actions builds it ([.github/workflows/android.yml](.github/workflows/android.yml)): a test APK on every push, a signed release on a tag `android-v1.2.3` once the signing key is added as secrets; the tag also creates a GitHub Release with the APK attached. Setup: [DEPLOY.md](DEPLOY.md#android-app-sideloaded-not-on-google-play) and [docs/ANDROID_SELF_UPDATE.md](docs/ANDROID_SELF_UPDATE.md).
+**When something goes wrong:** a crashed screen shows "Something went wrong" with a **Reload** button instead of a blank page. A new deploy shows "A new version is ready" (**Reload** / **Later**). Server errors carry a short reference ("ref. 1a2b3c4d") that matches a line in `docker compose logs app`; the log never contains request bodies, passwords, cookies or codes. `GET /api/version` says which version is running.
 
 ## Develop locally
 
-**On this Windows PC:** a portable Node 22 lives in `D:\devtools`. Nothing is installed system-wide. The helper scripts use it:
-
-```bash
-scripts\dev-server.cmd
-```
-That runs the whole app on http://localhost:3000. Use **Create account** to make a local account. The data is kept in `server\.pglite`; delete that folder (with the server stopped) to start over. Rebuild the web app after UI changes with `cd web` then `..\scripts\n.cmd npm run build`. Run any npm command with `scripts\n.cmd`, e.g. `cd server` then `..\scripts\n.cmd npm test`.
-
-**Anywhere else:** requires Node 20+.
+Requires Node.js 22+.
 
 ```bash
 # API with an embedded Postgres (no Docker needed)
-cd server
-npm install
+cd server && npm ci
 DB_DRIVER=pglite PGLITE_DIR=.pglite npm run dev      # http://localhost:3000
 
-# React app (proxies /api to :3000)
-cd web
-npm install
-npm run dev                                                                   # http://localhost:5173
+# Web app (proxies /api to :3000)
+cd web && npm ci
+npm run dev                                           # http://localhost:5173
 ```
-On Windows PowerShell, set the variables first: `$env:DB_DRIVER='pglite'; $env:PGLITE_DIR='.pglite'; npm run dev`.
 
-Tests:
+On Windows PowerShell, set the variables first: `$env:DB_DRIVER='pglite'; $env:PGLITE_DIR='.pglite'; npm run dev`. On the owner's PC a portable Node lives in `D:\devtools`: `scripts\dev-server.cmd` runs the whole app on http://localhost:3000, and `scripts\n.cmd npm …` runs any npm command.
+
+**Tests**
+
 ```bash
-cd server
-npm test      # API tests against a real (embedded) Postgres
-cd web
-npm test      # budget maths (the workbook formulas)
+cd server && npm test       # API tests against a real (embedded) Postgres
+cd web && npm test          # budget maths
+cd e2e && npm ci && npx playwright install chromium && npx playwright test   # build web first
 ```
-E2E (Playwright, phone-sized browser against the real app): build the web app, then `cd e2e`, `npm ci`, `npx playwright install chromium`, `npx playwright test`.
 
-GitHub Actions (`.github/workflows/ci.yml`) runs the API, web and E2E tests, a dependency audit and the Docker build on every push. Dependabot opens weekly update PRs.
+GitHub Actions ([ci.yml](.github/workflows/ci.yml)) runs the API, web and E2E tests, a dependency audit and the Docker build on every push. Dependabot opens weekly update PRs.
 
-## What the app does
-| Screen | What it does |
-|---|---|
-| Home | Money left this month and how much you can spend per day until the month ends, income and expenses, savings and debt rings, expense donut, budget usage per category, recent activity. Recurring expenses that are due (Add / Skip). A "+ Expense" button for quick adding (remembers your last category, suggests your usual descriptions). A banner when a category reaches 80% (amber) or 100% (red) of its budget |
-| Budget | Per-month income, a "Budget per day" category (days × weeks × cost), category budgets, savings and loan plans, totals and unallocated income. A new month copies the previous one; an empty month offers "Same as last month". Categories turn amber at 80% and red at 100% of their budget, with a count badge on the Budget tab |
-| Expenses | Add, edit and delete expenses (with an optional receipt photo/PDF); search; filter by this month, all time, a date range or a category. Recurring expenses: "every month on day N", with an optional end date, pause, and Add/Skip or add automatically (never added twice). Optional #tags (up to 5; search and filter by tag), "Split with someone" (you record your share, their share becomes an "Owed to me" entry that follows the expense), and "Paid in another currency" (original amount + your rate). Export the current filter to CSV or Excel |
-| Loans | "I owe" and "Owed to me", balance per person, history. Warns when you repay more than you owe |
-| Savings | Several goals with balance, progress, estimated months to reach each goal and a balance chart. A forecast ("at this pace you'll reach it in March 2027", from the average of the last 3 months) and a "behind plan" hint. You can't withdraw more than a goal holds |
-| Reports | Spending per #tag; this month against last month per category ("Food +20%") with the biggest changes; average spending per weekday (Sat–Fri) for this month, the last 3 months or a year; yearly totals, spending vs savings chart, month-by-month table |
-| Settings | Language (English / Arabic), light or dark theme, month start day, currency label, app lock (optional 4–6 digit PIN kept only on this phone), change password, sign out everywhere, delete account, replay the tutorial, Admin page (admins only), Contact us (report a bug or suggest a feature by email to youssefgoudawork@gmail.com), export to CSV / Excel (expenses, loans or savings, any date range; Arabic headers when the app is in Arabic), backup download and restore, sign out, erase all data |
-
-**On the phone:** swipe a row left to delete it (with Undo) or right to edit it, with a light vibration where supported; the buttons stay for keyboard and screen-reader users. With no connection, the app opens with the data it last loaded ("Showing data from …", kept on the phone for 7 days and deleted on sign-out), new expenses are saved on the phone ("Waiting to sync") and sent automatically when you are back online, never twice. After installing, long-press the app icon for an **Add expense** shortcut.
-
-**When something goes wrong:** if a screen crashes, the app shows "Something went wrong" with a **Reload** button (and the version) instead of a blank page, and sends a short crash report to the server log. When a new version is deployed, the app shows "A new version is ready" with **Reload** / **Later** instead of switching under your fingers. Server errors show a short reference ("ref. 1a2b3c4d") that matches a line in `docker compose logs app`. The server logs one JSON line per request (never bodies, passwords, cookies or codes); `GET /api/version` tells which version is running.
-
-Deleting a single expense, savings entry or loan entry happens at once, with **Undo** in the message for a few seconds (the receipt comes back too). Bigger deletes (a category, a goal, a person, all data, the account) still ask first.
-
-Money is stored as whole minor units (piastres or cents), so there is no rounding drift. New accounts start completely empty: a first-run tutorial explains each tab, and you set up your own income, categories, goals and loans. To try the app with example data instead (from `Student_Budget.xlsx`), start a brand-new database with `SEED_EXAMPLE_DATA=true`.
+Money is stored as whole minor units (piastres or cents), so there is no rounding drift.
