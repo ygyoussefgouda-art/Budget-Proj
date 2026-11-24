@@ -22,6 +22,8 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `.github/workflows/android.yml` | Android: debug APK on push, signed release + publish on tag `android-v*` |
 | `.github/dependabot.yml` | Weekly dependency PRs |
 | `docs/ANDROID_SELF_UPDATE.md` | Spec: APK hosting, download link, self-update (Phase 3) |
+| `docs/store/` | App-store images (Orion Store): `icon-512.png` + 4 phone screenshots from the demo account |
+| `LICENSE` | GPL-3.0 |
 | `docs/REVIEW-2026-11-21.md` | Whole-repo review: open gaps by priority (section A fixed in 0.6.1) |
 | `CLAUDE.md` / `PROGRESS.md` / `MEMORY.md` / `HANDOFF.md` / `CODEMAP.md` | Working notes: rules, status, decisions, phase plan, this map |
 

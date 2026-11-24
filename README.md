@@ -7,7 +7,7 @@
 > **MK1** is the first full release (after the 0.x alphas). Developed by Youssef Gouda, with Mohamed Gouda. Formerly "Budget me": the technical names (`budget-me`, `com.budgetme.app`) stay as they were so installed apps and the running server keep working.
 
 An Android app for managing a budget: monthly budget, expenses, savings goals, loans and yearly reports, in English and Egyptian Arabic.
-It is built with **React** (Vite, TypeScript) and a **Node.js API** (Express, TypeScript) on **PostgreSQL**, runs in **Docker** on a VPS, and reaches phones as a sideloaded **Android app** (Capacitor). It is not distributed through any app store. Emails (password reset codes) go out from `no-reply@masrofy.online` through the app's own mail server.
+It is built with **React** (Vite, TypeScript) and a **Node.js API** (Express, TypeScript) on **PostgreSQL**, runs in **Docker** on a VPS, and reaches phones as a sideloaded **Android app** (Capacitor). The signed APK is published on this repo's [GitHub Releases](https://github.com/ygyoussefgouda-art/Budget-Proj/releases) and on the app's own site; it is not on Google Play. Emails (password reset codes) go out from `no-reply@masrofy.online` through the app's own mail server.
 
 ```
 web/        React app (mobile-first UI, installable PWA)
@@ -21,6 +21,50 @@ docs/       specs for upcoming work (Android app self-update)
 ```
 
 Working on the code (people or Claude): read `CLAUDE.md` first, then `PROGRESS.md` (what's done/next), `MEMORY.md` (decisions), `CODEMAP.md` (where things live) and `HANDOFF.md` (the Android-app phase plan).
+
+## About the Android app (for users and app-store reviewers)
+
+| | |
+|---|---|
+| Package | `com.budgetme.app` (the app's earlier name; kept so installed copies keep updating) |
+| Download | [GitHub Releases](https://github.com/ygyoussefgouda-art/Budget-Proj/releases): `masrofy-X.Y.Z.apk`, signed with one release key (certificate SHA-256 `55:11:EA:85:38:6C:29:98:CF:8C:43:6A:EF:77:68:23:54:D8:26:F3:43:0E:2E:26:1E:AE:F7:42:E4:50:3F:1A`) |
+| Licence | [GPL-3.0](LICENSE) |
+
+**What it does.** Masrofy is a personal budget app for students and young earners, in English and Egyptian Arabic: set your monthly income, log what you spend (in seconds, even offline), see what is left and how much you can spend each day, save towards goals, keep track of money you lent or borrowed, and read monthly and yearly reports.
+
+<p>
+  <img src="docs/store/1-home.png" width="200" alt="Home: budget left and daily amount">
+  <img src="docs/store/2-add-expense.png" width="200" alt="Quick add an expense">
+  <img src="docs/store/3-budget.png" width="200" alt="Budget categories with alerts">
+  <img src="docs/store/4-savings-goal.png" width="200" alt="A savings goal with its forecast">
+</p>
+
+(Screenshots from a demo account with made-up data.)
+
+**How it works.** The app is a small [Capacitor](https://capacitorjs.com) shell (`mobile/`) around the web app (`web/`), which it loads from the Masrofy server ([masrofy.online](https://masrofy.online)). You need an account: your budget is stored on that server and only your account can see it (every row is tied to your user id; there are no shared or public data). Anyone can run their own server instead ([DEPLOY.md](DEPLOY.md)) and build the app against it.
+
+**Privacy.** No ads, no analytics, no trackers and no third-party SDKs. The fonts are bundled, and the server's Content-Security-Policy only lets the app talk to its own server (`connect-src 'self'`). Passwords are stored as scrypt hashes. An optional app lock (PIN, and fingerprint or face in the Android app) stays on the phone. If the app crashes, the error message (not your data) is sent to the same server so it can be fixed. You can export your data or delete your account from Settings at any time.
+
+**Permissions** (asked on first run, all optional; the app works without them):
+
+| Permission | Why |
+|---|---|
+| `INTERNET`, `ACCESS_NETWORK_STATE` | Talk to the Masrofy server; notice when you are offline so expenses wait on the phone and sync later |
+| `CAMERA` | Take a photo of a receipt (optional) |
+| `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED` | Budget alerts, recurring expenses due and an optional daily reminder, also after a restart. All are scheduled on the phone; nothing is pushed from a server |
+| `USE_BIOMETRIC` | Unlock the app lock with your fingerprint or face (the PIN stays as the fallback) |
+| `VIBRATE` | A short buzz when an expense is saved |
+| `REQUEST_INSTALL_PACKAGES` | The app updates itself: it downloads the new APK from its own server, checks its SHA-256, package name and version, then opens Android's installer (you confirm) |
+
+**Build it yourself.** You need Node.js 22+ and JDK 21 with the Android SDK:
+
+```bash
+cd mobile && npm ci
+BUDGET_ME_URL=https://your-server npx cap sync android
+cd android && ./gradlew assembleDebug        # unsigned test APK in app/build/outputs/apk/debug/
+```
+
+A signed release is built by GitHub Actions for a tag `android-vX.Y.Z` ([.github/workflows/android.yml](.github/workflows/android.yml)); it checks the APK is signed with the release key before it is published.
 
 ## Deploy on the VPS (Docker)
 
@@ -51,7 +95,7 @@ Every table has a `user_id` and sessions are stored in Postgres. Run **one** app
 
 A sideloaded Android app (not on Google Play) lives in [`mobile/`](mobile): a Capacitor shell that shows the live site, so every deploy updates its screens. On top of the web app it adds receipt photos with the camera, fingerprint/face unlock for the app lock (the PIN stays as the fallback), reminders as phone notifications (budget at 80%/100%, recurring expenses due, an optional daily reminder), saving exports and backups through the share sheet, the Android back button and an "Add expense" home-screen shortcut. A first-run screen asks for the permissions those features need ("Allow all" or one by one, never required).
 
-People get it from **Settings → Get the Android app** in the browser (or `https://<your site>/download/android`); after that it **updates itself**: it checks the server, downloads the new APK, verifies its SHA-256, package and version, and opens Android's installer. GitHub Actions builds it ([.github/workflows/android.yml](.github/workflows/android.yml)): a test APK on every push, a signed release on a tag `android-v1.2.3` once the signing key is added as secrets. Setup: [DEPLOY.md](DEPLOY.md#android-app-sideloaded-not-on-google-play) and [docs/ANDROID_SELF_UPDATE.md](docs/ANDROID_SELF_UPDATE.md).
+People get it from **Settings → Get the Android app** in the browser (or `https://<your site>/download/android`); after that it **updates itself**: it checks the server, downloads the new APK, verifies its SHA-256, package and version, and opens Android's installer. GitHub Actions builds it ([.github/workflows/android.yml](.github/workflows/android.yml)): a test APK on every push, a signed release on a tag `android-v1.2.3` once the signing key is added as secrets; the tag also creates a GitHub Release with the APK attached. Setup: [DEPLOY.md](DEPLOY.md#android-app-sideloaded-not-on-google-play) and [docs/ANDROID_SELF_UPDATE.md](docs/ANDROID_SELF_UPDATE.md).
 
 ## Develop locally
 

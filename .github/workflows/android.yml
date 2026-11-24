@@ -1,8 +1,9 @@
 name: Android
 # Builds the Android app (Capacitor shell) on GitHub, since nobody needs the Android SDK at home.
 # - Every push that touches mobile/ or the web app: a test (debug) APK, kept as a workflow artifact.
-# - Tag android-v1.2.3 or "Run workflow" with release: a signed release APK, published to the VPS
-#   when the secrets below exist (see docs/ANDROID_SELF_UPDATE.md §5-6):
+# - Tag android-v1.2.3 or "Run workflow" with release: a signed release APK, checked against the
+#   release key; a tag also creates a GitHub Release with masrofy-1.2.3.apk attached (Orion Store
+#   lists it from there). Published to the VPS too when the secrets below exist (docs/ANDROID_SELF_UPDATE.md §5-6):
 #     ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD,
 #     BUDGET_ME_URL, EXPECTED_CERT_SHA256 (optional), VPS_SSH_KEY + VPS (user@host) + VPS_KNOWN_HOSTS (optional)
 on:
@@ -60,12 +61,21 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/android-v') || inputs.version }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    # Only this job may write: it creates the GitHub Release for android-v tags (Orion Store reads it).
+    permissions:
+      contents: write
     env:
       HAS_SSH_KEY: ${{ secrets.VPS_SSH_KEY != '' }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: The tag matches mobile/version.json
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        run: |
+          TAG="${GITHUB_REF_NAME#android-v}"
+          NAME=$(node -p "require('./mobile/version.json').versionName")
+          [ "$TAG" = "$NAME" ] || { echo "Tag $GITHUB_REF_NAME but mobile/version.json says $NAME: raise versionCode and versionName there first."; exit 1; }
       - uses: actions/setup-node@v7
         with:
           node-version: '26'
@@ -102,6 +112,28 @@ jobs:
           # versionCode was raised in mobile/version.json in the commit being released.
           KEEP_VERSION_CODE: 'true'
         run: sh mobile/scripts/release.sh "${VERSION#android-v}"
+      # Never publish an APK signed with the wrong key (phones would refuse it as an update). release.sh
+      # checks too, but skips the check when it can't find apksigner; here a missing tool or value fails.
+      - name: Signed with the release key
+        env:
+          EXPECTED_CERT_SHA256: ${{ secrets.EXPECTED_CERT_SHA256 }}
+          VERSION: ${{ inputs.version || github.ref_name }}
+        run: |
+          [ -n "$EXPECTED_CERT_SHA256" ] || { echo "Set the EXPECTED_CERT_SHA256 secret."; exit 1; }
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -n 1)
+          [ -n "$APKSIGNER" ] || { echo "apksigner not found: can't check the signature."; exit 1; }
+          APK="mobile/dist/masrofy-${VERSION#android-v}.apk"
+          "$APKSIGNER" verify --print-certs "$APK" | tee certs.txt
+          tr -d ':' < certs.txt | grep -qi "$(echo "$EXPECTED_CERT_SHA256" | tr -d ':')" || { echo "APK is NOT signed with the release key."; exit 1; }
+      - name: GitHub Release with the APK
+        if: startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${GITHUB_REF_NAME#android-v}"
+          gh release create "$GITHUB_REF_NAME" "mobile/dist/masrofy-$V.apk" \
+            --repo "$GITHUB_REPOSITORY" --title "Masrofy $V" \
+            --notes "Masrofy $V for Android: signed APK (package com.budgetme.app). Install it, or let the app update itself."
       - uses: actions/upload-artifact@v7
         with:
           name: masrofy-release
