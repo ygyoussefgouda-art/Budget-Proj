@@ -30,8 +30,15 @@ test.describe('accounts', () => {
     await expect(page.getByText('Your password does not meet all the rules yet.')).toBeVisible();
     await page.getByLabel(/^Password/).fill('Short-pass-1');
     await expect(rules.locator('li.ok')).toHaveCount(5);
+    // 2.1.4: the password is typed twice; a mismatch is shown at once and refused
+    await page.getByLabel('Repeat password').fill('Short-pass-2');
+    await expect(page.locator('#pw-repeat-hint')).toHaveText('The two passwords do not match.');
+    await create();
+    await expect(page.locator('.form-error')).toHaveText('The two passwords do not match.');
+    await page.getByLabel('Repeat password').fill('Short-pass-1');
+    await expect(page.locator('#pw-repeat-hint')).toHaveText('Passwords match.');
     // Show / Hide
-    await page.getByRole('button', { name: 'Show' }).click();
+    await page.getByRole('button', { name: 'Show' }).first().click();
     await expect(page.getByLabel(/^Password/)).toHaveAttribute('type', 'text');
   });
 
@@ -99,6 +106,7 @@ test.describe('accounts', () => {
     await other.getByLabel('Email').fill('another.person@example.com');
     await other.getByLabel('Username').fill(user.toUpperCase());
     await other.getByLabel(/^Password/).fill(PASSWORD);
+    await other.getByLabel('Repeat password').fill(PASSWORD);
     await other.getByRole('button', { name: 'Create account', exact: true }).click();
     await expect(other.getByText(/already taken/)).toBeVisible();
     await ctx.close();

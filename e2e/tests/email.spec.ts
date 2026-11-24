@@ -44,6 +44,7 @@ test.describe('0.6.3: email', () => {
     await page.getByRole('button', { name: 'Set new password' }).click();
     await expect(page.getByText('Your password does not meet all the rules yet.')).toBeVisible();
     await page.getByLabel(/^New password/).fill('Fresh-start-77');
+    await page.getByLabel('Repeat password').fill('Fresh-start-77');
     await page.getByRole('button', { name: 'Set new password' }).click();
     await expect(page.getByText('Password changed. Sign in with your new password.')).toBeVisible();
 

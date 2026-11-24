@@ -67,6 +67,19 @@ function PasswordField({
   );
 }
 
+/** "Repeat password": says at once whether it matches (only once something is typed). */
+function RepeatPassword({ value, onChange, password }: { value: string; onChange: (v: string) => void; password: string }) {
+  const typed = value.length > 0;
+  const same = value === password;
+  return (
+    <PasswordField label={t('Repeat password')} value={value} onChange={onChange} autoComplete="new-password" describedBy="pw-repeat-hint">
+      <span id="pw-repeat-hint" className={`field-hint ${typed && !same ? 'is-bad' : ''}`} aria-live="polite">
+        {!typed ? t('Type the same password again.') : same ? t('Passwords match.') : t('The two passwords do not match.')}
+      </span>
+    </PasswordField>
+  );
+}
+
 export default function Login() {
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -81,6 +94,7 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -119,6 +133,8 @@ export default function Login() {
       }
       const pwErr = newPasswordError(password, name, strong);
       if (pwErr) return setErr(pwErr);
+      // 2.1.4 (owner's request): type the new password twice, so a typo can't lock you out.
+      if (password !== password2) return setErr(t('The two passwords do not match.'));
     }
     setBusy(true);
     setErr(null);
@@ -269,6 +285,7 @@ export default function Login() {
         >
           {signup && (strong ? <PasswordRules password={password} id="signup-pw-rules" /> : <span className="field-hint">{t('At least 10 characters.')}</span>)}
         </PasswordField>
+        {signup && <RepeatPassword value={password2} onChange={setPassword2} password={password} />}
 
         {notice && !err && <p className="small notice">{notice}</p>}
         <FormError text={err} />
@@ -315,6 +332,7 @@ function ResetPassword({
   const [login, setLogin] = useState(initial);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -345,6 +363,7 @@ function ResetPassword({
     if (!code.trim()) return setErr(t('Enter the reset code.'));
     const pwErr = newPasswordError(password, who.includes('@') ? '' : who, strong);
     if (pwErr) return setErr(pwErr);
+    if (password !== password2) return setErr(t('The two passwords do not match.'));
     setBusy(true);
     setErr(null);
     try {
@@ -414,6 +433,7 @@ function ResetPassword({
       <PasswordField label={t('New password')} value={password} onChange={setPassword} autoComplete="new-password" describedBy="reset-pw-rules">
         {strong ? <PasswordRules password={password} id="reset-pw-rules" /> : <span className="field-hint">{t('At least 10 characters.')}</span>}
       </PasswordField>
+      <RepeatPassword value={password2} onChange={setPassword2} password={password} />
       <p className="tiny mute">{t('All phones and computers signed in to this account will be signed out.')}</p>
       <FormError text={err} />
       <button className="btn primary block" disabled={busy}>

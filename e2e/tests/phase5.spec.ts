@@ -38,6 +38,7 @@ test.describe('phase 5: admin page and password reset', () => {
     await phone.getByLabel('Username').fill(name);
     await phone.getByLabel('Reset code').fill(code.toLowerCase());
     await phone.getByLabel(/^New password/).fill('My-new-password-1');
+    await phone.getByLabel('Repeat password').fill('My-new-password-1');
     await phone.getByRole('button', { name: 'Set new password' }).click();
     await expect(phone.getByText('Password changed. Sign in with your new password.')).toBeVisible();
     await expect(phone.getByLabel('Username')).toHaveValue(name);

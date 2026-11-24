@@ -74,6 +74,8 @@ export const AR: Record<string, string> = {
   'Username': 'اسم المستخدم',
   'Password': 'الباسورد',
   'Repeat password': 'اكتب الباسورد تاني',
+  'Type the same password again.': 'اكتب نفس الباسورد تاني.',
+  'Passwords match.': 'الباسوردين زي بعض.',
   'Show password': 'ورّيني الباسورد',
   'Hide password': 'خبّي الباسورد',
   'At least 8 characters.': '8 حروف على الأقل.',
