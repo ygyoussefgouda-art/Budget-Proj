@@ -493,6 +493,13 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   /* ring, soft fade above, and a solid block below that fills the sheet's bottom padding */
   box-shadow: 0 0 0 6px var(--card), 0 -10px 14px 4px var(--card), 0 calc(26px + var(--safe-b)) 0 14px var(--card);
 }
+/* 2.4.0 (critique P1): the reason a save was refused sits right above the pinned button, wherever the sheet is scrolled */
+.sheet form > .form-error {
+  position: sticky; bottom: 62px; z-index: 2;
+  margin: 0; padding: 8px 12px; border-radius: 12px;
+  background: color-mix(in srgb, var(--red) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  box-shadow: 0 -8px 12px 2px var(--card);
+}
 .sheet-handle { width: 40px; height: 4px; border-radius: 4px; background: var(--handle); margin: 4px auto 14px; }
 .sheet-title { font-size: 20px; margin-bottom: 14px; }
 .dialog { width: 100%; max-width: 380px; background: var(--card2); border-radius: 24px; padding: 22px; }
@@ -1014,14 +1021,25 @@ html { scrollbar-color: var(--field-line) transparent; scrollbar-width: thin; }
 .income-line:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .income-icon { flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--sand); color: var(--on-pastel); }
 .income-amount { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }.income-right { flex: none; display: grid; justify-items: end; gap: 2px; }
-/* 2.2.1: read alerts are quiet (grey), new ones keep their colour and a dot */
-.alert-banner.is-read { background: var(--card); border-color: var(--line); }
+/* 2.2.1 / 2.4.0: new alerts have a dot; read ones keep their colour while still serious */
 .alert-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .alert-read { flex: none; font-size: 12.5px; font-weight: 700; min-height: 32px; }
-.alert-item.is-seen { color: var(--mute); font-weight: 500; }
+.alert-item.is-seen { font-weight: 500; } /* read: same colour (how serious), lighter weight, no dot */
+.alert-item.is-more { color: var(--mute); font-weight: 500; }
 .alert-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 /* 2.3.0: admin area (gate, usage numbers) */
 .admin-lockbar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 6px 0 10px; }
 .stat { display: grid; gap: 2px; padding: 10px; border-radius: 14px; background: var(--press, rgba(127,127,127,.08)); }
 .stat-value { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+/* 2.4.0: what an expense does before it is saved */
+.impact-line { margin: -4px 0 0; padding: 10px 12px; border-radius: 12px; font-size: 13.5px; line-height: 1.45;
+  background: color-mix(in srgb, var(--accent) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); }
+.impact-line .impact-label { font-weight: 800; }
+.impact-line.is-over { background: color-mix(in srgb, var(--red) 11%, var(--card)); border-color: color-mix(in srgb, var(--red) 38%, transparent); color: var(--red); }/* 2.4.0: the rarer Add expense fields fold under this */
+.more-details { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 14px; border: 1px dashed var(--line);
+  border-radius: 16px; background: none; color: inherit; font: inherit; font-weight: 700; text-align: start; cursor: pointer; }
+.more-details:hover { background: var(--press); }
+.more-details:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.more-details svg { flex: none; color: var(--accent-text); }
+.more-details .tiny { font-weight: 500; }

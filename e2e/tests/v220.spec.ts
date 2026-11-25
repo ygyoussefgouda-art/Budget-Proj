@@ -59,7 +59,7 @@ test.describe('2.2.0: time on expenses, alerts open their cause, extra income, S
     await expect(page.locator('.list-item', { hasText: 'Bus to uni' })).toHaveCount(0);
   });
 
-  test('2.2.1: a read alert stops looking new; reaching the next level makes it new again', async ({ page }) => {
+  test('2.2.1/2.4.0: a read alert loses its dot and badge but keeps its colour; the next level is new again', async ({ page }) => {
     await setUpBudget(page); // Food: 1,500 EGP
     const add = async (amount: string, what: string) => {
       await tab(page, 'Expenses').click();
@@ -78,24 +78,28 @@ test.describe('2.2.0: time on expenses, alerts open their cause, extra income, S
     await tab(page, 'Home').click();
     await expect(banner).toHaveClass(/is-amber/);
     await expect(badge).toBeVisible();
-    // Reading it (here: "Mark as read") makes it quiet and clears the badge
+    await expect(banner).toHaveClass(/has-new/);
+    // Reading it (here: "Mark as read") clears the dot and the badge; amber stays while it is still close
     await banner.getByRole('button', { name: 'Mark as read' }).click();
-    await expect(banner).toHaveClass(/is-read/);
+    await expect(banner).not.toHaveClass(/has-new/);
+    await expect(banner).toHaveClass(/is-amber/);
     await expect(page.getByRole('link', { name: 'Budget', exact: true })).toBeVisible();
     await expect(banner.getByRole('button', { name: 'Mark as read' })).toHaveCount(0);
     // Still read after a reload
     await page.reload();
-    await expect(page.locator('.alert-banner')).toHaveClass(/is-read/);
+    await expect(page.locator('.alert-banner')).not.toHaveClass(/has-new/);
 
     // Going over budget is new: colour and badge come back; opening Budget reads it
     await add('300', 'Dinner out');
     await tab(page, 'Home').click();
     await expect(banner).toHaveClass(/is-red/);
+    await expect(banner).toHaveClass(/has-new/);
     await expect(badge).toBeVisible();
     await tab(page, 'Budget').click();
     await expect(page.getByRole('link', { name: 'Budget', exact: true })).toBeVisible();
     await tab(page, 'Home').click();
-    await expect(banner).toHaveClass(/is-read/);
+    await expect(banner).not.toHaveClass(/has-new/);
+    await expect(banner).toHaveClass(/is-red/); // still over budget, so still red
   });
 
   test('extra income adds to the month, shows in recent activity, and can be deleted with Undo', async ({ page }) => {

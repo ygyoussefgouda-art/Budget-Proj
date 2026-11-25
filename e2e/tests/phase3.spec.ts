@@ -18,6 +18,7 @@ test.describe('phase 3: tags, split, foreign currency, export', () => {
     let f = await openAdd(page);
     await f.getByLabel('Amount').fill('120');
     await f.getByLabel(/What for/).fill('Pizza');
+    await f.getByRole('button', { name: /More details/ }).click(); // 2.4.0: tags, split, receipt, currency fold away
     await f.getByLabel('Tags (optional)').fill('#Trip friends');
     await f.getByRole('button', { name: 'Add expense' }).click();
     await expect(f).toHaveCount(0);
@@ -25,6 +26,7 @@ test.describe('phase 3: tags, split, foreign currency, export', () => {
     await f.getByLabel('Amount').fill('30');
     await f.getByLabel(/What for/).fill('Bread');
     // tags used before are offered as chips
+    await f.getByRole('button', { name: /More details/ }).click();
     await f.getByRole('group', { name: 'Your tags' }).getByRole('button', { name: '#trip' }).click();
     await expect(f.getByLabel('Tags (optional)')).toHaveValue('#trip');
     await f.getByLabel('Tags (optional)').fill('#home');
@@ -52,6 +54,7 @@ test.describe('phase 3: tags, split, foreign currency, export', () => {
     const f = await openAdd(page);
     await f.getByLabel('Amount').fill('300');
     await f.getByLabel(/What for/).fill('Dinner');
+    await f.getByRole('button', { name: /More details/ }).click(); // 2.4.0: tags, split, receipt, currency fold away
     await f.getByText('Split with someone').click();
     await f.getByLabel('Split with', { exact: true }).fill('Omar');
     await expect(f.getByText('You pay 150 EGP · Omar owes you 150 EGP')).toBeVisible();
@@ -90,6 +93,7 @@ test.describe('phase 3: tags, split, foreign currency, export', () => {
 
   test('paid in another currency: converted at my rate, original shown on the row', async ({ page }) => {
     const f = await openAdd(page);
+    await f.getByRole('button', { name: /More details/ }).click(); // 2.4.0: tags, split, receipt, currency fold away
     await f.getByText('Paid in another currency').click();
     await f.getByLabel('Amount in USD').fill('10');
     await f.getByLabel('Rate: 1 USD = ? EGP').fill('49.5');

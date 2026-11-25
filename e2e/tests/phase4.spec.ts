@@ -4,7 +4,7 @@ import { setUpBudget, sheet, signIn, signUpAndSkipTutorial, tab } from './helper
 async function quickAdd(page: Page, amount: string, description: string) {
   await tab(page, 'Home').click();
   await page.getByRole('button', { name: 'New expense' }).click();
-  const f = sheet(page, 'Quick add');
+  const f = sheet(page, 'Add expense');
   await f.getByLabel('Amount').fill(amount);
   await f.getByLabel(/What for/).fill(description);
   await f.getByRole('button', { name: 'Add expense' }).click();
@@ -72,11 +72,11 @@ test.describe('phase 4: offline, shortcut, swipe, app lock', () => {
     await expect(page.locator('.list-item', { hasText: 'Metro ticket' })).toHaveCount(1, { timeout: 40_000 });
   });
 
-  test('home-screen shortcut opens Quick add; the manifest offers it', async ({ page, request }) => {
+  test('home-screen shortcut opens Add expense; the manifest offers it', async ({ page, request }) => {
     await signUpAndSkipTutorial(page);
     await setUpBudget(page);
     await page.goto('/?add=expense');
-    await expect(sheet(page, 'Quick add')).toBeVisible();
+    await expect(sheet(page, 'Add expense')).toBeVisible();
     await expect(page).toHaveURL(/\/$/); // the ?add= is cleaned up
     const manifest = await (await request.get('/manifest.webmanifest')).json();
     expect(manifest.shortcuts[0]).toMatchObject({ name: 'Add expense', url: '/?add=expense' });

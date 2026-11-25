@@ -147,15 +147,27 @@ export const parseNumOrZero = (s: string) => (s.trim() === '' ? 0 : parseNum(s))
 const whole = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const cents = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/**
+ * 2.4.0 (owner, after the critique): in Arabic, Arab currencies are written the Arabic way ("ج.م" for EGP).
+ * USD, EUR and GBP keep their codes. English is unchanged.
+ */
+const AR_CURRENCY: Record<string, string> = { EGP: 'ج.م', SAR: 'ر.س', AED: 'د.إ', KWD: 'د.ك', QAR: 'ر.ق', JOD: 'د.أ' };
+
+/** The currency as shown on screen: the Arabic abbreviation on Arabic (right-to-left) screens, else the code. */
+export const curLabel = (code: string) => (rtlPage() && AR_CURRENCY[code]) || code;
+
 export function fmtMoney(minor: number, cur: string): string {
   const neg = minor < 0;
   const a = Math.abs(minor);
   const s = a % 100 === 0 ? whole.format(a / 100) : cents.format(a / 100);
-  // A no-break space: "EGP" never wraps onto a line of its own (2.1.2).
-  const out = `${neg ? '−' : ''}${s}${cur ? ` ${cur}` : ''}`;
-  // 2.1.0: in Arabic (right-to-left) the browser drew "6,000 EGP" as "EGP 6,000" in some places and not
-  // in others. A left-to-right isolate keeps it "6,000 EGP" everywhere. English text is unchanged.
-  return rtlPage() ? `⁦${out}⁩` : out;
+  const label = cur ? curLabel(cur) : '';
+  // A no-break space: the currency never wraps onto a line of its own (2.1.2).
+  const out = `${neg ? '\u2212' : ''}${s}${label ? `\u00a0${label}` : ''}`;
+  if (!rtlPage()) return out;
+  // Right-to-left pages. A Latin code ("6,000 USD") goes in a left-to-right isolate (2.1.0: otherwise the
+  // browser sometimes drew "USD 6,000"). An Arabic one reads right to left like the sentence around it,
+  // amount first ("6,000 ج.م"), in a right-to-left isolate so neighbouring text can't reorder it.
+  return label !== cur ? `\u2067${out}\u2069` : `\u2066${out}\u2069`;
 }
 
 const rtlPage = () => typeof document !== 'undefined' && document.documentElement.dir === 'rtl';

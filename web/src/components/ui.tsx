@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Plus, Trash2, type LucideIcon } from 'lucide-react';
-import { evalMoney, fmtMoney, groupThousands, hasMaths, plain, ungroupThousands } from '../domain/money';
+import { curLabel, evalMoney, fmtMoney, groupThousands, hasMaths, plain, ungroupThousands } from '../domain/money';
 import Illustration from './Illustration';
 import { t } from '../i18n';
 
@@ -264,7 +264,7 @@ export function MoneyInput({
           }}
           placeholder="0"
         />
-        <span className="input-suffix">{suffix}</span>
+        <span className="input-suffix">{curLabel(suffix)}</span>
       </div>
       {maths && (
         <div className="calc-result" aria-live="polite">
@@ -309,8 +309,16 @@ export function Segmented<T extends string | boolean>({ value, options, onChange
   );
 }
 
+/**
+ * 2.4.0 (critique P1): errors are announced (role="alert") and, in a sheet, stick just above the pinned
+ * Save button, so a refused save never looks like a dead button with the reason scrolled out of view.
+ */
 export function FormError({ text }: { text: string | null }) {
-  return text ? <p className="form-error">{text}</p> : null;
+  return text ? (
+    <p className="form-error" role="alert">
+      {text}
+    </p>
+  ) : null;
 }
 
 export function SaveButton({ label, busy }: { label: string; busy: boolean }) {

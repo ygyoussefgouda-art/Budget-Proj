@@ -1,3 +1,4 @@
+import { curLabel } from '../domain/money';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
@@ -126,7 +127,7 @@ export default function Reports() {
           </table>
         </div>
       </Card>
-      <p className="tiny mute">{t('Amounts in {currency}.', { currency: user.currency })} {t('Income comes from the budget of each month. Months you never opened show a dash.')}</p>
+      <p className="tiny mute">{t('Amounts in {currency}.', { currency: curLabel(user.currency) })} {t('Income comes from the budget of each month. Months you never opened show a dash.')}</p>
     </div>
   );
 }

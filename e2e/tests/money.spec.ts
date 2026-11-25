@@ -29,6 +29,7 @@ test.describe('budget, expenses and receipts', () => {
     await f.getByLabel('Amount').fill('55');
     await f.getByLabel('Category').selectOption({ label: 'Food' });
     await f.getByLabel(/What for/).fill('Koshary');
+    await f.getByRole('button', { name: /More details/ }).click(); // 2.4.0: tags, split, receipt, currency fold away
     await f.locator('input[type=file]').setInputFiles(path.join(fixtures, 'receipt.png'));
     await expect(f.getByText('receipt.png')).toBeVisible();
     await f.getByRole('button', { name: 'Add expense' }).click();
@@ -79,6 +80,7 @@ test.describe('budget, expenses and receipts', () => {
     await tab(page, 'Expenses').click();
     await page.getByRole('button', { name: 'Add an expense' }).click();
     const f = sheet(page, 'Add expense');
+    await f.getByRole('button', { name: /More details/ }).click(); // 2.4.0: tags, split, receipt, currency fold away
     await f.locator('input[type=file]').setInputFiles(path.join(fixtures, 'not-a-receipt.txt'));
     await expect(f.getByText('Receipts must be a photo or a PDF.')).toBeVisible();
   });

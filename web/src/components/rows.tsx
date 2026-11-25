@@ -98,9 +98,10 @@ export function BudgetRowTile({ r, onClick }: { r: BudgetRow; onClick?: () => vo
  * Banner on Home and Budget: categories that used 80% of their budget or more (red at 100%).
  * Hidden when everything is fine. 2.2.0: each line is a button that opens what caused it: that
  * category's expenses this month. "And N more" opens Budget, where every category is listed.
- * 2.2.1: alerts already read (tapped, "Mark as read", or seen on Budget) turn grey and stop counting on
- * the Budget tab; the banner is only amber or red while something in it is new. `readOnView` (Budget):
- * opening the page reads them all, but this visit still shows which ones were new.
+ * 2.2.1: alerts already read (tapped, "Mark as read", or seen on Budget) stop counting on the Budget tab and lose
+ * their dot. 2.4.0 (owner, after the critique): reading never hides how serious it is: amber/red stay while the
+ * category is close to or over its budget. `readOnView` (Budget): opening the page reads them all, but this
+ * visit still shows which ones were new.
  */
 export function BudgetAlerts({ rows, readOnView = false }: { rows: BudgetRow[]; readOnView?: boolean }) {
   const { fmt, user, month } = useApp();
@@ -115,11 +116,11 @@ export function BudgetAlerts({ rows, readOnView = false }: { rows: BudgetRow[]; 
   }, [readOnView, alerts, markRead]);
   if (!alerts.length) return null;
   const fresh = alerts.filter(isNew);
-  // New ones first; within each group the usual order (worst first).
-  const ordered = [...fresh, ...alerts.filter((a) => !isNew(a))];
-  const red = fresh.some((a) => a.level !== 'warn');
-  const tone = fresh.length === 0 ? 'is-read' : red ? 'is-red' : 'is-amber';
-  const color = fresh.length === 0 ? 'var(--mute)' : red ? COLORS.red : COLORS.amber;
+  // Worst first (budgetAlerts' order). The colour says how serious; the dot says what is new.
+  const ordered = alerts;
+  const red = alerts.some((a) => a.level !== 'warn');
+  const tone = `${red ? 'is-red' : 'is-amber'}${fresh.length ? ' has-new' : ''}`;
+  const color = red ? COLORS.red : COLORS.amber;
   return (
     <div className={`alert-banner ${tone}`} role="status">
       <AlertTriangle size={18} style={{ color, flex: 'none', marginTop: 2 }} aria-hidden="true" />
@@ -142,7 +143,7 @@ export function BudgetAlerts({ rows, readOnView = false }: { rows: BudgetRow[]; 
                 <button
                   type="button"
                   className={`alert-item ${unread ? 'is-new' : 'is-seen'}`}
-                  style={{ color: unread ? (a.level === 'warn' ? COLORS.amber : COLORS.red) : undefined }}
+                  style={{ color: a.level === 'warn' ? COLORS.amber : COLORS.red }}
                   onClick={() => {
                     markRead([a]);
                     nav(`/expenses?cat=${a.catId}`);
@@ -158,7 +159,7 @@ export function BudgetAlerts({ rows, readOnView = false }: { rows: BudgetRow[]; 
           })}
           {alerts.length > 4 && (
             <li>
-              <button type="button" className="alert-item is-seen" onClick={() => nav('/budget')}>
+              <button type="button" className="alert-item is-more" onClick={() => nav('/budget')}>
                 <span className="grow">{t('and {n} more', { n: alerts.length - 4 })}</span>
                 <ChevronRight size={16} className="flip-rtl" aria-hidden="true" />
               </button>

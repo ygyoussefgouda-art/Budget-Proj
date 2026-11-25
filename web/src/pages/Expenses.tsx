@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, Camera, CopyPlus, Download, FileText, Image as ImageIcon, Paperclip, Repeat, Search, X } from 'lucide-react';
+import { CalendarDays, Camera, ChevronDown, CopyPlus, Download, FileText, Image as ImageIcon, Paperclip, Repeat, Search, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, receiptUrl, saveWithConfirm, uploadReceipt } from '../api';
@@ -26,7 +26,7 @@ import {
   SectionTitle,
   Segmented,
 } from '../components/ui';
-import { convert, parseTags, periodRange, splitShares, type Expense } from '../domain/calc';
+import { convert, inMonth, parseTags, periodRange, splitShares, type Expense } from '../domain/calc';
 import { haptic, isNative, nativeReceiptPhoto } from '../native';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { fmtMoney, parseMoney, parseRate, plain } from '../domain/money';
@@ -491,8 +491,35 @@ function NewCategory({ month, open: startOpen = false, onCreated }: { month: str
 }
 
 /**
- * Add or edit an expense. `quick` is the short version opened from the "+" on Home:
- * dated today, no receipt field.
+ * 2.4.0 (critique: a big expense saved with no warning): what this expense does before it is saved.
+ * "After this: Food has 115 EGP left" or "…is 12,385 EGP over budget", and what is left of the month.
+ * Only for the budget month on screen; an edit counts without its old amount.
+ */
+function ImpactLine({ catId, amount, date, edit }: { catId: number; amount: number | null; date: string; edit?: Expense }) {
+  const { summary: s, month, startDay, fmt, data } = useApp();
+  if (!s || !amount || amount <= 0 || !inMonth(date, month, startDay)) return null;
+  const before = edit && inMonth(edit.date, month, startDay) ? edit : undefined;
+  const row = s.rows.find((r) => r.catId === catId);
+  const name = data?.categories.find((c) => c.id === catId)?.name ?? '';
+  const catLeft = row ? row.planned - row.actual + (before?.categoryId === catId ? before.amount : 0) - amount : null;
+  const monthLeft = s.moneyLeft + (before?.amount ?? 0) - amount;
+  const parts: string[] = [];
+  if (row && row.planned > 0 && catLeft !== null) {
+    parts.push(catLeft >= 0 ? t('{name} has {amount} left', { name, amount: fmt(catLeft) }) : t('{name} is {amount} over budget', { name, amount: fmt(-catLeft) }));
+  }
+  if (s.income > 0) parts.push(monthLeft >= 0 ? t('{amount} left this month', { amount: fmt(monthLeft) }) : t('{amount} over for the month', { amount: fmt(-monthLeft) }));
+  if (!parts.length) return null;
+  const over = (catLeft !== null && row && row.planned > 0 && catLeft < 0) || monthLeft < 0;
+  return (
+    <p className={`impact-line ${over ? 'is-over' : ''}`} aria-live="polite">
+      <span className="impact-label">{t('After this:')}</span> {parts.join(' · ')}
+    </p>
+  );
+}
+
+/**
+ * Add or edit an expense: the same form everywhere (2.4.0). `quick` (the centre + and Home) only means
+ * it starts on today instead of the month on screen.
  */
 export function ExpenseForm({
   edit,
@@ -526,7 +553,9 @@ export function ExpenseForm({
   const [fxAmount, setFxAmount] = useState(src?.foreign ? plain(src.foreign.amount) : '');
   const [fxCurrency, setFxCurrency] = useState(src?.foreign?.currency ?? CURRENCIES.find((c) => c !== user.currency) ?? 'USD');
   const [fxRate, setFxRate] = useState(src?.foreign ? String(src.foreign.rate) : '');
-  const knownTags = useQuery({ queryKey: ['tags'], queryFn: () => api<{ tag: string; count: number }[]>('/tags'), enabled: !quick, staleTime: 60_000 });
+  // 2.4.0: tags, split, receipt and another currency fold under "More details" (open when this expense uses one).
+  const [more, setMore] = useState(() => !!(src && ((src.tags?.length ?? 0) > 0 || src.split || src.foreign || edit?.hasReceipt)));
+  const knownTags = useQuery({ queryKey: ['tags'], queryFn: () => api<{ tag: string; count: number }[]>('/tags'), enabled: more, staleTime: 60_000 });
   const [catId, setCatId] = useState<number>(
     (src && cats.some((c) => c.id === src.categoryId) ? src.categoryId : undefined) ?? lastCategory(user, cats.map((c) => c.id)) ?? cats[0]?.id ?? 0,
   );
@@ -683,12 +712,6 @@ export function ExpenseForm({
           <MoneyInput value={amount} onChange={setAmount} suffix={user.currency} autoFocus={!edit && !copy} calc />
         </Field>
       )}
-      {!quick && (
-        <label className="check">
-          <input type="checkbox" checked={fxOn} onChange={(e) => setFxOn(e.target.checked)} />
-          <span>{t('Paid in another currency')}</span>
-        </label>
-      )}
       <Field label={t('Category')}>
         <select className="input" value={catId} onChange={(e) => setCatId(Number(e.target.value))}>
           {cats.map((c) => (
@@ -698,6 +721,7 @@ export function ExpenseForm({
           ))}
         </select>
       </Field>
+      <ImpactLine catId={catId} amount={shares ? shares.mine : total} date={date} edit={edit} />
       <NewCategory month={month} onCreated={setCatId} />
       <Field label={t('What for? (optional)')}>
         <input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={200} />
@@ -724,7 +748,23 @@ export function ExpenseForm({
         <input type="time" className="input time-input" dir="ltr" value={time} onChange={(e) => setTime(e.target.value)} />
       </Field>
 
-      {!quick && (
+      {/* 2.4.0 (critique: two different add sheets): one form everywhere; the rarer parts fold away here */}
+      {!more ? (
+        <button type="button" className="more-details" aria-expanded={false} onClick={() => setMore(true)}>
+          <ChevronDown size={18} aria-hidden="true" />
+          <span className="grow">
+            {t('More details')}
+            <span className="tiny mute block">{t('Tags, split with someone, receipt, another currency')}</span>
+          </span>
+        </button>
+      ) : (
+        <label className="check">
+          <input type="checkbox" checked={fxOn} onChange={(e) => setFxOn(e.target.checked)} />
+          <span>{t('Paid in another currency')}</span>
+        </label>
+      )}
+
+      {more && (
         <>
           <Field label={t('Tags (optional)')} hint={t('Up to 5, like #trip #friends. Tap one below to add it.')}>
             <input className="input" dir="auto" value={tagText} onChange={(e) => setTagText(e.target.value)} placeholder={t('#trip #friends')} autoCapitalize="none" />
@@ -783,7 +823,7 @@ export function ExpenseForm({
         </>
       )}
 
-      {!quick && (
+      {more && (
       <div className="field">
         <span className="field-label">{t('Receipt (optional)')}</span>
         <input

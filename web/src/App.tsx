@@ -2,13 +2,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Home, LayoutGrid, PieChart, Plus, ReceiptText } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import PullToRefresh from './components/PullToRefresh';
-import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { api, ApiError } from './api';
 import { AppLock } from './components/AppLock';
 import OfflineApp from './components/OfflineApp';
 import Splash, { SplashExit } from './components/Splash';
 import { OfflineBar, OfflineProvider } from './components/OfflineQueue';
 import Tutorial from './components/Tutorial';
+import { AddExpenseProvider, useAddExpense } from './components/AddExpense';
 import { useReminders } from './notify';
 import { FirstRunPermissions } from './pages/Permissions';
 import { budgetAlerts, dailyAllowance, periodRange } from './domain/calc';
@@ -155,6 +156,7 @@ function Shell() {
   if (loading && !data) return <Splash />;
   if (error && !data) return <Splash text={error.message} retry={() => void refresh()} />;
   return (
+    <AddExpenseProvider>
     <div className="shell">
       <ScrollToTop />
       <SplashExit />
@@ -186,17 +188,18 @@ function Shell() {
         <Tab to="/more" icon={LayoutGrid} label={t('More')} also={MORE_PATHS} />
       </nav>
     </div>
+    </AddExpenseProvider>
   );
 }
 
 /** Pages reached from More: the More tab stays highlighted on them. */
 const MORE_PATHS = ['/savings', '/loans', '/reports', '/settings', '/admin'];
 
-/** The raised + in the middle of the bar: quick add an expense from any tab (opens it on Home). */
+/** The raised + in the middle of the bar: add an expense from any tab, right where you are (2.4.0). */
 function CenterAdd() {
-  const nav = useNavigate();
+  const add = useAddExpense();
   return (
-    <button type="button" className="tab-add" aria-label={t('New expense')} title={t('New expense')} onClick={() => nav('/?add=expense')}>
+    <button type="button" className="tab-add" aria-label={t('New expense')} title={t('New expense')} onClick={add}>
       <Plus size={26} strokeWidth={2.6} aria-hidden="true" />
     </button>
   );

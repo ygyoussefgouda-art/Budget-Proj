@@ -181,7 +181,7 @@ test.describe('accounts', () => {
     // Step 6: log the first expense; the tour ends on Home with quick add open
     await expect(dlg.getByText('Step 6 of 6')).toBeVisible();
     await dlg.getByRole('button', { name: 'Log an expense' }).click();
-    await expect(page.getByRole('dialog', { name: 'Quick add' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Add expense' })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByText('Your budget left').locator('..')).toContainText('4,500 EGP');
 

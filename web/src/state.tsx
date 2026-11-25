@@ -215,6 +215,11 @@ export function AppStateProvider({ user, children }: { user: User; children: Rea
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
+/** The app state when inside the signed-in app, else null (e.g. the offline entry screen). */
+export function useAppOptional() {
+  return useContext(Ctx);
+}
+
 export function useApp() {
   const v = useContext(Ctx);
   if (!v) throw new Error('useApp outside provider');

@@ -102,7 +102,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `pages/`: `Dashboard`, `Budget`, `Expenses` (largest), `Loans`, `Savings` (+ GoalDetail), `Reports`, `Settings`, `Admin`, `Login`, `More` (2.0.0: the More tab, links to Savings, Loans, Reports, Settings).
 `Permissions` (first-run permissions screen, Android app only).
 
-`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Brand` (the "Masrofy"/"مصروفي" logo text + `BrandMark`), `Illustration` (2.0.0 line drawings for empty states), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `CategoryIcon` (category icon/colour badge + picker), `PullToRefresh`, `BudgetForms`, `IncomeSheet` (2.2.0: `IncomePanel` = monthly + extra income, `IncomeForm`),
+`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Brand` (the "Masrofy"/"مصروفي" logo text + `BrandMark`), `Illustration` (2.0.0 line drawings for empty states), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `CategoryIcon` (category icon/colour badge + picker), `PullToRefresh`, `BudgetForms`, `IncomeSheet` (2.2.0: `IncomePanel` = monthly + extra income, `IncomeForm`), `AddExpense` (2.4.0: the one Add expense sheet, `useAddExpense`),
 `charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour, 5 steps since 2.1.1; saves payday via `MonthStartPicker` and income via `saveBudget` from `BudgetForms`), `AppLock` +
 `AppLockSettings`, `OfflineApp` + `OfflineQueue`, `ExportLinks`, `MonthStartPicker`, `ContactCard` (contact email constant),
 `PasswordRules` (live new-password checklist, `newPasswordError`), `ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).
@@ -112,7 +112,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `gestures.ts` (swipe thresholds) + `phone.test.ts`.
 
 ## E2E (`e2e/`)
-`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety`, `email`, `phase6`, `android`, `twofactor`, `onboarding`, `v220` (2.2.0), `v230` (2.3.0 thousands separators) specs (emails read from `e2e/mail-outbox`), `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
+`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety`, `email`, `phase6`, `android`, `twofactor`, `onboarding`, `v220` (2.2.0), `v230` (2.3.0 thousands separators), `v240` (2.4.0 critique fixes) specs (emails read from `e2e/mail-outbox`), `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
 
 ## Mobile (`mobile/`)
 | Path | Purpose |

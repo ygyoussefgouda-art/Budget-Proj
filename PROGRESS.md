@@ -3,7 +3,7 @@
 Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (say why).
 Update at the end of every session. Phases come from `HANDOFF.md` §4.
 
-**Current version:** Masrofy MK1 (2.3.0) · **Current phase:** all HANDOFF phases built; left: things only the owner can do (phone test, signing key, VPS setup, LICENSE) · **Last updated:** 2026-11-22
+**Current version:** Masrofy MK1 (2.4.0) · **Current phase:** all HANDOFF phases built; left: things only the owner can do (phone test, signing key, VPS setup, LICENSE) · **Last updated:** 2026-11-22
 
 ## Phase 0: Hand-off setup
 - [-] Clone repo, branch `phase-0-handoff`: worked on `main` in the existing checkout; the owner commits/pushes only when they say so (see `MEMORY.md`)
@@ -94,6 +94,14 @@ Phase 1 test results: see the Log below.
 - 2026-11-21: Review of alpha 0.5.6 done; hand-off files written; gaps re-prioritised for a personal sideloaded Android app.
 - 2026-11-21: Phase 0 + Phase 1 done → alpha 0.6.0 (committed `e83525e`, CI green).
 - 2026-11-21: alpha 0.6.2 polish: erase/restore need the password; offline retries answered before caps (and "deleted" items not revived); receipt quota counts the Undo trash and locks; undo checks the quota; backup download is one snapshot; error logs drop DB row details; housekeeping clears expired sessions/codes and old audit entries (`AUDIT_KEEP_DAYS`); overpaid people don't lower loan totals; no duplicate category on retry; month-start change refreshes every report; no lock after camera/file picker; account deletion clears the offline queue; service worker precaches the build (opens offline after first visit) with a per-build cache; "new version" only for a newer server; focus handling in sheets/dialogs; Budget menu closes on tap outside; loading/error states; missing translations; RTL minus in KV rows; tutorial tips; `.gitignore` keystores; README/CODEMAP/CLAUDE fixes. New `server/test/security.test.ts` (10: cross-account, untested routes, offline, quota, housekeeping, headers, CSRF).
+- 2026-11-25: **2.4.0 critique fixes** (Impeccable whole-app critique 27/40, `.impeccable/critique/`; owner chose all 5, read alerts keep their colour, ج.م in Arabic):
+  - Form errors are `role="alert"` and, in sheets, stick right above the pinned Save button (the Add expense error used to be off screen).
+  - Budget alerts keep amber/red while the category is still close/over; reading only clears the dot and the badge (`has-new` class).
+  - One colour per category everywhere: its own colour, else the pastel for its place in the list (`categoryColor` / `useCategoryColor` in CategoryIcon.tsx); Home "Where it went" and the Reports ring use it.
+  - "After this:" line in Add expense: what the expense does to its category and the month, before saving (`ImpactLine`).
+  - One Add expense sheet (`AddExpenseProvider` in components/AddExpense.tsx) opened in place by the centre +, Home's Expense action and `/?add=expense`; tags, split, receipt and another currency fold under "More details" (open when the expense already uses one).
+  - Arabic screens write Arab currencies the Arabic way (EGP → ج.م) via `curLabel` in money.ts, in a right-to-left isolate; English and USD/EUR/GBP unchanged.
+  - Tests: `e2e/tests/v240.spec.ts` (4); tests open "More details" where needed; sheet title "Add expense".
 - 2026-11-25: **2.3.0 gated admin area + security fixes** (owner: only the account with ygyoussefgouda@gmail.com is admin; 2FA + re-unlock; accounts, active users, Android vs browser):
   - `ADMIN_EMAIL`: exactly one admin; `owner`/`ADMIN_USERNAMES` give nothing then; the email can't be used by sign-up or another account. Admin pages answer 404 to everyone else. The admin area needs two-step sign-in + password + code, open 15 min per session (`sessions.admin_until`), "Lock now", audit of unlocks and failed tries. Migration `013_admin_gate_activity`.
   - Usage counts (`activity_days`, one row per account per UTC day, app/browser): accounts, new this week/month, sign-ups per month, active today/7/30 days, daily chart, Android app vs browser. Kept 400 days.

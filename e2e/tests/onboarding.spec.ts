@@ -7,7 +7,7 @@ test.describe('2.1.0: a new account can log its first expense', () => {
     await signUpAndSkipTutorial(page);
     await tab(page, 'Home').click();
     await page.getByRole('button', { name: 'New expense' }).click();
-    const f = sheet(page, 'Quick add');
+    const f = sheet(page, 'Add expense');
     await expect(f.getByText('Name your first spending category')).toBeVisible();
     await f.getByLabel('New category name').fill('Coffee');
     await f.getByRole('button', { name: 'Add', exact: true }).click();

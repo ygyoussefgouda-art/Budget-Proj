@@ -1171,6 +1171,14 @@ export const AR: Record<string, string> = {
   'Income not found.': 'الدخل ده مش موجود.',
   // 2.2.1: read alerts
   'Mark as read': 'اتقرا',
+  // 2.4.0: critique fixes
+  'After this:': 'بعد ده:',
+  'More details': 'تفاصيل أكتر',
+  'Tags, split with someone, receipt, another currency': 'وسوم، تقسيم مع حد، إيصال، عملة تانية',
+  '{name} has {amount} left': 'فاضل في {name} {amount}',
+  '{name} is {amount} over budget': '{name} هيعدّي الميزانية بـ {amount}',
+  '{amount} left this month': 'فاضل {amount} الشهر ده',
+  '{amount} over for the month': 'هتعدّي الشهر بـ {amount}',
   // 2.3.0: gated admin area, usage numbers, security fixes
   'The admin area needs two-step sign-in. Turn it on in Settings, then come back.': 'صفحة الأدمن محتاجة الدخول بخطوتين. شغّله من الإعدادات وارجع.',
   'Open Settings': 'افتح الإعدادات',

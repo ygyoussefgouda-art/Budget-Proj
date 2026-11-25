@@ -7,11 +7,13 @@ import { wholeUnits } from '../domain/money';
 import { isRtl, locale, t } from '../i18n';
 import { monthLabel, shiftMonth, thisMonth, useApp } from '../state';
 import { Bars, Donut } from './charts';
-import { Card, COLORS, Empty, PALETTE, SectionTitle } from './ui';
+import { useCategoryColor } from './CategoryIcon';
+import { Card, COLORS, Empty, SectionTitle } from './ui';
 
 /** The ring of this budget month's spending by category (moved here from Home in 2.1.0). */
 export function WhereItWent() {
   const { summary, fmt, month } = useApp();
+  const colorOf = useCategoryColor();
   if (!summary) return null;
   const slices = summary.rows.filter((r) => r.catId !== null && r.actual > 0).sort((a, b) => b.actual - a.actual);
   const total = slices.reduce((s, r) => s + r.actual, 0);
@@ -23,15 +25,15 @@ export function WhereItWent() {
       ) : (
         <>
           <div className="ring-wrap">
-            <Donut values={slices.map((x) => x.actual)} colors={PALETTE} size={176} thickness={26}>
+            <Donut values={slices.map((x) => x.actual)} colors={slices.map((x) => colorOf({ id: x.catId ?? undefined, name: x.name }))} size={176} thickness={26}>
               <strong className="donut-total">{fmt(total)}</strong>
               <span className="tiny mute">{t('Spent')}</span>
             </Donut>
           </div>
           <ul className="legend">
-            {slices.map((x, i) => (
+            {slices.map((x) => (
               <li key={x.catId}>
-                <span className="dot" style={{ background: PALETTE[i % PALETTE.length] }} />
+                <span className="dot" style={{ background: colorOf({ id: x.catId ?? undefined, name: x.name }) }} />
                 <span className="grow ellipsis">{x.name}</span>
                 <span className="legend-pct">{Math.round((x.actual / total) * 100)}%</span>
                 <strong className="legend-amount">{fmt(x.actual)}</strong>
