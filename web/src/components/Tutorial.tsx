@@ -103,13 +103,22 @@ export default function Tutorial() {
   const last = i === STEPS.length - 1;
 
   useEffect(() => {
+    // Replaying the tour starts clean: no PIN or error left from last time.
     const show = () => {
       setI(0);
+      setErr(null);
+      setPin('');
+      setPin2('');
       setOpen(true);
     };
     window.addEventListener(EVENT, show);
     return () => window.removeEventListener(EVENT, show);
   }, []);
+
+  // The lock may have been turned on or off in Settings since: read it each time the lock step shows.
+  useEffect(() => {
+    if (open && s.kind === 'lock') setLocked(!!readLock(user.id));
+  }, [open, s.kind, user.id]);
 
   // Every step happens over Home.
   useEffect(() => {
@@ -135,6 +144,24 @@ export default function Tutorial() {
       document.body.classList.remove('tutorial-nav', 'no-scroll');
     };
   }, [open, s.kind]);
+
+  // On close, put focus back where it was (or on the first control of the page) instead of leaving it on
+  // <body>. Runs after the effect above has removed `inert`, and never takes focus from a sheet that opened.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.activeElement as HTMLElement | null;
+    return () => {
+      setTimeout(() => {
+        const now = document.activeElement;
+        if (now && now !== document.body) return;
+        const target =
+          prev && prev !== document.body && prev.isConnected
+            ? prev
+            : document.querySelector<HTMLElement>('main button, main a[href]');
+        target?.focus({ preventScroll: true });
+      }, 0);
+    };
+  }, [open]);
 
   // Each new step: focus the card (its live region reads "Step n of 5" and the title).
   useEffect(() => {
@@ -191,6 +218,14 @@ export default function Tutorial() {
     setI(to);
   };
 
+  // The arrow keys move like Back / Next, so leaving the income or lock step still saves what was typed.
+  const stepBy = useRef<(d: number) => void>(() => {});
+  stepBy.current = (d) => {
+    const to = i + d;
+    if (busy || to < 0 || to > STEPS.length - 1) return;
+    void go(to);
+  };
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -201,8 +236,8 @@ export default function Tutorial() {
       if (e.key === 'Escape') setOpen(false);
       const fwd = isRtl() ? 'ArrowLeft' : 'ArrowRight';
       const back = isRtl() ? 'ArrowRight' : 'ArrowLeft';
-      if (e.key === fwd && !last) setI((v) => Math.min(STEPS.length - 1, v + 1));
-      if (e.key === back) setI((v) => Math.max(0, v - 1));
+      if (e.key === fwd && !last) stepBy.current(1);
+      if (e.key === back) stepBy.current(-1);
       // Keep Tab inside the card.
       if (e.key === 'Tab' && card.current) {
         const f = [...card.current.querySelectorAll<HTMLElement>('button:not(:disabled), input, [tabindex="0"]')];

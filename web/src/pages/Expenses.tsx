@@ -420,6 +420,8 @@ function NewCategory({ month, open: startOpen = false, onCreated }: { month: str
   const [name, setName] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Set at once (state only changes on the next render), so a quick double Enter sends one request.
+  const sending = useRef(false);
   if (!open) {
     return (
       <button type="button" className="link-btn new-cat-btn" onClick={() => setOpen(true)}>
@@ -430,6 +432,8 @@ function NewCategory({ month, open: startOpen = false, onCreated }: { month: str
   const add = async () => {
     const n = name.trim();
     if (!n) return setErr(t('Enter a name.'));
+    if (sending.current) return;
+    sending.current = true;
     setBusy(true);
     setErr(null);
     try {
@@ -441,6 +445,7 @@ function NewCategory({ month, open: startOpen = false, onCreated }: { month: str
     } catch (x) {
       setErr((x as Error).message);
     }
+    sending.current = false;
     setBusy(false);
   };
   return (

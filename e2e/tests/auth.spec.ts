@@ -196,6 +196,44 @@ test.describe('accounts', () => {
     await expect(page.getByText('Step 1 of 6')).toHaveCount(0); // finished: not shown again
   });
 
+  test('tour: arrow keys save, focus comes back, a replay reads the lock again', async ({ page }) => {
+    await signUp(page);
+    const dlg = page.getByRole('dialog');
+    const next = dlg.getByRole('button', { name: 'Next' });
+    await next.click();
+    await next.click();
+
+    // The arrow key leaves the income and lock steps like Next does: what was typed is saved
+    await dlg.getByLabel(/Income for/).fill('3000');
+    await next.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(dlg.getByText('Lock the app with a PIN')).toBeVisible();
+    await dlg.getByLabel('PIN (4–6 digits)').fill('1357');
+    await dlg.getByLabel('Repeat the PIN').fill('1357');
+    await next.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(dlg.getByText('Where things are')).toBeVisible();
+
+    // Skip: focus goes back to the page, not to <body>
+    await dlg.getByRole('button', { name: 'Skip' }).click();
+    await expect(dlg).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+    await expect(page.getByText('Your budget left').locator('..')).toContainText(/3,000\sEGP/);
+
+    // The lock is on; turn it off in Settings, then replay the tour: the lock step asks for a PIN again
+    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Turn off app lock' }).click();
+    const off = page.getByRole('dialog', { name: 'Turn off app lock' });
+    await off.getByLabel('Current PIN').fill('1357');
+    await off.getByRole('button', { name: 'Turn off' }).click();
+    await expect(off).toHaveCount(0);
+    await page.getByRole('button', { name: 'Show the tutorial again' }).click();
+    for (let n = 0; n < 3; n++) await next.click();
+    await expect(dlg.getByText('Lock the app with a PIN')).toBeVisible();
+    await expect(dlg.getByText('App lock is on.')).toHaveCount(0);
+    await expect(dlg.getByLabel('PIN (4–6 digits)')).toHaveValue('');
+  });
+
   test('the tour card fits a small phone: Skip and the buttons stay on screen', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 600 });
     await signUp(page);
