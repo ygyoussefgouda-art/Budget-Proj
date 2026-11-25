@@ -500,7 +500,13 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
   background: color-mix(in srgb, var(--red) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
   box-shadow: 0 -8px 12px 2px var(--card);
 }
-.sheet-handle { width: 40px; height: 4px; border-radius: 4px; background: var(--handle); margin: 4px auto 14px; }
+/* 2.4.1: the top of a sheet (handle + title) can be pulled down to close it; the handle is also a Close button */
+.sheet-grab { touch-action: none; cursor: grab; margin: -10px -24px 0; padding: 0 24px; user-select: none; -webkit-user-select: none; }
+.sheet-grab:active { cursor: grabbing; }
+.sheet-handle { position: relative; display: block; width: 100%; height: 30px; margin: 0 0 4px; padding: 0; border: 0; background: none; cursor: inherit; border-radius: 12px; }
+.sheet-handle::before { content: ''; position: absolute; top: 13px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 4px; background: var(--handle); }
+.sheet-handle:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; }
+.sheet { transition: transform .22s cubic-bezier(.2, .8, .2, 1); }
 .sheet-title { font-size: 20px; margin-bottom: 14px; }
 .dialog { width: 100%; max-width: 380px; background: var(--card2); border-radius: 24px; padding: 22px; }
 .dialog h3 { font-size: 18px; margin-bottom: 8px; }

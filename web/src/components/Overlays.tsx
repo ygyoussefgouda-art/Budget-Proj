@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import type { ConfirmFn } from '../api';
 import { t } from '../i18n';
@@ -57,6 +57,10 @@ function useLayer(ref: RefObject<HTMLElement | null>, active: boolean, onEscape:
 
 // ---------- bottom sheet ----------
 
+/** Pulled down this far (px), or flicked faster than this (px/ms), the sheet closes. */
+const SHEET_CLOSE_PX = 90;
+const SHEET_CLOSE_SPEED = 0.6;
+
 export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayer(ref, open, onClose);
@@ -65,12 +69,71 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
     document.body.classList.add('no-scroll');
     return () => document.body.classList.remove('no-scroll');
   }, [open]);
+
+  // 2.4.1 (owner: "I can't pull the tab"): the handle and title drag the sheet down, like a phone's own
+  // sheets. It follows the finger; far enough or a quick flick closes it, otherwise it springs back.
+  const [dy, setDy] = useState(0);
+  const drag = useRef<{ y: number; t: number; moved: boolean; onHandle: boolean } | null>(null);
+  useEffect(() => {
+    if (!open) setDy(0);
+  }, [open]);
+  const onDown = (e: RPointerEvent) => {
+    if (e.button !== 0) return;
+    drag.current = { y: e.clientY, t: performance.now(), moved: false, onHandle: !!(e.target as HTMLElement).closest('.sheet-handle') };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId); // keep following the finger outside the handle
+    } catch {
+      /* not a real pointer (tests): moves still arrive while over the handle */
+    }
+  };
+  const onMove = (e: RPointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const dist = e.clientY - d.y;
+    if (Math.abs(dist) > 4) d.moved = true;
+    setDy(Math.max(0, dist));
+  };
+  const onUp = (e: RPointerEvent) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    const dist = Math.max(0, e.clientY - d.y);
+    const speed = dist / Math.max(1, performance.now() - d.t);
+    // A tap (no movement) on the handle closes as well.
+    if (dist > SHEET_CLOSE_PX || (d.moved && speed > SHEET_CLOSE_SPEED) || (!d.moved && d.onHandle)) onClose();
+    else setDy(0);
+  };
+  const onCancel = () => {
+    drag.current = null;
+    setDy(0);
+  };
+
   if (!open) return null;
+  const dragging = drag.current !== null;
   return createPortal(
-    <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} className="sheet" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
-        <div className="sheet-handle" />
-        <h2 className="sheet-title">{title}</h2>
+    <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()} style={dy ? { opacity: Math.max(0.35, 1 - dy / 400) } : undefined}>
+      <div
+        ref={ref}
+        className="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        style={dy || dragging ? { transform: `translateY(${dy}px)`, transition: dragging ? 'none' : undefined } : undefined}
+      >
+        <div className="sheet-grab" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}>
+          {/* The handle is the sheet's visible, labelled close control: tap, drag down, or Enter. */}
+          <button
+            type="button"
+            className="sheet-handle"
+            aria-label={t('Close')}
+            // Pointer taps are handled above; this is the keyboard (Enter / Space).
+            onClick={(e) => {
+              if (e.detail === 0) onClose();
+            }}
+          />
+          <h2 className="sheet-title">{title}</h2>
+        </div>
         {children}
       </div>
     </div>,

@@ -44,6 +44,32 @@ test.describe('2.4.0: critique fixes', () => {
     await expect(f.getByText('Paid in another currency')).toBeVisible();
   });
 
+  test('2.4.1: a sheet can be pulled down by its handle to close; a short pull springs back', async ({ page }) => {
+    await page.getByRole('button', { name: 'New expense' }).click();
+    const f = sheet(page, 'Add expense');
+    const handle = f.getByRole('button', { name: 'Close' });
+    const box = (await handle.boundingBox())!;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    // A slow, short pull: springs back
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y + 40, { steps: 20 });
+    await page.waitForTimeout(400);
+    await page.mouse.up();
+    await expect(f).toBeVisible();
+    // Pulled far enough: closes
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x, y + 200, { steps: 20 });
+    await page.mouse.up();
+    await expect(f).toHaveCount(0);
+    // A tap on the handle closes too
+    await page.getByRole('button', { name: 'New expense' }).click();
+    await sheet(page, 'Add expense').getByRole('button', { name: 'Close' }).click();
+    await expect(sheet(page, 'Add expense')).toHaveCount(0);
+  });
+
   test('Arabic writes the currency as ج.م', async ({ page }) => {
     await tab(page, 'Settings').click();
     await page.getByRole('tab', { name: 'عربي' }).click();
