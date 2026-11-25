@@ -59,6 +59,25 @@ export const clearOfflineCache = async (): Promise<void> => {
   await idbPersister.removeClient();
 };
 
+/** 2.3.0: whose data the offline copy holds (account id), or null when nobody is signed in. */
+const OWNER_KEY = 'bm-cache-owner';
+export function readCacheOwner(): number | null {
+  try {
+    const v = localStorage.getItem(OWNER_KEY);
+    return v ? Number(v) : null;
+  } catch {
+    return null;
+  }
+}
+export function writeCacheOwner(id: number | null) {
+  try {
+    if (id === null) localStorage.removeItem(OWNER_KEY);
+    else localStorage.setItem(OWNER_KEY, String(id));
+  } catch {
+    /* private mode: the copy is cleared on every start anyway */
+  }
+}
+
 /**
  * Keep the offline copy for up to 7 days. (Also used as React Query's gcTime, which is a timer:
  * browsers cap timers at about 24.8 days, and a longer one fires at once and drops the data.)

@@ -25,6 +25,28 @@ function norm(s: string): string {
   return t.replace(/,/g, '');
 }
 
+/**
+ * 2.3.0 (owner): what an amount field shows while typing: "1000" → "1,000", "250000.5" → "250,000.5".
+ * Only plain amounts of 4+ whole digits (no maths, no Arabic digits, no leading zero); a decimal comma is
+ * shown as a dot then. Anything else is shown exactly as typed. The stored text never has these commas.
+ */
+export function groupThousands(raw: string): string {
+  const m = /^(\d+)(?:([.,])(\d{0,2}))?$/.exec(raw);
+  if (!m || m[1].length < 4 || m[1].startsWith('0')) return raw;
+  return m[1].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (m[2] ? `.${m[3]}` : '');
+}
+
+/**
+ * Back from what was typed into a grouped field to the plain text: our commas go. A comma typed at the end
+ * of a grouped amount ("1,000," on a phone keyboard) is the decimal point. Fields that weren't grouped keep
+ * the user's own commas ("12,50" stays a decimal comma; "1,250" typed by hand still means 1250).
+ */
+export function ungroupThousands(typed: string, wasGrouped: boolean): string {
+  if (!wasGrouped) return typed;
+  if (typed.endsWith(',') && !typed.includes('.')) return `${typed.slice(0, -1).replace(/,/g, '')}.`;
+  return typed.replace(/,/g, '');
+}
+
 /** An exchange rate ("49.5", "49,5", "٤٩٫٥"). Rates never use thousands separators, so a comma is a decimal point. */
 export function parseRate(s: string): number | null {
   let t = digits(s);

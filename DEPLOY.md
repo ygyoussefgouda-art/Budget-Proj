@@ -271,6 +271,19 @@ removing an account (type its username + your password), and **password reset co
 Every admin action is written to an activity log on that page.
 **Turn on two-step sign-in for every admin account** (Settings → Two-step sign-in, any free authenticator app); the Admin page reminds you until it's on.
 
+**Recommended (2.3.0): one admin, by email.** Put the email of your own account in `.env` as
+`ADMIN_EMAIL=you@example.com`, then `docker compose up -d`. Then:
+- only the account with that email is an admin; `owner` and `ADMIN_USERNAMES` give no admin rights;
+- nobody can sign up with that email or switch another account to it;
+- for everyone else the admin pages don't exist (the server answers 404);
+- the admin area needs two-step sign-in on that account, and each time it is opened your password plus a
+  current code; it stays open 15 minutes on that device ("Lock now" closes it at once). Unlocks and failed
+  tries are in the activity log;
+- it shows how many people use the app: accounts, sign-ups per month, active today / 7 / 30 days, a daily
+  chart and Android app vs browser (counts only, never anyone's budget).
+
+Without `ADMIN_EMAIL` (older setups):
+
 1. Create your own account in the app first.
 2. Put its username in `.env`: `ADMIN_USERNAMES=yourname` (comma-separate several), then `docker compose up -d`.
    A listed name that has no account yet is blocked from sign-up, so nobody else can register it.

@@ -90,6 +90,8 @@ export async function housekeeping(db: Queryable, auditKeepDays = 365) {
   await db.query('DELETE FROM sessions WHERE expires_at < now()');
   await db.query(`DELETE FROM password_resets WHERE expires_at < now() - interval '1 day' OR used_at < now() - interval '30 days'`);
   await db.query('DELETE FROM audit_log WHERE created_at < now() - make_interval(days => $1)', [auditKeepDays]);
+  // 2.3.0: daily usage counts for the admin area are kept about 13 months.
+  await db.query(`DELETE FROM activity_days WHERE day < CURRENT_DATE - 400`);
 }
 
 const gone = () => new HttpError(410, 'Too late to undo.', 'undo_expired');

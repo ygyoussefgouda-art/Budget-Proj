@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Plus, Trash2, type LucideIcon } from 'lucide-react';
-import { evalMoney, fmtMoney, hasMaths, plain } from '../domain/money';
+import { evalMoney, fmtMoney, groupThousands, hasMaths, plain, ungroupThousands } from '../domain/money';
 import Illustration from './Illustration';
 import { t } from '../i18n';
 
@@ -203,6 +203,25 @@ export function MoneyInput({
 }) {
   const [focused, setFocused] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  // 2.3.0 (owner): thousands separators while typing ("1,000", "10,000", "100,000"). Only the display
+  // has them; `value` stays plain. The caret keeps its place among the digits when commas come and go.
+  const shown = groupThousands(value);
+  const caret = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const el = input.current;
+    if (caret.current === null || !el || document.activeElement !== el) return;
+    let seen = 0;
+    let pos = shown.length;
+    for (let i = 0; i < shown.length; i++) {
+      if (seen === caret.current) {
+        pos = i;
+        break;
+      }
+      if (shown[i] !== ',') seen += 1;
+    }
+    caret.current = null;
+    el.setSelectionRange(pos, pos);
+  }, [shown]);
   // Leaving the field (e.g. tapping Save) must not move the page under the finger: the keys and the
   // "= 75" line stay a moment longer, then go.
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -221,10 +240,18 @@ export function MoneyInput({
           className="input"
           inputMode="decimal"
           autoComplete="off"
-          value={value}
+          value={shown}
           autoFocus={autoFocus}
           aria-label={label}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            const typed = e.target.value;
+            const raw = ungroupThousands(typed, shown !== value);
+            // Characters (not counting thousands commas) before the caret, to put it back after re-grouping.
+            // Only when the commas change (otherwise the browser already has it right, e.g. "12,5").
+            const before = typed.slice(0, e.target.selectionStart ?? typed.length);
+            caret.current = groupThousands(raw) === typed ? null : before.replace(/,/g, '').length;
+            onChange(raw);
+          }}
           onFocus={() => {
             if (leaveTimer.current) clearTimeout(leaveTimer.current);
             setFocused(true);

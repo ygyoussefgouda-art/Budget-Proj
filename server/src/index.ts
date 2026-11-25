@@ -75,6 +75,17 @@ async function main() {
     if (!found.rows.length) log.warn(`ADMIN_USERNAMES: "${name}" has no account yet (sign-up with that name is blocked).`);
   }
 
+  // 2.3.0: ADMIN_EMAIL=you@example.com makes the ONE account with that email the only admin ("owner" and
+  // ADMIN_USERNAMES then give no admin rights). Nobody else can sign up with it or switch to it.
+  const adminEmail = (process.env.ADMIN_EMAIL ?? '').trim().toLowerCase() || undefined;
+  if (adminEmail) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) fail('ADMIN_EMAIL is not a valid email address.');
+    const found = await db.query('SELECT (totp_enabled_at IS NOT NULL) AS tfa FROM users WHERE lower(email) = $1', [adminEmail]);
+    if (!found.rows.length) log.warn('ADMIN_EMAIL: no account has this email yet, so nobody can open the admin area.');
+    else if (!found.rows[0].tfa) log.warn('ADMIN_EMAIL: the admin account has no two-step sign-in; the admin area stays closed until it is on.');
+    if (adminUsernames.length) log.warn('ADMIN_EMAIL is set, so ADMIN_USERNAMES is ignored.');
+  }
+
   // Email for "Forgot password?" codes (any SMTP server; free options in DEPLOY.md).
   const mailer = mailerFromEnv();
   if (!mailer.enabled) log.warn('No SMTP_HOST: "Forgot password?" emails are off; admins can still make reset codes.');
@@ -86,6 +97,7 @@ async function main() {
     allowSignup,
     hsts: process.env.HSTS === 'true',
     adminUsernames,
+    adminEmail,
     loginLimit: positiveInt(process.env.LOGIN_RATE_LIMIT),
     signupLimit: positiveInt(process.env.SIGNUP_RATE_LIMIT),
     minNativeVersionCode: positiveInt(process.env.MIN_NATIVE_VERSION_CODE),

@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Copy, KeyRound, Shield, ShieldOff } from 'lucide-react';
+import { ArrowLeft, Copy, KeyRound, Lock, Shield, ShieldOff } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { Bars } from '../components/charts';
 import { Sheet, useOverlay } from '../components/Overlays';
 import { Card, COLORS, DeleteButton, Empty, Field, FormError, IconButton, PageHeader, Pill, SaveButton, SectionTitle, Segmented } from '../components/ui';
 import { locale, t } from '../i18n';
@@ -37,21 +38,214 @@ function auditText(e: AuditEntry) {
   }
 }
 
+interface AdminStatus { gated: boolean; twoFactor: boolean; unlockedUntil: string | null }
+interface UsageStats {
+  accounts: { total: number; twoFactor: number; new7: number; new30: number };
+  active: { today: number; d7: number; d30: number };
+  signupsByMonth: { month: string; count: number }[];
+  dailyActive: { day: string; users: number; android: number; web: number }[];
+  clients30d: { androidOnly: number; webOnly: number; both: number };
+  trackedSince: string | null;
+}
+
 export default function Admin() {
   const { user } = useApp();
   const nav = useNavigate();
-  if (!user.isAdmin) return <Navigate to="/settings" replace />;
+  // Only the admin account ever sees this page; for everyone else it doesn't exist (the server says 404 too).
+  if (!user.isAdmin) return <Navigate to="/" replace />;
   return (
     <div className="page">
-      <PageHeader title={t('Admin')} left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/settings')} flip />} />
-      {!user.twoFactor && (
-        <Card className="warn-card">
-          <p className="small">{t('Admin accounts should use two-step sign-in. Turn it on in Settings → Two-step sign-in.')}</p>
-        </Card>
+      <PageHeader title={t('Admin')} left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/more')} flip />} />
+      <AdminGate />
+    </div>
+  );
+}
+
+/**
+ * 2.3.0: the admin area opens only with two-step sign-in on, after the password and a current code, for
+ * 15 minutes on this device. When the time is up it locks itself again.
+ */
+function AdminGate() {
+  const qc = useQueryClient();
+  const nav = useNavigate();
+  const status = useQuery({ queryKey: ['admin-status'], queryFn: () => api<AdminStatus>('/admin/status'), refetchInterval: 60_000 });
+  const until = status.data?.unlockedUntil ? Date.parse(status.data.unlockedUntil) : 0;
+  const open = !!status.data && (!status.data.gated || until > Date.now());
+  // Lock the screen the moment the time is up.
+  useEffect(() => {
+    if (!until) return;
+    const ms = until - Date.now();
+    if (ms <= 0) return;
+    const timer = setTimeout(() => void qc.invalidateQueries({ queryKey: ['admin-status'] }), ms + 500);
+    return () => clearTimeout(timer);
+  }, [until, qc]);
+  // Leaving the admin area: nothing admin stays in memory.
+  useEffect(() => () => qc.removeQueries({ predicate: (q) => String(q.queryKey[0]).startsWith('admin-') && q.queryKey[0] !== 'admin-status' }), [qc]);
+
+  if (status.isLoading) return <p className="tiny mute">{t('Loading')}…</p>;
+  if (status.isError) return <FormError text={(status.error as Error).message} />;
+  const s = status.data!;
+  if (s.gated && !s.twoFactor) {
+    return (
+      <Card className="warn-card">
+        <p className="small">{t('The admin area needs two-step sign-in. Turn it on in Settings, then come back.')}</p>
+        <button type="button" className="btn tonal block" style={{ marginTop: 10 }} onClick={() => nav('/settings')}>
+          {t('Open Settings')}
+        </button>
+      </Card>
+    );
+  }
+  if (!open) return <UnlockForm />;
+  return (
+    <>
+      {s.gated && (
+        <div className="admin-lockbar">
+          <Lock size={16} aria-hidden="true" />
+          <span className="grow small">
+            {t('Unlocked until {time}', { time: new Date(until).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit', hour12: true }) })}
+          </span>
+          <button
+            type="button"
+            className="btn text small"
+            onClick={async () => {
+              await api('/admin/lock', 'POST');
+              qc.removeQueries({ predicate: (q) => String(q.queryKey[0]).startsWith('admin-') && q.queryKey[0] !== 'admin-status' });
+              await qc.invalidateQueries({ queryKey: ['admin-status'] });
+            }}
+          >
+            {t('Lock now')}
+          </button>
+        </div>
       )}
+      <StatsCard />
       <SignupCard />
       <UsersCard />
       <AuditCard />
+    </>
+  );
+}
+
+function UnlockForm() {
+  const qc = useQueryClient();
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!password) return setErr(t('Enter your password.'));
+    if (!/^\s*[\dA-Za-z-]{6,}\s*$/.test(code)) return setErr(t('Enter the 6-digit code from your app.'));
+    setBusy(true);
+    setErr(null);
+    try {
+      await api('/admin/unlock', 'POST', { password, code: code.trim() });
+      setPassword('');
+      setCode('');
+      await qc.invalidateQueries({ queryKey: ['admin-status'] });
+    } catch (x) {
+      setErr((x as Error).message);
+      setBusy(false);
+    }
+  };
+  return (
+    <Card>
+      <form onSubmit={submit} className="form">
+        <div className="row gap">
+          <Lock size={20} aria-hidden="true" />
+          <strong>{t('Unlock the admin area')}</strong>
+        </div>
+        <p className="small mute">{t('Type your password and the code from your authenticator app. It stays open for 15 minutes on this device.')}</p>
+        <Field label={t('Your password')}>
+          <input className="input" dir="ltr" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </Field>
+        <Field label={t('6-digit code')}>
+          <input className="input" dir="ltr" inputMode="numeric" autoComplete="one-time-code" maxLength={20} value={code} onChange={(e) => setCode(e.target.value)} />
+        </Field>
+        <FormError text={err} />
+        <SaveButton label={t('Unlock')} busy={busy} />
+      </form>
+    </Card>
+  );
+}
+
+/** How many people use the app. Counts only: nobody's budget, names or entries. */
+function StatsCard() {
+  const q = useQuery({ queryKey: ['admin-stats'], queryFn: () => api<UsageStats>('/admin/stats') });
+  const n = (v: number) => v.toLocaleString(locale());
+  if (q.isLoading) return <p className="tiny mute">{t('Loading')}…</p>;
+  if (q.isError) return <FormError text={(q.error as Error).message} />;
+  const s = q.data!;
+  const days = s.dailyActive;
+  const dayLabel = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString(locale(), { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const monthLabel = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleDateString(locale(), { month: 'short', timeZone: 'UTC' });
+  const c = s.clients30d;
+  const clientTotal = c.androidOnly + c.webOnly + c.both;
+  return (
+    <>
+      <Card>
+        <SectionTitle>{t('People using Masrofy')}</SectionTitle>
+        <div className="stat-grid">
+          <Stat label={t('Active today')} value={n(s.active.today)} />
+          <Stat label={t('Last 7 days')} value={n(s.active.d7)} />
+          <Stat label={t('Last 30 days')} value={n(s.active.d30)} />
+        </div>
+        <div className="stat-grid">
+          <Stat label={t('Accounts')} value={n(s.accounts.total)} />
+          <Stat label={t('New this week')} value={n(s.accounts.new7)} />
+          <Stat label={t('New this month')} value={n(s.accounts.new30)} />
+        </div>
+        <p className="tiny mute">
+          {s.accounts.twoFactor === 1 ? t('1 account uses two-step sign-in.') : t('{n} accounts use two-step sign-in.', { n: n(s.accounts.twoFactor) })}
+        </p>
+      </Card>
+
+      <Card>
+        <SectionTitle>{t('Active people per day')}</SectionTitle>
+        <Bars
+          values={days.map((d) => d.users)}
+          // A date every 7 days, ending on today (labels at the very edge would be cut off or overlap)
+          labels={days.map((d, i) => ((days.length - 1 - i) % 7 === 0 && i > 0 ? dayLabel(d.day) : ''))}
+          color={COLORS.accent}
+          ariaLabel={t('Active people per day, last 30 days')}
+        />
+        <p className="tiny mute">
+          {s.trackedSince
+            ? t('Last 30 days. Daily numbers start on {date}.', { date: day(`${s.trackedSince}T00:00:00Z`) })
+            : t('Daily numbers start from today.')}
+        </p>
+      </Card>
+
+      <Card>
+        <SectionTitle>{t('Android app or browser (last 30 days)')}</SectionTitle>
+        {clientTotal === 0 ? (
+          <p className="small mute">{t('No numbers yet.')}</p>
+        ) : (
+          <div className="stat-grid">
+            <Stat label={t('Android app')} value={n(c.androidOnly)} />
+            <Stat label={t('Browser')} value={n(c.webOnly)} />
+            <Stat label={t('Both')} value={n(c.both)} />
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <SectionTitle>{t('New accounts per month')}</SectionTitle>
+        <Bars
+          values={s.signupsByMonth.map((m) => m.count)}
+          labels={s.signupsByMonth.map((m) => monthLabel(m.month))}
+          color={COLORS.blue}
+          ariaLabel={t('New accounts per month, last 12 months')}
+        />
+      </Card>
+    </>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="stat">
+      <strong className="stat-value">{value}</strong>
+      <span className="tiny mute">{label}</span>
     </div>
   );
 }

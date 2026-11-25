@@ -6,6 +6,7 @@ import { ah, HttpError } from './http.js';
 import { insertStarterCategories, seedStartingData } from './seed.js';
 import { passwordProblems } from './validation.js';
 import { startChallenge } from './twoFactor.js';
+import { noteActivity } from './activity.js';
 
 const scrypt = (pw: string, salt: Buffer, keylen: number, opts: ScryptOptions) =>
   new Promise<Buffer>((res, rej) => scryptCb(pw, salt, keylen, opts, (e, k) => (e ? rej(e) : res(k))));
@@ -42,6 +43,9 @@ declare global {
   namespace Express {
     interface Request {
       user?: AuthUser;
+      /** 2.3.0: hash of this request's session token, and until when it may use the admin area. */
+      sessionHash?: string;
+      adminUntil?: Date | null;
     }
   }
 }
@@ -170,15 +174,18 @@ export const requireAuth =
     const hash = sha256(token);
     const r = await db.query(
       `SELECT ${USER_COLUMNS}, s.expires_at < now() + make_interval(days => $2) AS refresh,
-              (u.last_active_at IS NULL OR u.last_active_at < now() - interval '1 hour') AS stale
+              (u.last_active_at IS NULL OR u.last_active_at < now() - interval '1 hour') AS stale,
+              CASE WHEN s.admin_until > now() THEN s.admin_until END AS "adminUntil"
        FROM sessions s JOIN users u ON u.id = s.user_id
        WHERE s.token_hash = $1 AND s.expires_at > now()`,
       [hash, IDLE_DAYS - 1],
     );
     if (r.rows.length === 0) throw new HttpError(401, 'Your session expired. Please sign in again.', 'unauthenticated');
-    const { refresh, stale, ...user } = r.rows[0];
+    const { refresh, stale, adminUntil, ...user } = r.rows[0];
     // "Last active" for the admin page, written at most about once an hour per account.
     if (stale) await db.query('UPDATE users SET last_active_at = now() WHERE id = $1', [user.id]);
+    // Which days the account was used, in the app or a browser (admin area counts; once a day per kind).
+    await noteActivity(db, user.id, /\bBudgetMeApp\b/.test(req.get('user-agent') ?? ''));
     // Sliding expiry (at most once a day): idle timeout, capped at MAX_DAYS after sign-in.
     if (refresh) {
       await db.query(
@@ -188,18 +195,36 @@ export const requireAuth =
       );
     }
     req.user = user as AuthUser;
+    req.sessionHash = hash;
+    req.adminUntil = adminUntil ? new Date(adminUntil) : null;
     next();
   });
 
 // ---------- admins ----------
-/** Accounts listed in ADMIN_USERNAMES (plus the built-in "owner") may open the admin page. */
+/**
+ * Who may open the admin area.
+ * - ADMIN_EMAIL set (2.3.0, production): exactly ONE account, the one with that email. "owner" and
+ *   ADMIN_USERNAMES give no admin rights then. Nobody else can take that email (sign-up and Settings refuse it).
+ * - Not set: the built-in "owner" plus ADMIN_USERNAMES (self-hosted servers, tests).
+ */
 let adminNames = new Set<string>();
+let adminEmail: string | null = null;
 export function setAdminUsernames(names: string[]) {
   adminNames = new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean));
 }
-export const isAdminName = (username: string) => username === OWNER || adminNames.has(username);
+export function setAdminEmail(email: string | undefined | null) {
+  adminEmail = email ? email.trim().toLowerCase() : null;
+}
+/** ADMIN_EMAIL is set: one admin, and the admin area needs two-step sign-in and an unlock (2.3.0). */
+export const strictAdmin = () => !!adminEmail;
+/** Username-only check (no email at hand): never true when ADMIN_EMAIL decides. */
+export const isAdminName = (username: string) => !adminEmail && (username === OWNER || adminNames.has(username));
+export const isAdminUser = (u: { username?: unknown; email?: unknown }) =>
+  adminEmail ? String(u.email ?? '').trim().toLowerCase() === adminEmail : isAdminName(String(u.username ?? ''));
 /** Listed admin names can't be taken by sign-up (create the account first, then list it). */
-export const isListedAdminName = (username: string) => adminNames.has(username.trim().toLowerCase());
+export const isListedAdminName = (username: string) => !adminEmail && adminNames.has(username.trim().toLowerCase());
+/** The admin email can't be used by sign-up or moved onto another account. */
+export const isAdminEmail = (email: string | undefined | null) => !!adminEmail && !!email && email.trim().toLowerCase() === adminEmail;
 
 export const publicUser = (u: AuthUser) => ({
   id: u.id,
@@ -210,7 +235,7 @@ export const publicUser = (u: AuthUser) => ({
   twoFactor: !!u.twoFactor,
   rollover: !!u.rollover,
   mergeRepeats: !!u.mergeRepeats,
-  isAdmin: isAdminName(u.username),
+  isAdmin: isAdminUser(u),
 });
 
 // ---------- sign-up rules ----------
@@ -288,6 +313,7 @@ export function signupHandler(
     if (policy.requireEmail && !email) throw new HttpError(400, 'Enter your email address.', 'email_required');
     checkNewPassword(password, username);
     if (isListedAdminName(username)) throw new HttpError(403, 'That username is reserved, please choose another one.', 'reserved');
+    if (isAdminEmail(email)) throw new HttpError(403, 'That email cannot be used for a new account.', 'reserved');
     const hash = await hashPassword(password);
     if (email && (await db.query('SELECT 1 FROM users WHERE lower(email) = $1', [email])).rows.length) {
       throw new HttpError(409, 'An account with that email already exists. Sign in, or use "Forgot password?".', 'email_taken');
@@ -349,6 +375,8 @@ export function setEmailHandler(db: Db, parse: (b: unknown) => { email: string; 
     const { email, password } = parse(req.body);
     const u = req.user!;
     await checkPassword(db, u.id, password);
+    // The admin email stays on the admin account: no other account can switch to it.
+    if (isAdminEmail(email) && !isAdminEmail(u.email)) throw new HttpError(403, 'That email cannot be used.', 'reserved');
     const taken = await db.query('SELECT 1 FROM users WHERE lower(email) = $1 AND id <> $2', [email, u.id]);
     if (taken.rows.length) throw new HttpError(409, 'Another account already uses that email.', 'email_taken');
     await db.query('UPDATE users SET email = $1 WHERE id = $2', [email, u.id]);

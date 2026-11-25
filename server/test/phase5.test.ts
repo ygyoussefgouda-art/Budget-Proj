@@ -40,7 +40,7 @@ afterAll(async () => {
 });
 
 describe('who is an admin', () => {
-  it('owner and listed accounts can open the admin pages; everyone else gets 403', async () => {
+  it('owner and listed accounts can open the admin pages; for everyone else they do not exist (404, 2.3.0)', async () => {
     const o = await owner();
     expect((await o.get('/api/auth/me')).body.user.isAdmin).toBe(true);
     await o.get('/api/admin/users').expect(200);
@@ -60,7 +60,7 @@ describe('who is an admin', () => {
       ['post', '/api/admin/users/1/reset-code'],
       ['post', '/api/admin/users/1/delete'],
     ] as const) {
-      expect((await (a as any)[m](url).send({})).status).toBe(403);
+      expect((await (a as any)[m](url).send({})).status).toBe(404);
     }
     expect((await request(mkApp()).get('/api/admin/users')).status).toBe(401);
   });

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Home, LayoutGrid, PieChart, Plus, ReceiptText } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import PullToRefresh from './components/PullToRefresh';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { api, ApiError } from './api';
@@ -27,7 +27,8 @@ import Reports from './pages/Reports';
 import Savings, { GoalDetail } from './pages/Savings';
 import Settings from './pages/Settings';
 import { t } from './i18n';
-import { isNetworkError, readKit, saveKit } from './offline';
+import { clearKit, isNetworkError, readKit, saveKit } from './offline';
+import { clearOfflineCache, readCacheOwner, writeCacheOwner } from './persist';
 import { AppStateProvider, thisMonth, todayIso, useApp, type User } from './state';
 import type { DueItem } from './domain/calc';
 
@@ -50,6 +51,21 @@ export default function App() {
     refetchOnMount: 'always',
     retry: false,
   });
+
+  // 2.3.0 (security): the offline copy belongs to one account. Signed out, or someone else signed in on
+  // this phone: drop it before anything is shown, so nobody ever sees another account's budget.
+  const qc = useQueryClient();
+  const uid = me.data === undefined ? undefined : (me.data?.user.id ?? null);
+  const checked = useRef<number | null | undefined>(undefined);
+  if (uid !== undefined && checked.current !== uid) {
+    checked.current = uid;
+    if (readCacheOwner() !== uid) {
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
+      void clearOfflineCache();
+      if (uid === null) void clearKit();
+      writeCacheOwner(uid);
+    }
+  }
 
   if (me.isLoading) return <Splash />;
   // Offline with a saved copy: show the app from it (read-only), not the offline entry screen.

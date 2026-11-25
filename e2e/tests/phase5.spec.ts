@@ -86,6 +86,7 @@ test.describe('phase 5: admin page and password reset', () => {
     await tab(page, 'Settings').click();
     await expect(page.getByRole('button', { name: 'Open the admin page' })).toHaveCount(0);
     await page.goto('/admin');
-    await expect(page).toHaveURL(/\/settings$/);
+    await expect(page).toHaveURL(/\/$/); // 2.3.0: it doesn't exist for them, so Home
+    expect((await page.request.get('/api/admin/users')).status()).toBe(404);
   });
 });

@@ -52,6 +52,8 @@ services:
       APP_PASSWORD: ${APP_PASSWORD:-}
       # Accounts that can open the Admin page (comma separated; "owner" always can)
       ADMIN_USERNAMES: ${ADMIN_USERNAMES:-}
+      # 2.3.0: the ONE admin account, by its email (overrides ADMIN_USERNAMES and "owner"; needs two-step sign-in)
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       # HTTPS: the session cookie is only sent over HTTPS (set false only for a plain-HTTP test)
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       HSTS: ${HSTS:-false}
@@ -132,6 +134,10 @@ services:
     command:
       - |
         set -eu
+        # 2.3.0 (security audit): dumps hold password hashes and two-step secrets: owner-only files.
+        umask 077
+        chmod 700 /backups
+        chmod 600 /backups/*.sql.gz 2>/dev/null || true
         echo "backup: daily pg_dump to /backups, keeping $${KEEP_DAYS} days"
         while true; do
           f="/backups/budget-me-$$(date +%Y-%m-%d_%H%M).sql.gz"

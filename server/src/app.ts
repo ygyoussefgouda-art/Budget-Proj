@@ -11,6 +11,7 @@ import {
   logoutAllHandler,
   logoutHandler,
   requireAuth,
+  setAdminEmail,
   setAdminUsernames,
   setEmailHandler,
   setSignupPolicy,
@@ -48,6 +49,8 @@ export interface AppOptions {
   csrfHeader?: boolean;
   /** Usernames that may open the admin page (the built-in "owner" always can). From ADMIN_USERNAMES. */
   adminUsernames?: string[];
+  /** 2.3.0: ADMIN_EMAIL. When set, the one account with this email is the only admin. */
+  adminEmail?: string;
   /** Installed Android apps below this versionCode must update first (GET /api/version). Default 0. */
   minNativeVersionCode?: number;
   /** New accounts get a few starter categories (STARTER_CATEGORIES, on unless "false"). Default false here, for tests. */
@@ -220,6 +223,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   // .env defaults; an admin can change them in the app (stored in app_settings).
   const signupDefaults = { allowSignup: opts.allowSignup ?? true };
   setAdminUsernames(opts.adminUsernames ?? []);
+  setAdminEmail(opts.adminEmail);
   setSignupPolicy({ requireEmail: opts.requireEmail, strongPasswords: opts.strongPasswords });
   const mailer = opts.mailer ?? noMailer;
   api.get(
@@ -241,14 +245,25 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   // Failed sign-ins per account. Two layers so a stranger can't lock someone out:
   // - 10 failures per account *from one network* (stops guessing from one place, only blocks that network);
   // - 200 failures per account from everywhere together (stops guessing spread over many networks).
-  const accountName = (req: Request) => String((req.body as { username?: unknown })?.username ?? 'owner').trim().toLowerCase().slice(0, 60);
+  // 2.3.0 (security audit): an email is counted as the account it belongs to, so "name" and "name@mail"
+  // share one limit instead of two.
+  const accountName = async (req: Request) => {
+    const typed = String((req.body as { username?: unknown })?.username ?? 'owner').trim().toLowerCase().slice(0, 254);
+    if (!typed.includes('@')) return typed.slice(0, 60);
+    try {
+      const r = await db.query('SELECT username FROM users WHERE lower(email) = $1', [typed]);
+      return (r.rows[0]?.username as string | undefined) ?? typed;
+    } catch {
+      return typed;
+    }
+  };
   const loginAccountNetLimiter = limiter(15, 10, 'Too many sign-in attempts. Try again in 15 minutes.', {
     skipSuccessfulRequests: true,
-    keyGenerator: (req: Request) => `u:${accountName(req)}|${ipKey(req)}`,
+    keyGenerator: async (req: Request) => `u:${await accountName(req)}|${ipKey(req)}`,
   });
   const loginAccountAllLimiter = limiter(15, opts.accountFailLimit ?? 200, 'Too many sign-in attempts. Try again in 15 minutes.', {
     skipSuccessfulRequests: true,
-    keyGenerator: (req: Request) => `ua:${accountName(req)}`,
+    keyGenerator: async (req: Request) => `ua:${await accountName(req)}`,
   });
   const loginAccountLimiter = [loginAccountNetLimiter, loginAccountAllLimiter];
   api.post('/auth/login', loginIpLimiter, loginAccountLimiter, loginHandler(db, (b) => schemas.login.parse(b)));
@@ -301,7 +316,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
   api.use(exportRoutes(db));
   api.use(undoRoutes(db));
   // Admin actions that check the admin's password get the same guessing limit as other password checks.
-  api.post(['/admin/users/:id/reset-code', '/admin/users/:id/delete'], passwordLimiter);
+  api.post(['/admin/users/:id/reset-code', '/admin/users/:id/delete', '/admin/users/:id/disable-2fa', '/admin/unlock'], passwordLimiter);
   api.use(adminRoutes(db, signupDefaults));
   api.use((_req, res) => {
     res.status(404).json({ error: 'Not found.' });

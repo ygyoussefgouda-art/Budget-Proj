@@ -3,7 +3,7 @@
 Status legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[-]` dropped (say why).
 Update at the end of every session. Phases come from `HANDOFF.md` §4.
 
-**Current version:** Masrofy MK1 (2.2.1) · **Current phase:** all HANDOFF phases built; left: things only the owner can do (phone test, signing key, VPS setup, LICENSE) · **Last updated:** 2026-11-22
+**Current version:** Masrofy MK1 (2.3.0) · **Current phase:** all HANDOFF phases built; left: things only the owner can do (phone test, signing key, VPS setup, LICENSE) · **Last updated:** 2026-11-22
 
 ## Phase 0: Hand-off setup
 - [-] Clone repo, branch `phase-0-handoff`: worked on `main` in the existing checkout; the owner commits/pushes only when they say so (see `MEMORY.md`)
@@ -94,6 +94,13 @@ Phase 1 test results: see the Log below.
 - 2026-11-21: Review of alpha 0.5.6 done; hand-off files written; gaps re-prioritised for a personal sideloaded Android app.
 - 2026-11-21: Phase 0 + Phase 1 done → alpha 0.6.0 (committed `e83525e`, CI green).
 - 2026-11-21: alpha 0.6.2 polish: erase/restore need the password; offline retries answered before caps (and "deleted" items not revived); receipt quota counts the Undo trash and locks; undo checks the quota; backup download is one snapshot; error logs drop DB row details; housekeeping clears expired sessions/codes and old audit entries (`AUDIT_KEEP_DAYS`); overpaid people don't lower loan totals; no duplicate category on retry; month-start change refreshes every report; no lock after camera/file picker; account deletion clears the offline queue; service worker precaches the build (opens offline after first visit) with a per-build cache; "new version" only for a newer server; focus handling in sheets/dialogs; Budget menu closes on tap outside; loading/error states; missing translations; RTL minus in KV rows; tutorial tips; `.gitignore` keystores; README/CODEMAP/CLAUDE fixes. New `server/test/security.test.ts` (10: cross-account, untested routes, offline, quota, housekeeping, headers, CSRF).
+- 2026-11-25: **2.3.0 gated admin area + security fixes** (owner: only the account with ygyoussefgouda@gmail.com is admin; 2FA + re-unlock; accounts, active users, Android vs browser):
+  - `ADMIN_EMAIL`: exactly one admin; `owner`/`ADMIN_USERNAMES` give nothing then; the email can't be used by sign-up or another account. Admin pages answer 404 to everyone else. The admin area needs two-step sign-in + password + code, open 15 min per session (`sessions.admin_until`), "Lock now", audit of unlocks and failed tries. Migration `013_admin_gate_activity`.
+  - Usage counts (`activity_days`, one row per account per UTC day, app/browser): accounts, new this week/month, sign-ups per month, active today/7/30 days, daily chart, Android app vs browser. Kept 400 days.
+  - Security audit fixes: 2FA codes counted before checking (no parallel bypass) + 10 wrong codes per account per 15 min from all networks; reset-code tries counted the same way; turning on 2FA signs out other devices; sign-in limit counts username and email as one account; backup dumps owner-only (umask 077, chmod 700/600); the offline copy is tied to one account and wiped when someone else signs in or the app finds itself signed out.
+  - Amount fields show thousands separators while typing (1,000 · 10,000 · 100,000); stored text stays plain; decimal commas still work.
+  - Tests: `server/test/v230.test.ts` (8), `web/src/domain/grouping.test.ts` (2), `e2e/tests/v230.spec.ts` (1); admin 403 → 404 in phase5.
+  - Left from the audit (accepted): sign-up says when a username/email is taken; TOTP secrets are stored unencrypted in the database (protected by the DB and owner-only backups); the PIN lock is a convenience lock on the device.
 - 2026-11-25: **2.2.1 read budget alerts** (owner's request): an alert you read (tapped, "Mark as read", or the Budget tab opened) turns grey and leaves the Budget tab badge; new ones keep their colour and a dot, and reaching the next level (80% → used up → over) makes it new again. `web/src/alertsSeen.ts`; E2E test in `v220.spec.ts`.
 - 2026-11-25: **2.2.0** (owner's list; owner chose "time on expenses only" and "extra income as separate entries"):
   - Expenses have a time of day ("HH:MM", filled in with the phone's clock, can be changed or cleared; older expenses have none). Shown in the Expenses list and Recent transactions, newest time first within a day; in the CSV/Excel export ("Time" column), backups and Undo. Migration `012_expense_time_extra_income`.

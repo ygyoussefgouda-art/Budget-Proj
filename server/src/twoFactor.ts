@@ -26,8 +26,29 @@ export async function startChallenge(q: Queryable, userId: number): Promise<stri
   return ticket;
 }
 
+/**
+ * 2.3.0 (security audit): wrong codes per account, from every network together. A stolen password plus
+ * many IP addresses must not be enough to guess the 6-digit code: after 10 wrong codes in 15 minutes the
+ * account takes no more codes for the rest of that window. Kept in memory (one app container).
+ */
+const CODE_FAILS = 10;
+const CODE_WINDOW_MS = 15 * 60_000;
+const codeFails = new Map<number, { n: number; until: number }>();
+export function codeLocked(userId: number) {
+  const f = codeFails.get(userId);
+  if (f && f.until < Date.now()) codeFails.delete(userId);
+  return (codeFails.get(userId)?.n ?? 0) >= CODE_FAILS;
+}
+export function codeFailed(userId: number) {
+  const f = codeFails.get(userId);
+  if (!f || f.until < Date.now()) codeFails.set(userId, { n: 1, until: Date.now() + CODE_WINDOW_MS });
+  else f.n += 1;
+  if (codeFails.size > 50_000) codeFails.clear();
+}
+const tooMany = () => new HttpError(429, 'Too many wrong codes. Try again in 15 minutes.', 'too_many');
+
 /** A TOTP code or an unused backup code for this account; marks it used. True when it was right. */
-async function useCode(q: Queryable, userId: number, typed: string): Promise<boolean> {
+export async function useCode(q: Queryable, userId: number, typed: string): Promise<boolean> {
   const u = (await q.query('SELECT totp_secret, totp_last_step FROM users WHERE id = $1 FOR UPDATE', [userId])).rows[0];
   if (!u?.totp_secret) return false;
   const step = verifyTotp(u.totp_secret, typed, Date.now(), u.totp_last_step === null ? null : Number(u.totp_last_step));
@@ -49,32 +70,29 @@ export function loginSecondStepHandler(db: Db) {
   return ah(async (req: Request, res: Response) => {
     const b = z.object({ ticket: z.string().min(20).max(100), code }).parse(req.body);
     const wrong = () => new HttpError(400, 'That code is not right. Try the newest code from your app.', 'bad_code');
-    let user: AuthUser | null = null;
-    let missed = false;
-    await db.tx(async (q) => {
-      const c = (
-        await q.query('SELECT user_id, attempts FROM login_challenges WHERE token_hash = $1 AND expires_at > now() FOR UPDATE', [sha256(b.ticket)])
-      ).rows[0];
-      if (!c) throw new HttpError(401, 'That took too long. Sign in again.', 'ticket_expired');
-      if (c.attempts >= MAX_TRIES) throw new HttpError(429, 'Too many wrong codes. Sign in again.', 'too_many');
-      if (!(await useCode(q, c.user_id, b.code))) {
-        missed = true;
-        throw wrong();
-      }
+    // 2.3.0 (security audit): the try is counted and saved BEFORE the code is checked, so many requests sent
+    // at once on one ticket can't all see "0 tries" (they used to be counted only after a rollback).
+    const c = (
+      await db.query(
+        `UPDATE login_challenges SET attempts = attempts + 1 WHERE token_hash = $1 AND expires_at > now() RETURNING user_id, attempts`,
+        [sha256(b.ticket)],
+      )
+    ).rows[0];
+    if (!c) throw new HttpError(401, 'That took too long. Sign in again.', 'ticket_expired');
+    if (c.attempts > MAX_TRIES) throw new HttpError(429, 'Too many wrong codes. Sign in again.', 'too_many');
+    if (codeLocked(c.user_id)) throw tooMany();
+    const user = await db.tx(async (q) => {
+      if (!(await useCode(q, c.user_id, b.code))) return null;
       await q.query('DELETE FROM login_challenges WHERE token_hash = $1', [sha256(b.ticket)]);
-      user = (
-        await q.query(
-          `SELECT ${USER_COLUMNS} FROM users u WHERE u.id = $1`,
-          [c.user_id],
-        )
-      ).rows[0] as AuthUser;
-    }).catch(async (e) => {
-      if (missed) await db.query('UPDATE login_challenges SET attempts = attempts + 1 WHERE token_hash = $1', [sha256(b.ticket)]);
-      throw e;
+      return (await q.query(`SELECT ${USER_COLUMNS} FROM users u WHERE u.id = $1`, [c.user_id])).rows[0] as AuthUser;
     });
-    const token = await createSession(db, user!.id);
+    if (!user) {
+      codeFailed(c.user_id);
+      throw wrong();
+    }
+    const token = await createSession(db, user.id);
     res.cookie(COOKIE, token, cookieOptionsFor(req));
-    res.json({ user: publicUser(user!) });
+    res.json({ user: publicUser(user) });
   });
 }
 
@@ -112,6 +130,9 @@ export function twoFactorRoutes(db: Db): Router {
         await q.query('DELETE FROM totp_backup_codes WHERE user_id = $1', [u.id]);
         const list = newBackupCodes();
         for (const c of list) await q.query('INSERT INTO totp_backup_codes(user_id, code_hash) VALUES ($1, $2)', [u.id, sha256(normalizeBackupCode(c))]);
+        // 2.3.0 (security audit): someone turning this on because they fear a break-in must not leave a
+        // stolen session signed in: every other device is signed out (this one stays).
+        await q.query('DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2', [u.id, req.sessionHash ?? '']);
         await audit(q, req, 'two_factor_on', u.username);
         return list;
       });
@@ -126,8 +147,12 @@ export function twoFactorRoutes(db: Db): Router {
       const b = z.object({ password: z.string().min(1).max(200), code }).parse(req.body);
       const u = req.user!;
       await checkPassword(db, u.id, b.password);
+      if (codeLocked(u.id)) throw tooMany();
       await db.tx(async (q) => {
-        if (!(await useCode(q, u.id, b.code))) throw new HttpError(400, 'That code is not right. Try the newest code from your app.', 'bad_code');
+        if (!(await useCode(q, u.id, b.code))) {
+          codeFailed(u.id);
+          throw new HttpError(400, 'That code is not right. Try the newest code from your app.', 'bad_code');
+        }
         await turnOff(q, u.id);
         await audit(q, req, 'two_factor_off', u.username);
       });
