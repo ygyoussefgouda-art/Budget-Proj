@@ -1,4 +1,4 @@
-# Masrofy (مصروفي) · MK1 (version 2.1.5)
+# Masrofy (مصروفي) · MK1 (version 2.2.0)
 
 *See where every pound goes.*
 
@@ -22,9 +22,10 @@ Masrofy is a personal budget app for students and young earners, in **English an
 
 | Screen | What you can do |
 |---|---|
-| **Home** | A lime band with your budget left this month, what you can spend per day until the month ends, and where the income went (spent, saved, repaid). Quick actions (Expense, Income, Save, Pay back), this week's spending per day, budget alerts, your savings goals, upcoming recurring payments, the top 3 categories and recent activity |
-| **+ (centre of the bar)** | Quick add from any screen: amount (sums like `45+30` work), category (or a new one right there), what for (your usual descriptions as one-tap chips), Today / Yesterday / another day |
-| **Expenses** | Every expense by day: search; filter by month, date range, category or #tag; edit, log again, delete with Undo (or swipe). Receipt photo or PDF, up to 5 #tags, "split with someone" (their share goes to Loans), paid in another currency. Recurring expenses (rent, subscriptions). Export to CSV or Excel |
+| **Home** | A lime band with your budget left this month, what you can spend per day until the month ends, and where the income went (spent, saved, repaid). Quick actions (Expense, Income, Save, Pay back), this week's spending per day, budget alerts (tap one to see that category's expenses), your savings goals, upcoming recurring payments, the top 3 categories and recent activity |
+| **+ (centre of the bar)** | Quick add from any screen: amount (sums like `45+30` work), category (or a new one right there), what for (your usual descriptions as one-tap chips), Today / Yesterday / another day, and the time (filled in for you) |
+| **Income** (Home) | Your monthly income plus extra income on top (freelance work, a gift, a bonus), which counts in the month it came in |
+| **Expenses** | Every expense by day and time: search; filter by month, date range, category or #tag; edit, log again, delete with Undo (or swipe). Receipt photo or PDF, up to 5 #tags, "split with someone" (their share goes to Loans), paid in another currency. Recurring expenses (rent, subscriptions). Export to CSV or Excel |
 | **Budget** | Monthly income and saving / repayment plans, a budget per category (or "per day" for uni or work days). Categories turn amber at 80% and red at 100%, with a badge on the tab. An empty month can copy the last one |
 | **More → Savings** | Goals with progress, a chart and one forecast ("at this pace you'll reach it in July 2027"), with a warning when you're behind plan |
 | **More → Loans** | "I owe" and "Owed to me": balance per person and the history |

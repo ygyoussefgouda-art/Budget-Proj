@@ -26,7 +26,7 @@ function totp(base32: string, offset = 0) {
 test('two-step sign-in: turn it on, sign in with a code, use a backup code', async ({ page }) => {
   const name = await signUpAndSkipTutorial(page);
   await tab(page, 'Home').click();
-  await page.getByRole('button', { name: 'Settings' }).click();
+  await tab(page, 'Settings').click();
   await page.getByRole('button', { name: 'Turn on two-step sign-in' }).click();
   const s = page.getByRole('dialog', { name: 'Two-step sign-in' });
   await s.getByLabel('Your password').fill(PASSWORD);
@@ -53,7 +53,7 @@ test('two-step sign-in: turn it on, sign in with a code, use a backup code', asy
 
   // A backup code works too (a lost phone)
   await tab(page, 'Home').click();
-  await page.getByRole('button', { name: 'Settings' }).click();
+  await tab(page, 'Settings').click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await signIn(page, name);
   await page.getByLabel('Code').fill(codes[0].toLowerCase());

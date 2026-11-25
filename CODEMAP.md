@@ -38,7 +38,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `log.ts` | pino logger (`log`), `APP_VERSION` (from package.json), `requestLogger` (request id + access line), `requestId(res)` |
 | `auth.ts` | Login, signup, logout, logout-all, change password, delete account, `requireAuth`, sessions, owner account, admin usernames |
 | `admin.ts` | Admin page API: users, sign-up settings, delete user, one-time reset codes, audit log; `/auth/reset` handler |
-| `routes.ts` | Main data API: `/state`, `/settings`, `/categories`, `/budget/:month` (+ copy-previous, clear-plans), `/expenses` (+ suggestions), `/tags`, `/goals`, `/goal-entries`, `/loans`, `/loan-people`, `/reports/*` (year, compare, weekdays), `/backup` + `/backup/restore`, `/reset` |
+| `routes.ts` | Main data API: `/state`, `/settings`, `/categories`, `/budget/:month` (+ copy-previous, clear-plans), `/expenses` (+ suggestions), `/incomes` (2.2.0 extra income), `/tags`, `/goals`, `/goal-entries`, `/loans`, `/loan-people`, `/reports/*` (year, compare, weekdays), `/backup` + `/backup/restore`, `/reset` |
 | `recurring.ts` | Monthly recurring rules, due occurrences, add/skip, auto-add |
 | `receipts.ts` | `/expenses/:id/receipt` upload/view/delete; file-type sniffing (JPEG/PNG/WebP/PDF); per-account quota |
 | `undo.ts` | Deletes move rows to `trash` (also a whole goal or loan person); `/undo/:id`; `purgeTrash()` |
@@ -59,10 +59,10 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 ### Migrations (`server/migrations/`)
 `001_init` users, sessions, categories, month_budgets, category_plans, expenses, goals, goal_entries, loan_entries ·
 `002_month_start_day` · `003_receipts` · `004_recurring_and_undo` (recurring_rules, recurring_occurrences, trash) ·
-`005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`) · `009_two_factor` (totp columns, backup codes, login challenges) · `010_qol_icons_rollover_undo` · `011_remove_invite_code` (drops the saved invite code)
+`005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`) · `009_two_factor` (totp columns, backup codes, login challenges) · `010_qol_icons_rollover_undo` · `011_remove_invite_code` (drops the saved invite code) · `012_expense_time_extra_income` (2.2.0: `expenses.time_of_day`, `incomes`, trash kind `income`)
 
 ### Server tests (`server/test/`)
-`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6) + `spa.test.ts` (Express 5: static files, page fallback, no hidden-file leaks, APP_ONLY) + `ipKey.test.ts` (rate-limit key per IPv4 / IPv6 /56) + `qol.test.ts` (1.2.0: icons/colours, rollover, merge repeats, Undo for goals/people) + `starterCategories.test.ts` (2.1.0): vitest + supertest against PGlite.
+`api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6) + `spa.test.ts` (Express 5: static files, page fallback, no hidden-file leaks, APP_ONLY) + `ipKey.test.ts` (rate-limit key per IPv4 / IPv6 /56) + `qol.test.ts` (1.2.0: icons/colours, rollover, merge repeats, Undo for goals/people) + `starterCategories.test.ts` (2.1.0) + `v220.test.ts` (2.2.0: expense time, extra income): vitest + supertest against PGlite.
 
 ## Web (`web/`)
 | Path | Purpose |
@@ -100,7 +100,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `pages/`: `Dashboard`, `Budget`, `Expenses` (largest), `Loans`, `Savings` (+ GoalDetail), `Reports`, `Settings`, `Admin`, `Login`, `More` (2.0.0: the More tab, links to Savings, Loans, Reports, Settings).
 `Permissions` (first-run permissions screen, Android app only).
 
-`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Brand` (the "Masrofy"/"مصروفي" logo text + `BrandMark`), `Illustration` (2.0.0 line drawings for empty states), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `CategoryIcon` (category icon/colour badge + picker), `PullToRefresh`, `BudgetForms`,
+`components/`: `ui` (cards, fields, money input, colours), `Overlays` (toasts, dialogs, undo toast), `Brand` (the "Masrofy"/"مصروفي" logo text + `BrandMark`), `Illustration` (2.0.0 line drawings for empty states), `Splash` (loading screen + `SplashExit` fade into Home; same markup in `index.html`), `CategoryIcon` (category icon/colour badge + picker), `PullToRefresh`, `BudgetForms`, `IncomeSheet` (2.2.0: `IncomePanel` = monthly + extra income, `IncomeForm`),
 `charts`, `ReportCards`, `rows`, `SwipeRow`, `useUndoDelete`, `Recurring`, `Tutorial` (first-run tour, 5 steps since 2.1.1; saves payday via `MonthStartPicker` and income via `saveBudget` from `BudgetForms`), `AppLock` +
 `AppLockSettings`, `OfflineApp` + `OfflineQueue`, `ExportLinks`, `MonthStartPicker`, `ContactCard` (contact email constant),
 `PasswordRules` (live new-password checklist, `newPasswordError`), `ErrorBoundary` (crash screen with Reload + version), `UpdateBar` ("A new version is ready" Reload / Later).
@@ -110,7 +110,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 `gestures.ts` (swipe thresholds) + `phone.test.ts`.
 
 ## E2E (`e2e/`)
-`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety`, `email`, `phase6`, `android`, `twofactor` specs (emails read from `e2e/mail-outbox`), `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
+`playwright.config.ts`; `tests/`: `auth`, `contact`, `money`, `settings`, `phase1..5`, `reliability`, `safety`, `email`, `phase6`, `android`, `twofactor`, `onboarding`, `v220` (2.2.0) specs (emails read from `e2e/mail-outbox`), `helpers.ts`; `fixtures/` (receipt image, non-receipt file).
 
 ## Mobile (`mobile/`)
 | Path | Purpose |

@@ -112,7 +112,7 @@ test.describe('1.2.0 quality of life', () => {
     await expect(c).toHaveCount(0);
 
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     const merge = page.getByRole('switch', { name: /Add quick repeats together/ });
     await expect(merge).not.toBeChecked();
     await merge.check();
@@ -128,7 +128,7 @@ test.describe('1.2.0 quality of life', () => {
 
   test('carry over unspent budget: off by default, the switch is saved', async ({ page }) => {
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     const roll = page.getByRole('switch', { name: /Carry over unspent budget/ });
     await expect(roll).not.toBeChecked();
     await roll.check();
@@ -138,7 +138,7 @@ test.describe('1.2.0 quality of life', () => {
 
   test('language switch reads English, عربي, System', async ({ page }) => {
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     const lang = page.getByRole('heading', { name: 'Language' }).locator('xpath=ancestor::section[1]').getByRole('tab');
     await expect(lang).toHaveText(['English', 'عربي', 'System']);
   });

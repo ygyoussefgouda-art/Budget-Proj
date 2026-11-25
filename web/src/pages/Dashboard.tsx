@@ -5,7 +5,6 @@ import {
   LineChart,
   PiggyBank,
   ReceiptText,
-  Settings,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -14,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { SettingsForm } from '../components/BudgetForms';
+import { IncomePanel } from '../components/IncomeSheet';
 import { CategoryIcon } from '../components/CategoryIcon';
 import Illustration from '../components/Illustration';
 import Brand, { BrandMark } from '../components/Brand';
@@ -33,6 +33,8 @@ export default function Dashboard() {
   const { data, summary: s, fmt, month, startDay, user } = useApp();
   const nav = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 2.2.0: the Income quick action and the band's Income line open everything coming in (fixed + extra).
+  const [incomeOpen, setIncomeOpen] = useState(false);
   const [params, setParams] = useSearchParams();
   // Home-screen shortcut "Add expense" opens /?add=expense: show the quick-add sheet right away.
   const [quickAdd, setQuickAdd] = useState(() => params.get('add') === 'expense');
@@ -62,12 +64,8 @@ export default function Dashboard() {
             <Brand />
           </span>
         }
-        right={
-          <>
-            <IconButton icon={LineChart} label={t('Reports')} onClick={() => nav('/reports')} />
-            <IconButton icon={Settings} label={t('Settings')} onClick={() => nav('/settings')} />
-          </>
-        }
+        // 2.2.0 (owner): Settings lives under More only, not on Home.
+        right={<IconButton icon={LineChart} label={t('Reports')} onClick={() => nav('/reports')} />}
       />
       <MonthBar />
       <p className="greeting">{t(greeting(), { name: user.username })}</p>
@@ -97,7 +95,7 @@ export default function Dashboard() {
           <Bar2 value={usageIncome} over={s.actualTotal > s.income} />
           {/* The sum behind "budget left": income minus everything spent or set aside this month. */}
           <div className="hero-sum">
-            <SumRow label={t('Income')} value={fmt(s.income)} hint={t('Change')} onClick={() => setSettingsOpen(true)} />
+            <SumRow label={t('Income')} value={fmt(s.income)} hint={s.extraIncome > 0 ? t('incl. {amount} extra', { amount: fmt(s.extraIncome) }) : t('Change')} onClick={() => setIncomeOpen(true)} />
             {/* 2.1.0: no minus signs here. These are what the income went to; saving isn't a loss. */}
             <SumRow label={t('Spent')} value={fmt(s.spending)} onClick={() => nav('/expenses')} />
             {s.netSaved !== 0 && <SumRow label={t('Saved')} value={fmt(s.netSaved)} onClick={() => nav('/savings')} />}
@@ -124,13 +122,13 @@ export default function Dashboard() {
       {/* Quick actions (Fintech-style): the four everyday entries, one tap each */}
       <div className="quick-actions" role="group" aria-label={t('Quick actions')}>
         <QuickAction icon={ReceiptText} label={t('Expense')} tone="mint" onClick={() => setQuickAdd(true)} />
-        <QuickAction icon={Wallet} label={t('Income')} tone="sand" onClick={() => setSettingsOpen(true)} />
+        <QuickAction icon={Wallet} label={t('Income')} tone="sand" onClick={() => setIncomeOpen(true)} />
         <QuickAction icon={PiggyBank} label={t('Save')} tone="sky" onClick={() => nav('/savings')} />
         <QuickAction icon={HandCoins} label={t('Pay back')} tone="lavender" onClick={() => nav('/loans')} />
       </div>
 
       {!fresh && month === thisMonth(startDay) && <WeekChart expenses={data.expenses} />}
-      <BudgetAlerts rows={s.rows} onOpen={() => nav('/budget')} />
+      <BudgetAlerts rows={s.rows} />
       <DueList />
       <QueuedList categories={data.categories} currency={user.currency} />
 
@@ -168,6 +166,16 @@ export default function Dashboard() {
         {data.recent.length === 0 ? <Empty text={t('Nothing logged yet.')} /> : data.recent.map((x) => <TxnTile key={`${x.kind}-${x.id}`} t={x} />)}
       </Card>
 
+      <Sheet open={incomeOpen} onClose={() => setIncomeOpen(false)} title={`${t('Income')} · ${monthLabel(month)}`}>
+        {incomeOpen && (
+          <IncomePanel
+            onEditMonthly={() => {
+              setIncomeOpen(false);
+              setSettingsOpen(true);
+            }}
+          />
+        )}
+      </Sheet>
       <Sheet open={settingsOpen} onClose={() => setSettingsOpen(false)} title={`${t('Income & plans')} · ${monthLabel(month)}`}>
         {settingsOpen && <SettingsForm onDone={() => setSettingsOpen(false)} />}
       </Sheet>

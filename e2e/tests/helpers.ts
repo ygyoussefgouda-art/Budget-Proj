@@ -44,11 +44,11 @@ export async function signIn(page: Page, username: string, password = PASSWORD) 
 
 /**
  * Bottom navigation (2.0.0: Home · Expenses · + · Budget · More). Savings and Loans live on the More page,
- * so for those two this opens More and then the entry there.
+ * so for those two this opens More and then the entry there. 2.2.0: Settings too (no longer on Home).
  */
-export const tab = (page: Page, name: 'Home' | 'Budget' | 'Expenses' | 'Loans' | 'Savings' | 'More') => {
+export const tab = (page: Page, name: 'Home' | 'Budget' | 'Expenses' | 'Loans' | 'Savings' | 'Settings' | 'More') => {
   const nav = page.getByRole('navigation', { name: 'Main' });
-  if (name === 'Loans' || name === 'Savings') {
+  if (name === 'Loans' || name === 'Savings' || name === 'Settings') {
     return {
       click: async () => {
         await nav.getByRole('link', { name: 'More' }).click();

@@ -121,12 +121,12 @@ test.describe('phase 3: tags, split, foreign currency, export', () => {
 
     // From Settings: CSV of this month
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await expect(page.getByRole('heading', { name: 'Export to a spreadsheet' })).toBeVisible();
     const [csv] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: 'Download CSV' }).click()]);
     const text = readFileSync((await csv.path())!, 'utf8');
     expect(text.charCodeAt(0)).toBe(0xfeff); // BOM so Excel reads Arabic correctly
-    expect(text).toContain('"Date","Category","Description","Amount"');
+    expect(text).toContain('"Date","Time","Category","Description","Amount"'); // 2.2.0: time of day
     expect(text).toContain('"Food","Koshary",45.5,"EGP"');
   });
 });

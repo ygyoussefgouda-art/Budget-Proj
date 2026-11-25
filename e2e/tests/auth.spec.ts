@@ -49,7 +49,7 @@ test.describe('accounts', () => {
     await expect(page.getByText('Where it went')).toHaveCount(0);
     await expect(page.getByText('Nothing logged yet.')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await expect(page.getByText(`Signed in as ${user}`)).toBeVisible();
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
@@ -74,7 +74,7 @@ test.describe('accounts', () => {
 
     const user = await signUpAndSkipTutorial(page);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await expect(page).toHaveURL(/\/settings$/);
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect(page).toHaveURL(/\/settings$/); // still there, on the sign-in screen
@@ -186,7 +186,7 @@ test.describe('accounts', () => {
     await expect(page.getByText('Your budget left').locator('..')).toContainText('4,500 EGP');
 
     // The PIN set in the tour really locks the app (switch Settings to "lock right away", then reopen)
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByLabel('Lock the app').selectOption({ label: 'Right away' });
     await page.reload();
     const lock = page.getByRole('dialog', { name: 'App locked' });
@@ -221,7 +221,7 @@ test.describe('accounts', () => {
     await expect(page.getByText('Your budget left').locator('..')).toContainText(/3,000\sEGP/);
 
     // The lock is on; turn it off in Settings, then replay the tour: the lock step asks for a PIN again
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('button', { name: 'Turn off app lock' }).click();
     const off = page.getByRole('dialog', { name: 'Turn off app lock' });
     await off.getByLabel('Current PIN').fill('1357');
@@ -249,7 +249,7 @@ test.describe('accounts', () => {
   test('change password, then the old one stops working; delete account', async ({ page }) => {
     const user = await signUpAndSkipTutorial(page);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
 
     await page.getByRole('button', { name: 'Change password' }).click();
     const s = page.getByRole('dialog', { name: 'Change password' });
@@ -271,7 +271,7 @@ test.describe('accounts', () => {
 
     // Delete the account: password + confirmation, then it is gone
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('button', { name: 'Delete my account' }).click();
     const d = page.getByRole('dialog', { name: 'Delete my account' });
     await d.getByLabel('Your password').fill('Brand-new-pass-1');

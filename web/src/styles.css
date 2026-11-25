@@ -670,10 +670,14 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .budget-glance:active { background: var(--press); }
 .budget-glance:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .glance-link { display: inline-flex; align-items: center; gap: 2px; color: var(--accent-text); font-weight: 700; font-size: 14px; flex: none; }
-.alert-banner.has-open { position: relative; }
-.alert-open { position: static; flex: none; align-self: center; display: grid; place-items: center; width: 28px; height: 28px; border: 0; background: none; color: var(--mute); padding: 0; }
-.alert-open::after { content: ''; position: absolute; inset: 0; border-radius: inherit; } /* stretches the tap area over the whole banner */
-.alert-open:focus-visible::after { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 18px; }
+/* 2.2.0: each alert line opens that category's expenses (44 px tall tap target, chevron at the end) */
+.alert-item { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 44px; margin: 0 -6px; padding: 0 6px;
+  border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.alert-item:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+.alert-item:active { background: color-mix(in srgb, currentColor 14%, transparent); }
+.alert-item svg { flex: none; opacity: .8; }
+.alert-list { gap: 0; }
+.time-input { max-width: 180px; }
 .fab span { transition: opacity .15s; }
 .fab.is-compact { width: 52px; padding: 0; justify-content: center; }
 .fab.is-compact span { display: none; }
@@ -1001,3 +1005,12 @@ html { scrollbar-color: var(--field-line) transparent; scrollbar-width: thin; }
 .hero-cur { margin-left: 2px; } /* the amount is always left-to-right, so a physical margin */
 .tutorial-done { display: flex; align-items: center; gap: 8px; color: var(--accent-text); font-weight: 700; }
 .field-hint.is-bad { color: var(--red); }
+
+/* 2.2.0: Income sheet (fixed monthly income + extra income) */
+.income-total { display: grid; gap: 2px; }
+.income-line { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 16px; background: var(--card); color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.income-line:active { background: var(--press); }
+.income-line:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.income-icon { flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--sand); color: var(--on-pastel); }
+.income-amount { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }.income-right { flex: none; display: grid; justify-items: end; gap: 2px; }

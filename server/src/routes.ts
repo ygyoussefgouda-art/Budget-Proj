@@ -12,6 +12,7 @@ import {
   mapCategory,
   mapExpense,
   mapGoalEntry,
+  mapIncome,
   mapLoan,
   recentActivity,
   SPLIT_JOIN,
@@ -101,11 +102,11 @@ export function apiRoutes(db: Db): Router {
       const today = localToday(req);
       await db.tx((q) => ensureMonth(q, u, month));
       await applyAutoAdd(db, u, today); // recurring expenses set to "add automatically"
-      const [budget, cats, expenses, goals, entries, loans, recent, earlier, due, thisHasData, source] = await Promise.all([
+      const [budget, cats, expenses, goals, entries, loans, recent, earlier, due, thisHasData, source, incomes] = await Promise.all([
         loadBudget(db, u, month),
         db.query('SELECT * FROM categories WHERE user_id = $1 ORDER BY sort, id', [u]),
         db.query(
-          `SELECT e.*, ${EXPENSE_EXTRAS} FROM expenses e ${SPLIT_JOIN} WHERE e.user_id = $1 AND ${inMonth('e.date', '$2', '$3')} ORDER BY e.date DESC, e.id DESC`,
+          `SELECT e.*, ${EXPENSE_EXTRAS} FROM expenses e ${SPLIT_JOIN} WHERE e.user_id = $1 AND ${inMonth('e.date', '$2', '$3')} ORDER BY e.date DESC, e.time_of_day DESC NULLS LAST, e.id DESC`,
           [u, month, req.user!.monthStartDay],
         ),
         goalsWithBalance(db, u),
@@ -116,6 +117,11 @@ export function apiRoutes(db: Db): Router {
         pendingDue(db, u, today),
         db.query(`SELECT 1 FROM month_budgets mb WHERE mb.user_id = $1 AND mb.month = $2 AND ${MONTH_HAS_DATA}`, [u, month]),
         copySource(db, u, month),
+        db.query(`SELECT * FROM incomes WHERE user_id = $1 AND ${inMonth('date', '$2', '$3')} ORDER BY date DESC, id DESC`, [
+          u,
+          month,
+          req.user!.monthStartDay,
+        ]),
       ]);
       // Rollover on: unspent budget per category carried in from earlier months.
       const carry = req.user!.rollover ? await carryover(db, u, month, req.user!.monthStartDay) : {};
@@ -124,6 +130,8 @@ export function apiRoutes(db: Db): Router {
         budget,
         categories: cats.rows.map(mapCategory),
         expenses: expenses.rows.map(mapExpense),
+        /** 2.2.0: extra income in this budget month (on top of budget.income). */
+        incomes: incomes.rows.map(mapIncome),
         goals,
         goalEntries: entries.rows.map(mapGoalEntry),
         loans: loans.rows.map(mapLoan),
@@ -292,7 +300,7 @@ export function apiRoutes(db: Db): Router {
       );
       const items = await db.query(
         `SELECT e.*, c.name AS category_name, ${EXPENSE_EXTRAS} FROM expenses e JOIN categories c ON c.id = e.category_id ${SPLIT_JOIN}
-         WHERE ${w} ORDER BY e.date DESC, e.id DESC LIMIT ${f.limit} OFFSET ${f.offset}`,
+         WHERE ${w} ORDER BY e.date DESC, e.time_of_day DESC NULLS LAST, e.id DESC LIMIT ${f.limit} OFFSET ${f.offset}`,
         params,
       );
       res.json({ items: items.rows.map(mapExpense), count: totals.rows[0].count, total: totals.rows[0].total });
@@ -367,10 +375,10 @@ export function apiRoutes(db: Db): Router {
         if (mode === 'create') {
           await underLimit(q, 'expenses', u);
           const ins = await q.query(
-            `INSERT INTO expenses(user_id, date, category_id, description, amount, tags, orig_amount, orig_currency, fx_rate, client_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            `INSERT INTO expenses(user_id, date, category_id, description, amount, tags, orig_amount, orig_currency, fx_rate, client_id, time_of_day)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL DO NOTHING RETURNING id`,
-            [u, e.date, e.categoryId, e.description, e.amount, e.tags, ...fx, e.clientId ?? null],
+            [u, e.date, e.categoryId, e.description, e.amount, e.tags, ...fx, e.clientId ?? null, e.time ?? null],
           );
           if (!ins.rows.length) {
             // Sent before (offline sync retried): hand back the expense it already created, change nothing.
@@ -382,9 +390,11 @@ export function apiRoutes(db: Db): Router {
         } else {
           const up = await q.query(
             `UPDATE expenses SET date = $3, category_id = $4, description = $5, amount = $6, tags = $7,
-               orig_amount = $8, orig_currency = $9, fx_rate = $10
+               orig_amount = $8, orig_currency = $9, fx_rate = $10,
+               time_of_day = CASE WHEN $12::boolean THEN $11 ELSE time_of_day END
              WHERE id = $1 AND user_id = $2 RETURNING id`,
-            [id, u, e.date, e.categoryId, e.description, e.amount, e.tags, ...fx],
+            // A client that doesn't send `time` (older app) leaves it as it is; null clears it.
+            [id, u, e.date, e.categoryId, e.description, e.amount, e.tags, ...fx, e.time ?? null, e.time !== undefined],
           );
           if (!up.rows.length) throw new HttpError(404, 'Expense not found.');
           expenseId = id;
@@ -463,6 +473,60 @@ export function apiRoutes(db: Db): Router {
         const row = (await q.query('SELECT * FROM expenses WHERE id = $1 AND user_id = $2 FOR UPDATE', [pid(req.params.id), u])).rows[0];
         if (!row) throw new HttpError(404, 'Expense not found.');
         return moveToTrash(q, u, 'expense', row);
+      });
+      res.json({ undo });
+    }),
+  );
+
+  // ---------- extra income (2.2.0): on top of the month's fixed income ----------
+  r.post(
+    '/incomes',
+    ah(async (req, res) => {
+      const i = schemas.income.parse(req.body);
+      const u = uid(req);
+      const row = await db.tx(async (q) => {
+        if (!forced(req)) {
+          const dup = await q.query(
+            `SELECT 1 FROM incomes WHERE user_id = $1 AND date = $2 AND amount = $3 AND lower(trim(description)) = lower(trim($4)) LIMIT 1`,
+            [u, i.date, i.amount, i.description],
+          );
+          if (dup.rows.length) throw new ConfirmNeeded('An identical income already exists. Save it anyway?');
+        }
+        await underLimit(q, 'incomes', u);
+        return (
+          await q.query('INSERT INTO incomes(user_id, date, amount, description) VALUES ($1, $2, $3, $4) RETURNING *', [
+            u,
+            i.date,
+            i.amount,
+            i.description,
+          ])
+        ).rows[0];
+      });
+      res.status(201).json(mapIncome(row));
+    }),
+  );
+
+  r.put(
+    '/incomes/:id',
+    ah(async (req, res) => {
+      const i = schemas.income.parse(req.body);
+      const up = await db.query(
+        'UPDATE incomes SET date = $3, amount = $4, description = $5 WHERE id = $1 AND user_id = $2 RETURNING *',
+        [pid(req.params.id), uid(req), i.date, i.amount, i.description],
+      );
+      if (!up.rows.length) throw new HttpError(404, 'Income not found.');
+      res.json(mapIncome(up.rows[0]));
+    }),
+  );
+
+  r.delete(
+    '/incomes/:id',
+    ah(async (req, res) => {
+      const u = uid(req);
+      const undo = await db.tx(async (q) => {
+        const row = (await q.query('SELECT * FROM incomes WHERE id = $1 AND user_id = $2 FOR UPDATE', [pid(req.params.id), u])).rows[0];
+        if (!row) throw new HttpError(404, 'Income not found.');
+        return moveToTrash(q, u, 'income', row);
       });
       res.json({ undo });
     }),
@@ -733,7 +797,8 @@ export function apiRoutes(db: Db): Router {
         `WITH m AS (SELECT to_char(make_date($2::int, g, 1), 'YYYY-MM') AS month FROM generate_series(1, 12) g)
          SELECT m.month,
            (mb.month IS NOT NULL) AS has_budget,
-           COALESCE(mb.income, 0) AS income,
+           COALESCE(mb.income, 0)
+             + (SELECT COALESCE(SUM(amount), 0) FROM incomes WHERE user_id = $1 AND ${inMonth('date', 'm.month', '$3')}) AS income,
            (SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = $1 AND ${inMonth('date', 'm.month', '$3')}) AS spent,
            (SELECT COALESCE(SUM(CASE WHEN type = 'deposit' THEN amount ELSE -amount END), 0)
               FROM goal_entries WHERE user_id = $1 AND ${inMonth('date', 'm.month', '$3')}) AS saved,
@@ -857,7 +922,7 @@ export function apiRoutes(db: Db): Router {
       // Erases everything: confirm with the password (like deleting the account).
       await checkPassword(db, u, schemas.withPassword.parse(req.body).password);
       await db.tx(async (q) => {
-        for (const t of ['trash', 'recurring_rules', 'expenses', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
+        for (const t of ['trash', 'recurring_rules', 'expenses', 'incomes', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
           await q.query(`DELETE FROM ${t} WHERE user_id = $1`, [u]);
         }
         // Start completely blank: no template categories, the user builds their own.

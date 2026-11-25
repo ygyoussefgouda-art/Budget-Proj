@@ -101,7 +101,7 @@ test.describe('phase 4: offline, shortcut, swipe, app lock', () => {
   test('app lock: PIN on reopen, wrong PIN refused, "forgot PIN" signs out', async ({ page }) => {
     const user = await signUpAndSkipTutorial(page);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('button', { name: 'Set a PIN' }).click();
     const s = sheet(page, 'Set a PIN');
     await s.getByLabel('New PIN (4–6 digits)').fill('1234');

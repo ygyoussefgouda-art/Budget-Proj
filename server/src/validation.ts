@@ -85,6 +85,9 @@ const foreign = z.object({
     .transform((r) => Math.round(r * 1e6) / 1e6),
 });
 
+/** Time of day, 24-hour "HH:MM". */
+export const timeOfDay = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be HH:MM');
+
 /** Converted amount in the account currency (the app and the server compute it the same way). */
 export const convert = (amount: number, rate: number) => Math.round(amount * rate);
 
@@ -170,7 +173,11 @@ export const schemas = {
     clientId: z.string().regex(/^[A-Za-z0-9-]{8,64}$/, 'is not a valid id').optional(),
     /** Never merge this one into the last expense (e.g. a receipt is about to be attached to it). */
     noMerge: z.boolean().optional(),
+    /** 2.2.0: time of day, "HH:MM" on the phone's clock (none on older expenses). */
+    time: timeOfDay.nullable().optional(),
   }),
+  /** 2.2.0: extra income on top of the month's fixed income. */
+  income: z.object({ date: isoDate, amount: positiveMoney, description: text(200).default('') }),
   goal: z.object({ name: name(60), target: positiveMoney, start: money.default(0), monthly: money.default(0) }),
   goalEntry: z.object({ date: isoDate, deposit: z.boolean(), amount: positiveMoney, note: text(200).default('') }),
   loan: z.object({

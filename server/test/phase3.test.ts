@@ -193,8 +193,8 @@ describe('export', () => {
     expect([...buf.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]); // UTF-8 BOM
     const lines = buf.toString('utf8').slice(1).trimEnd().split('\r\n');
     expect(lines).toHaveLength(3); // header + 2 November rows (October excluded)
-    expect(lines[0]).toBe('"Date","Category","Description","Amount","Currency","Tags","Split with","Their share","Original amount","Original currency","Rate"');
-    expect(lines[1]).toBe('"2026-11-01","أكل","كشري, ""large""",45.5,"EGP","#lunch",,,,,');
+    expect(lines[0]).toBe('"Date","Time","Category","Description","Amount","Currency","Tags","Split with","Their share","Original amount","Original currency","Rate"');
+    expect(lines[1]).toBe('"2026-11-01",,"أكل","كشري, ""large""",45.5,"EGP","#lunch",,,,,');
     expect(lines[2]).toContain('"\'=HYPERLINK(""http://evil"")"'); // neutralised: stays text in Excel
     // filters from the Expenses screen
     const tagged = (await binary(a, '/api/export?kind=expenses&tag=lunch')).body.toString('utf8');

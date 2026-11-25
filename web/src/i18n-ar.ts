@@ -1153,4 +1153,20 @@ export const AR: Record<string, string> = {
   'See where every pound goes': 'شوف فلوسك بتروح فين',
   Today: 'النهارده',
   Yesterday: 'امبارح',
+  // 2.2.0: time on expenses, alerts that open their cause, extra income
+  'Older expenses have no time. Add one if you like.': 'المصاريف القديمة مالهاش وقت. ضيفه لو حابب.',
+  'See its expenses': 'شوف مصاريفها',
+  'Extra income': 'دخل إضافي',
+  'Coming in this month': 'الداخل الشهر ده',
+  'Your salary or allowance, the same every month': 'مرتبك أو مصروفك، نفس المبلغ كل شهر',
+  'Extra income in {month}': 'دخل إضافي في {month}',
+  'Got money on top of your usual income, like freelance work or a gift? Add it here and it counts in this month.':
+    'جالك فلوس زيادة عن دخلك العادي، زي شغل فريلانس أو هدية؟ ضيفها هنا وهتتحسب في الشهر ده.',
+  'Delete extra income': 'امسح الدخل الإضافي',
+  'Add extra income': 'ضيف دخل إضافي',
+  'What was it? (optional)': 'كان إيه؟ (اختياري)',
+  'Freelance, gift, bonus…': 'فريلانس، هدية، مكافأة…',
+  'incl. {amount} extra': 'منهم {amount} إضافي',
+  'An identical income already exists. Save it anyway?': 'فيه دخل زيه بالظبط متسجل. تحفظه برضه؟',
+  'Income not found.': 'الدخل ده مش موجود.',
 };

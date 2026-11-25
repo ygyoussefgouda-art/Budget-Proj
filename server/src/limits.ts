@@ -9,6 +9,7 @@ export const LIMITS = {
   goal_entries: 50_000,
   loan_entries: 20_000,
   recurring_rules: 100,
+  incomes: 20_000,
 } as const;
 
 export async function underLimit(q: Queryable, table: keyof typeof LIMITS, u: number) {

@@ -16,7 +16,11 @@ export interface Expense {
   split?: { loanId: number; person: string; share: number } | null;
   /** Paid in another currency: original amount (minor units), code and the rate used. */
   foreign?: { amount: number; currency: string; rate: number } | null;
+  /** 2.2.0: time of day "HH:MM" on the phone's clock (null on older expenses). */
+  time?: string | null;
 }
+/** 2.2.0: extra (variable) income on top of the month's fixed income. */
+export interface Income { id: number; date: string; amount: number; description: string }
 export interface MonthBudget {
   month: string;
   income: number;
@@ -62,7 +66,7 @@ export function parseTags(text: string): { tags: string[]; bad: string | null } 
   const bad = parts.find((p) => !/^[\p{L}\p{N}_-]{1,30}$/u.test(p)) ?? null;
   return { tags: [...new Set(parts)], bad };
 }
-export interface Txn { date: string; id: number; kind: string; title: string; sub: string; amount: number }
+export interface Txn { date: string; id: number; kind: string; title: string; sub: string; amount: number; time?: string | null }
 /** "Every month on day N" expense. */
 export interface RecurringRule {
   id: number;
@@ -181,7 +185,12 @@ export interface MonthSummary {
   repaid: number; // loan repayments I made in month
   plannedTotal: number;
   actualTotal: number; // spent + saved + repaid
+  /** Fixed monthly income + extra income. */
   income: number;
+  /** The month's fixed income (the Budget form). */
+  fixedIncome: number;
+  /** 2.2.0: extra income entries this month. */
+  extraIncome: number;
   unallocated: number; // income - planned
   moneyLeft: number; // income - actual
 }
@@ -201,6 +210,8 @@ export function monthSummary(
   startDay = 1,
   /** Budget rollover: unspent budget per category carried in from earlier months. */
   carry: Record<string, number> = {},
+  /** 2.2.0: extra income this month (added to the fixed income). */
+  extraIncome = 0,
 ): MonthSummary {
   const rows: BudgetRow[] = [];
   let spending = 0;
@@ -232,9 +243,11 @@ export function monthSummary(
     repaid: rep,
     plannedTotal,
     actualTotal,
-    income: b.income,
-    unallocated: b.income - plannedTotal,
-    moneyLeft: b.income - actualTotal,
+    income: b.income + extraIncome,
+    fixedIncome: b.income,
+    extraIncome,
+    unallocated: b.income + extraIncome - plannedTotal,
+    moneyLeft: b.income + extraIncome - actualTotal,
   };
 }
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Db } from './db.js';
 import { HttpError } from './http.js';
-import { CATEGORY_COLORS, CATEGORY_ICONS, CURRENCIES, isoDate, monthStr, tag } from './validation.js';
+import { CATEGORY_COLORS, CATEGORY_ICONS, CURRENCIES, isoDate, monthStr, tag, timeOfDay } from './validation.js';
 
 /**
  * Backup format (version 2). Same table/column names as the original phone
@@ -32,9 +32,10 @@ export async function exportBackup(db: Db, userId: number) {
         'SELECT id, goal_id, date, type, amount, note FROM goal_entries WHERE user_id = $1 ORDER BY date, id',
       ),
       expenses: await q(
-        `SELECT id, date, category_id, description, amount, tags, orig_amount, orig_currency, fx_rate
+        `SELECT id, date, category_id, description, amount, tags, orig_amount, orig_currency, fx_rate, time_of_day
          FROM expenses WHERE user_id = $1 ORDER BY date, id`,
       ),
+      incomes: await q('SELECT date, amount, description FROM incomes WHERE user_id = $1 ORDER BY date, id'),
       loan_entries: await q(
         'SELECT id, date, person, direction, kind, amount, note, expense_id FROM loan_entries WHERE user_id = $1 ORDER BY date, id',
       ),
@@ -109,9 +110,16 @@ const backupSchema = z.object({
           orig_amount: amount.refine((v) => v > 0).nullish(),
           orig_currency: z.string().regex(/^[A-Z]{3}$/).nullish(),
           fx_rate: z.coerce.number().positive().max(1_000_000).nullish(),
+          // 2.2.0+: time of day; a bad value is dropped rather than failing the restore.
+          time_of_day: timeOfDay.nullish().catch(null),
         }),
       )
       .max(50_000),
+    // 2.2.0+: extra income; older backups have none.
+    incomes: z
+      .array(z.object({ date: isoDate, amount: amount.refine((v) => v > 0), description: str(200) }))
+      .max(20_000)
+      .default([]),
     loan_entries: z
       .array(
         z.object({
@@ -167,7 +175,7 @@ export async function restoreBackup(db: Db, userId: number, body: unknown) {
     }
     if (settings?.rollover !== undefined) await q.query('UPDATE users SET rollover = $1 WHERE id = $2', [settings.rollover, userId]);
     if (settings?.mergeRepeats !== undefined) await q.query('UPDATE users SET merge_repeats = $1 WHERE id = $2', [settings.mergeRepeats, userId]);
-    for (const table of ['trash', 'recurring_rules', 'expenses', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
+    for (const table of ['trash', 'recurring_rules', 'expenses', 'incomes', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
       await q.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
     }
     const catMap = new Map<number, number>();
@@ -227,11 +235,14 @@ export async function restoreBackup(db: Db, userId: number, body: unknown) {
       // Foreign currency only when all three parts are there.
       const fx = e.orig_amount && e.orig_currency && e.fx_rate ? [e.orig_amount, e.orig_currency, e.fx_rate] : [null, null, null];
       const ins = await q.query(
-        `INSERT INTO expenses(user_id, date, category_id, description, amount, tags, orig_amount, orig_currency, fx_rate)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-        [userId, e.date, cat(e.category_id), e.description, e.amount, e.tags, ...fx],
+        `INSERT INTO expenses(user_id, date, category_id, description, amount, tags, orig_amount, orig_currency, fx_rate, time_of_day)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+        [userId, e.date, cat(e.category_id), e.description, e.amount, e.tags, ...fx, e.time_of_day ?? null],
       );
       if (e.id !== undefined) expMap.set(e.id, ins.rows[0].id);
+    }
+    for (const i of t.incomes) {
+      await q.query('INSERT INTO incomes(user_id, date, amount, description) VALUES ($1, $2, $3, $4)', [userId, i.date, i.amount, i.description]);
     }
     const linked = new Set<number>();
     for (const l of t.loan_entries) {

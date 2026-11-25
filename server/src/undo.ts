@@ -14,12 +14,13 @@ import { id as idSchema } from './validation.js';
 
 export const UNDO_SECONDS = 120;
 /** One row, or a group: a goal with its entries, or every loan entry of one person. */
-export type TrashKind = 'expense' | 'goal_entry' | 'loan_entry' | 'goal' | 'loan_person';
-type RowKind = 'expense' | 'goal_entry' | 'loan_entry' | 'goal';
+export type TrashKind = 'expense' | 'goal_entry' | 'loan_entry' | 'goal' | 'loan_person' | 'income';
+type RowKind = 'expense' | 'goal_entry' | 'loan_entry' | 'goal' | 'income';
 
-const TABLE: Record<RowKind, string> = { expense: 'expenses', goal_entry: 'goal_entries', loan_entry: 'loan_entries', goal: 'goals' };
+const TABLE: Record<RowKind, string> = { expense: 'expenses', goal_entry: 'goal_entries', loan_entry: 'loan_entries', goal: 'goals', income: 'incomes' };
 const COLUMNS: Record<RowKind, string[]> = {
-  expense: ['id', 'user_id', 'date', 'category_id', 'description', 'amount', 'created_at', 'tags', 'orig_amount', 'orig_currency', 'fx_rate', 'client_id'],
+  expense: ['id', 'user_id', 'date', 'category_id', 'description', 'amount', 'created_at', 'tags', 'orig_amount', 'orig_currency', 'fx_rate', 'client_id', 'time_of_day'],
+  income: ['id', 'user_id', 'date', 'description', 'amount', 'created_at'],
   goal_entry: ['id', 'user_id', 'goal_id', 'date', 'type', 'amount', 'note', 'created_at'],
   loan_entry: ['id', 'user_id', 'date', 'person', 'direction', 'kind', 'amount', 'note', 'created_at', 'expense_id'],
   goal: ['id', 'user_id', 'name', 'target', 'start_balance', 'monthly', 'sort'],
@@ -54,7 +55,7 @@ export async function trashLoanPerson(q: Queryable, u: number, rows: Row[]): Pro
 }
 
 /** Moves one row (already checked to belong to `u`) into the trash. Returns the undo id. */
-export async function moveToTrash(q: Queryable, u: number, kind: 'expense' | 'goal_entry' | 'loan_entry', row: Row): Promise<number> {
+export async function moveToTrash(q: Queryable, u: number, kind: 'expense' | 'goal_entry' | 'loan_entry' | 'income', row: Row): Promise<number> {
   let receipt: Row | undefined;
   const item: Row = pick(kind, row);
   if (kind === 'expense') {
@@ -131,6 +132,7 @@ export function undoRoutes(db: Db): Router {
             }
           }
         }
+        if (kind === 'income') await underLimit(q, 'incomes', u);
         if (kind === 'goal') {
           await underLimit(q, 'goals', u);
           const entries = (item.entries as Row[] | undefined) ?? [];

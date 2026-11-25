@@ -9,7 +9,7 @@ async function openAdminAsOwner(page: Page) {
   await expect(page.getByRole('dialog', { name: /Welcome to Masrofy/ })).toBeVisible();
   await page.getByRole('button', { name: 'Skip' }).click();
   await tab(page, 'Home').click();
-  await page.getByRole('button', { name: 'Settings' }).click();
+  await tab(page, 'Settings').click();
   await page.getByRole('button', { name: 'Open the admin page' }).click();
   await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible();
 }
@@ -31,7 +31,7 @@ test.describe('phase 5: admin page and password reset', () => {
 
     // On the user's phone: sign out, then "Forgot password?"
     await tab(phone, 'Home').click();
-    await phone.getByRole('button', { name: 'Settings' }).click();
+    await tab(phone, 'Settings').click();
     await phone.getByRole('button', { name: 'Sign out', exact: true }).click();
     await phone.getByRole('button', { name: 'Forgot password?' }).click();
     await phone.getByRole('button', { name: 'I already have a code' }).click(); // the code came from the admin, not by email
@@ -83,7 +83,7 @@ test.describe('phase 5: admin page and password reset', () => {
   test('a normal account sees no admin page', async ({ page }) => {
     await signUpAndSkipTutorial(page);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await expect(page.getByRole('button', { name: 'Open the admin page' })).toHaveCount(0);
     await page.goto('/admin');
     await expect(page).toHaveURL(/\/settings$/);

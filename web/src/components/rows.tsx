@@ -8,11 +8,13 @@ import {
   HandCoins,
   PiggyBank,
   Undo2,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import { alertLevel, budgetAlerts, rowBar, rowLeft, rowMet, rowStatus, rowUnplanned, type BudgetRow, type Txn } from '../domain/calc';
+import { useNavigate } from 'react-router-dom';
+import { alertLevel, budgetAlerts, rowBar, rowLeft, rowMet, rowStatus, rowUnplanned, type BudgetAlert, type BudgetRow, type Txn } from '../domain/calc';
 import { t } from '../i18n';
-import { monthLabel, periodLabel, shiftMonth, shortDate, useApp } from '../state';
+import { fmtTime, monthLabel, periodLabel, shiftMonth, shortDate, useApp } from '../state';
 import { CategoryIcon } from './CategoryIcon';
 import { Bar, COLORS, Pill } from './ui';
 
@@ -92,46 +94,63 @@ export function BudgetRowTile({ r, onClick }: { r: BudgetRow; onClick?: () => vo
 
 /**
  * Banner on Home and Budget: categories that used 80% of their budget or more (red at 100%).
- * Hidden when everything is fine.
+ * Hidden when everything is fine. 2.2.0: each line is a button that opens what caused it: that
+ * category's expenses this month. "And N more" opens Budget, where every category is listed.
  */
-export function BudgetAlerts({ rows, onOpen }: { rows: BudgetRow[]; onOpen?: () => void }) {
+export function BudgetAlerts({ rows }: { rows: BudgetRow[] }) {
   const { fmt } = useApp();
+  const nav = useNavigate();
   const alerts = budgetAlerts(rows);
   if (!alerts.length) return null;
   const red = alerts.some((a) => a.level !== 'warn');
   const color = red ? COLORS.red : COLORS.amber;
   return (
-    <div className={`alert-banner ${red ? 'is-red' : 'is-amber'} ${onOpen ? 'has-open' : ''}`} role="status">
-      <AlertTriangle size={18} style={{ color, flex: 'none' }} aria-hidden="true" />
+    <div className={`alert-banner ${red ? 'is-red' : 'is-amber'}`} role="status">
+      <AlertTriangle size={18} style={{ color, flex: 'none', marginTop: 2 }} aria-hidden="true" />
       <div className="grow">
         <strong className="small block">
           {alerts.length === 1 ? t('1 category needs a look') : t('{n} categories need a look', { n: alerts.length })}
         </strong>
         <ul className="alert-list">
           {alerts.slice(0, 4).map((a) => (
-            <li key={a.catId} style={{ color: a.level === 'warn' ? COLORS.amber : COLORS.red }}>
-              {a.level === 'over'
-                ? t('{name}: over budget by {amount}', { name: a.name, amount: fmt(a.over) })
-                : a.level === 'full'
-                  ? t('{name}: budget used up', { name: a.name })
-                  : t('{name}: {pct}% of the budget used', { name: a.name, pct: a.pct ?? 0 })}
+            <li key={a.catId}>
+              <button
+                type="button"
+                className="alert-item"
+                style={{ color: a.level === 'warn' ? COLORS.amber : COLORS.red }}
+                onClick={() => nav(`/expenses?cat=${a.catId}`)}
+                aria-label={`${alertText(a, fmt)}. ${t('See its expenses')}`}
+              >
+                <span className="grow">{alertText(a, fmt)}</span>
+                <ChevronRight size={16} className="flip-rtl" aria-hidden="true" />
+              </button>
             </li>
           ))}
-          {alerts.length > 4 && <li className="mute">{t('and {n} more', { n: alerts.length - 4 })}</li>}
+          {alerts.length > 4 && (
+            <li>
+              <button type="button" className="alert-item mute" onClick={() => nav('/budget')}>
+                <span className="grow">{t('and {n} more', { n: alerts.length - 4 })}</span>
+                <ChevronRight size={16} className="flip-rtl" aria-hidden="true" />
+              </button>
+            </li>
+          )}
         </ul>
       </div>
-      {/* The whole banner is the tap target (the button stretches over it, see .alert-open) */}
-      {onOpen && (
-        <button type="button" className="alert-open" onClick={onOpen} aria-label={t('Open the Budget tab')}>
-          <ChevronRight size={18} className="flip-rtl" aria-hidden="true" />
-        </button>
-      )}
     </div>
   );
 }
 
+function alertText(a: BudgetAlert, fmt: (n: number) => string) {
+  return a.level === 'over'
+    ? t('{name}: over budget by {amount}', { name: a.name, amount: fmt(a.over) })
+    : a.level === 'full'
+      ? t('{name}: budget used up', { name: a.name })
+      : t('{name}: {pct}% of the budget used', { name: a.name, pct: a.pct ?? 0 });
+}
+
 const TXN: Record<string, { icon: LucideIcon; color: string }> = {
   expense: { icon: ArrowUpRight, color: COLORS.red }, // not drawn: expenses use their category icon
+  income: { icon: Wallet, color: COLORS.accent }, // 2.2.0: extra income
   deposit: { icon: PiggyBank, color: COLORS.blue },
   withdrawal: { icon: Undo2, color: COLORS.amber },
   borrow: { icon: ArrowDownLeft, color: COLORS.purple },
@@ -144,6 +163,8 @@ const TXN: Record<string, { icon: LucideIcon; color: string }> = {
 function txnText(x: Txn) {
   const name = (prefix: string, suffix = '') => x.title.slice(prefix.length, x.title.length - suffix.length);
   switch (x.kind) {
+    case 'income':
+      return { title: x.title === 'Extra income' ? t('Extra income') : x.title, sub: t('Extra income') };
     case 'deposit':
       return { title: t('Saved'), sub: x.sub };
     case 'withdrawal':
@@ -182,6 +203,7 @@ export function TxnTile({ t: x }: { t: Txn }) {
         <div className="txn-title">{text.title}</div>
         <div className="tiny mute">
           {text.sub} · {shortDate(x.date)}
+          {x.time ? ` · ${fmtTime(x.time)}` : ''}
         </div>
       </div>
       {/* Spending is ordinary, so it's ink, not alarm red; money coming in is green */}

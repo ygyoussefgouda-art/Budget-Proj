@@ -12,6 +12,7 @@ import {
   type Expense,
   type Goal,
   type GoalEntry,
+  type Income,
   type LoanEntry,
   type MonthBudget,
   type MonthSummary,
@@ -39,6 +40,8 @@ export interface ServerState {
   budget: MonthBudget;
   categories: Category[];
   expenses: Expense[]; // this month only
+  /** 2.2.0: extra income this month (missing from an older server). */
+  incomes?: Income[];
   goals: Goal[]; // with balance
   goalEntries: GoalEntry[];
   loans: LoanEntry[];
@@ -111,6 +114,20 @@ export const shortDate = (iso: string) => {
   return tidyDate(new Date(y, m - 1, d).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' }));
 };
 
+/** 2.2.0: the phone's clock now, "HH:MM" (24-hour, as stored). */
+export const nowTime = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+/** "14:05" → "2:05 PM" (or "٢:٠٥ م" in Arabic), in the app's language. */
+export const fmtTime = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
+  // 12-hour with AM/PM (ص/م in Arabic), as people in Egypt read times; British English would say 21:05.
+  return new Date(2000, 0, 1, h, m).toLocaleTimeString(locale(), { hour: 'numeric', minute: '2-digit', hour12: true }).replace(/ /g, ' ');
+};
+
 interface AppCtx {
   user: User;
   month: string;
@@ -149,7 +166,18 @@ export function AppStateProvider({ user, children }: { user: User; children: Rea
 
   const summary = useMemo(
     () =>
-      data ? monthSummary(data.budget, data.categories, data.expenses, data.goalEntries, data.loans, startDay, data.carry ?? {}) : undefined,
+      data
+        ? monthSummary(
+            data.budget,
+            data.categories,
+            data.expenses,
+            data.goalEntries,
+            data.loans,
+            startDay,
+            data.carry ?? {},
+            (data.incomes ?? []).reduce((s, i) => s + i.amount, 0),
+          )
+        : undefined,
     [data, startDay],
   );
   const totals = useMemo(

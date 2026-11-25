@@ -33,7 +33,7 @@ import { fmtMoney, parseMoney, parseRate, plain } from '../domain/money';
 import { t } from '../i18n';
 import { isNetworkError } from '../offline';
 import { prepareReceipt, RECEIPT_ACCEPT } from '../receipt';
-import { CURRENCIES, defaultDate, monthLabel, shortDate, todayIso, useApp, type User } from '../state';
+import { CURRENCIES, defaultDate, fmtTime, monthLabel, nowTime, shortDate, todayIso, useApp, type User } from '../state';
 
 type Scope = 'month' | 'all' | 'range';
 
@@ -69,7 +69,7 @@ function dayLabel(iso: string) {
  * 2.1.0: the expense date as Today / Yesterday / another day. The phone's own date picker opens from the
  * third chip, and the chosen day is shown the app's way ("22 Nov"), never as 11/22/2026.
  */
-function DateChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function DateChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const today = todayIso();
   const yd = yesterdayIso();
   const other = value !== today && value !== yd;
@@ -112,18 +112,32 @@ export default function Expenses() {
   const undoDelete = useUndoDelete();
   const saved = rememberedFilters.get(user.id);
   // Home's "Upcoming payments → See all" opens /expenses?recurring=1: the recurring list straight away.
+  // 2.2.0: a budget alert opens /expenses?cat=<id>: this month's expenses in that category, nothing else filtered.
   const [urlParams, setUrlParams] = useSearchParams();
+  const urlCat = Number(urlParams.get('cat')) || null;
   const [recurringOpen, setRecurringOpen] = useState(() => urlParams.get('recurring') === '1');
+  const [scope, setScope] = useState<Scope>(urlCat ? 'month' : (saved?.scope ?? 'month'));
+  const [from, setFrom] = useState(urlCat ? '' : (saved?.from ?? ''));
+  const [to, setTo] = useState(urlCat ? '' : (saved?.to ?? ''));
+  const [search, setSearch] = useState(urlCat ? '' : (saved?.search ?? ''));
+  const [q, setQ] = useState(urlCat ? '' : (saved?.search ?? '').trim());
+  const [catId, setCatId] = useState<number | null>(urlCat ?? saved?.catId ?? null);
+  const [tag, setTag] = useState<string | null>(urlCat ? null : (saved?.tag ?? null));
+  // Also when the page is already open (the links work from anywhere), then the address is tidied up.
   useEffect(() => {
-    if (urlParams.has('recurring')) setUrlParams({}, { replace: true });
+    if (urlParams.get('recurring') === '1') setRecurringOpen(true);
+    const c = Number(urlParams.get('cat')) || null;
+    if (c) {
+      setScope('month');
+      setFrom('');
+      setTo('');
+      setSearch('');
+      setQ('');
+      setTag(null);
+      setCatId(c);
+    }
+    if (urlParams.has('recurring') || urlParams.has('cat')) setUrlParams({}, { replace: true });
   }, [urlParams, setUrlParams]);
-  const [scope, setScope] = useState<Scope>(saved?.scope ?? 'month');
-  const [from, setFrom] = useState(saved?.from ?? '');
-  const [to, setTo] = useState(saved?.to ?? '');
-  const [search, setSearch] = useState(saved?.search ?? '');
-  const [q, setQ] = useState((saved?.search ?? '').trim());
-  const [catId, setCatId] = useState<number | null>(saved?.catId ?? null);
-  const [tag, setTag] = useState<string | null>(saved?.tag ?? null);
   const [exportOpen, setExportOpen] = useState(false);
   const tags = useQuery({ queryKey: ['tags'], queryFn: () => api<{ tag: string; count: number }[]>('/tags'), staleTime: 60_000 });
   const [form, setForm] = useState<{ edit?: Expense; copy?: Expense } | null>(null);
@@ -282,6 +296,7 @@ export default function Expenses() {
               <span className="grow">
                 <span className="txn-title">{e.description || e.categoryName}</span>
                 <span className="tiny mute block">
+                  {e.time ? `${fmtTime(e.time)} · ` : ''}
                   {e.categoryName}
                   {e.split ? ` · ${t('Split with {name}', { name: e.split.person })}` : ''}
                   {e.foreign ? ` · ${fmtMoney(e.foreign.amount, e.foreign.currency)}` : ''}
@@ -517,6 +532,8 @@ export function ExpenseForm({
   );
   const [desc, setDesc] = useState(src?.description ?? '');
   const [date, setDate] = useState(edit?.date ?? (quick || copy ? todayIso() : defaultDate(month, startDay)));
+  // 2.2.0: the time it was spent; a new expense starts at the phone's clock now (older ones may have none).
+  const [time, setTime] = useState(edit ? (edit.time ?? '') : nowTime());
   // Most-used descriptions as tap-to-fill chips (new expenses only).
   const suggestions = useQuery({
     queryKey: ['suggestions'],
@@ -584,6 +601,7 @@ export function ExpenseForm({
       description: desc.trim(),
       amount: shares ? shares.mine : total,
       tags: tags.tags,
+      time: time || null,
       split: shares ? { person: person.trim(), share: shares.their } : null,
       foreign: fxOn ? { amount: fxMinor, currency: fxCurrency, rate } : null,
       // A receipt belongs to this one expense: never add it into the last one ("Add quick repeats together").
@@ -702,6 +720,9 @@ export function ExpenseForm({
         </div>
       )}
       <DateChips value={date} onChange={setDate} />
+      <Field label={t('Time')} hint={edit && !edit.time ? t('Older expenses have no time. Add one if you like.') : undefined}>
+        <input type="time" className="input time-input" dir="ltr" value={time} onChange={(e) => setTime(e.target.value)} />
+      </Field>
 
       {!quick && (
         <>

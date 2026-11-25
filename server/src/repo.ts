@@ -8,6 +8,7 @@ export const mapExpense = (r: Row) => ({
   categoryId: r.category_id,
   description: r.description,
   amount: r.amount,
+  time: (r.time_of_day as string | null | undefined) ?? null,
   ...(r.category_name !== undefined ? { categoryName: r.category_name } : {}),
   ...(r.has_receipt !== undefined ? { hasReceipt: r.has_receipt } : {}),
   tags: (r.tags as string[] | undefined) ?? [],
@@ -38,6 +39,7 @@ export const mapGoalEntry = (r: Row) => ({
   amount: r.amount,
   note: r.note,
 });
+export const mapIncome = (r: Row) => ({ id: r.id, date: r.date, amount: r.amount, description: r.description });
 export const mapLoan = (r: Row) => ({
   id: r.id,
   date: r.date,
@@ -135,19 +137,22 @@ export async function goalsWithBalance(q: Queryable, userId: number) {
   return r.rows.map(mapGoal);
 }
 
-/** Latest activity across expenses, savings and loans (signed cash flow). */
+/** Latest activity across expenses, extra income, savings and loans (signed cash flow). */
 export async function recentActivity(q: Queryable, userId: number, limit: number) {
   const r = await q.query(
     `SELECT * FROM (
        SELECT e.date, e.id, 'expense' AS kind, COALESCE(NULLIF(e.description, ''), c.name) AS title,
-              c.name AS sub, -e.amount AS amount
+              c.name AS sub, -e.amount AS amount, e.time_of_day AS time
        FROM expenses e JOIN categories c ON c.id = e.category_id WHERE e.user_id = $1
+       UNION ALL
+       SELECT i.date, i.id, 'income', COALESCE(NULLIF(i.description, ''), 'Extra income'), 'Extra income', i.amount, NULL
+       FROM incomes i WHERE i.user_id = $1
        UNION ALL
        SELECT ge.date, ge.id,
               CASE WHEN ge.type = 'deposit' THEN 'deposit' ELSE 'withdrawal' END,
               CASE WHEN ge.type = 'deposit' THEN 'Saved' ELSE 'Withdrawn' END,
               g.name,
-              CASE WHEN ge.type = 'deposit' THEN ge.amount ELSE -ge.amount END
+              CASE WHEN ge.type = 'deposit' THEN ge.amount ELSE -ge.amount END, NULL
        FROM goal_entries ge JOIN goals g ON g.id = ge.goal_id WHERE ge.user_id = $1
        UNION ALL
        SELECT l.date, l.id,
@@ -159,10 +164,10 @@ export async function recentActivity(q: Queryable, userId: number, limit: number
                    WHEN l.kind = 'principal' THEN 'Lent to ' || l.person
                    ELSE l.person || ' paid me back' END,
               'Loans',
-              CASE WHEN (l.direction = 'borrowed') = (l.kind = 'principal') THEN l.amount ELSE -l.amount END
+              CASE WHEN (l.direction = 'borrowed') = (l.kind = 'principal') THEN l.amount ELSE -l.amount END, NULL
        FROM loan_entries l WHERE l.user_id = $1
      ) t ORDER BY date DESC, id DESC LIMIT $2`,
     [userId, limit],
   );
-  return r.rows.map((x) => ({ date: x.date, id: x.id, kind: x.kind, title: x.title, sub: x.sub, amount: x.amount }));
+  return r.rows.map((x) => ({ date: x.date, id: x.id, kind: x.kind, title: x.title, sub: x.sub, amount: x.amount, time: x.time ?? null }));
 }

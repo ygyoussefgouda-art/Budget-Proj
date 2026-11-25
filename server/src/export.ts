@@ -9,7 +9,7 @@ import { csv, xlsx, type Cell } from './xlsx.js';
 type Lang = 'en' | 'ar';
 const WORDS: Record<Lang, Record<string, string>> = {
   en: {
-    Date: 'Date', Category: 'Category', Description: 'Description', Amount: 'Amount', Currency: 'Currency', Tags: 'Tags',
+    Date: 'Date', Time: 'Time', Category: 'Category', Description: 'Description', Amount: 'Amount', Currency: 'Currency', Tags: 'Tags',
     'Split with': 'Split with', 'Their share': 'Their share', 'Original amount': 'Original amount',
     'Original currency': 'Original currency', Rate: 'Rate', Person: 'Person', Side: 'Side', Type: 'Type', Note: 'Note',
     Goal: 'Goal', 'I owe': 'I owe', 'Owed to me': 'Owed to me', Borrowed: 'Borrowed', 'I paid back': 'I paid back',
@@ -17,7 +17,7 @@ const WORDS: Record<Lang, Record<string, string>> = {
     expenses: 'Expenses', loans: 'Loans', savings: 'Savings',
   },
   ar: {
-    Date: 'التاريخ', Category: 'الفئة', Description: 'الوصف', Amount: 'المبلغ', Currency: 'العملة', Tags: 'الوسوم',
+    Date: 'التاريخ', Time: 'الوقت', Category: 'الفئة', Description: 'الوصف', Amount: 'المبلغ', Currency: 'العملة', Tags: 'الوسوم',
     'Split with': 'مقسوم مع', 'Their share': 'نصيبه', 'Original amount': 'المبلغ الأصلي', 'Original currency': 'العملة الأصلية',
     Rate: 'سعر الصرف', Person: 'الشخص', Side: 'الجهة', Type: 'النوع', Note: 'ملاحظة', Goal: 'الهدف',
     'I owe': 'عليّا', 'Owed to me': 'ليّا', Borrowed: 'استلفت', 'I paid back': 'سدّدت', Lent: 'سلّفت', 'Paid me back': 'رجّعلي',
@@ -50,15 +50,16 @@ export function exportRoutes(db: Db): Router {
         const { where, params } = expenseWhere(u, f);
         const list = await db.query(
           `SELECT e.date, c.name AS category, e.description, e.amount, e.tags, sl.person AS split_person, sl.amount AS split_share,
-                  e.orig_amount, e.orig_currency, e.fx_rate
+                  e.orig_amount, e.orig_currency, e.fx_rate, e.time_of_day
            FROM expenses e JOIN categories c ON c.id = e.category_id LEFT JOIN loan_entries sl ON sl.expense_id = e.id
-           WHERE ${where} ORDER BY e.date, e.id`,
+           WHERE ${where} ORDER BY e.date, e.time_of_day NULLS FIRST, e.id`,
           params,
         );
         rows = [
-          ['Date', 'Category', 'Description', 'Amount', 'Currency', 'Tags', 'Split with', 'Their share', 'Original amount', 'Original currency', 'Rate'].map(w),
+          ['Date', 'Time', 'Category', 'Description', 'Amount', 'Currency', 'Tags', 'Split with', 'Their share', 'Original amount', 'Original currency', 'Rate'].map(w),
           ...list.rows.map((x): Cell[] => [
             x.date,
+            x.time_of_day ?? null,
             x.category,
             x.description,
             money(x.amount),

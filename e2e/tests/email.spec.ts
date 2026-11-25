@@ -29,7 +29,7 @@ test.describe('0.6.3: email', () => {
     const name = await signUpAndSkipTutorial(page);
     const email = emailFor(name);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await expect(page.getByText(email)).toBeVisible(); // shown under Account
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
 
@@ -69,7 +69,7 @@ test.describe('0.6.3: email', () => {
   test('change the email in Settings (needs the password)', async ({ page }) => {
     const name = await signUpAndSkipTutorial(page);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('button', { name: 'Change', exact: true }).click();
     const s = page.getByRole('dialog', { name: 'Change email' });
     await s.getByLabel('Email').fill(`new.${name}@example.com`);

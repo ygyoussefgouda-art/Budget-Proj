@@ -6,7 +6,7 @@ test.describe('0.6.1 safety fixes', () => {
     await signUpAndSkipTutorial(page);
     await setUpBudget(page);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('button', { name: 'Set a PIN' }).click();
     const s = sheet(page, 'Set a PIN');
     await s.getByLabel('New PIN (4–6 digits)').fill('2468');
@@ -33,7 +33,7 @@ test.describe('0.6.1 safety fixes', () => {
     await signUpAndSkipTutorial(page);
     await setUpBudget(page);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('button', { name: 'Erase all data' }).click();
     const dlg = page.getByRole('alertdialog');
     await expect(dlg.getByRole('button', { name: 'Erase' })).toBeDisabled();
@@ -44,7 +44,7 @@ test.describe('0.6.1 safety fixes', () => {
     await expect(page.getByText('Food').first()).toBeVisible(); // still there
 
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('button', { name: 'Erase all data' }).click();
     await dlg.getByLabel('Your password').fill(PASSWORD);
     await dlg.getByRole('button', { name: 'Erase' }).click();

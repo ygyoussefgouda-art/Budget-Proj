@@ -4,7 +4,7 @@ import { signUpAndSkipTutorial, tab } from './helpers';
 test('Settings → Contact us opens an email for a bug report or a feature idea', async ({ page }) => {
   await signUpAndSkipTutorial(page);
   await tab(page, 'Home').click();
-  await page.getByRole('button', { name: 'Settings' }).click();
+  await tab(page, 'Settings').click();
   await expect(page.getByRole('heading', { name: 'Contact us' })).toBeVisible();
 
   const bug = await page.getByRole('link', { name: 'Report a bug' }).getAttribute('href');

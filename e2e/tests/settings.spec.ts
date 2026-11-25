@@ -9,7 +9,7 @@ test.describe('settings, language and navigation', () => {
 
   test('Arabic (Egyptian) switches the whole app to right-to-left and back', async ({ page }) => {
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('tab', { name: 'عربي' }).click();
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
@@ -42,7 +42,7 @@ test.describe('settings, language and navigation', () => {
 
   test('light / dark theme', async ({ page }) => {
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('tab', { name: 'Light' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
     const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -54,7 +54,7 @@ test.describe('settings, language and navigation', () => {
 
   test('month start day changes the budget month range', async ({ page }) => {
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('radio', { name: '10' }).click();
     await expect(page.getByRole('radio', { name: '10' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByText(/Each month starts on the 10th/)).toBeVisible();
@@ -79,18 +79,18 @@ test.describe('settings, language and navigation', () => {
   test('MK1: no badge under the name on Home; Settings shows the mark and credits the developer', async ({ page }) => {
     await tab(page, 'Home').click();
     await expect(page.locator('.page-header .stage-badge')).toHaveCount(0); // removed in 1.2.0 (owner's call)
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await expect(page.locator('.stage-badge').first()).toHaveText('MK1');
     const footer = page.locator('footer.app-footer');
     await expect(footer).toContainText('Developed by Youssef Gouda');
-    await expect(footer).toContainText('Masrofy MK1 · Version 2.1.5');
+    await expect(footer).toContainText('Masrofy MK1 · Version 2.2.0');
     await expect(page.getByText(/alpha/i)).toHaveCount(0);
   });
 
   test('backup downloads a JSON file', async ({ page }) => {
     await setUpBudget(page);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download backup' }).click()]);
     expect(dl.suggestedFilename()).toMatch(/^budget-me-backup-\d{4}-\d{2}-\d{2}\.json$/);
     const file = await dl.path();

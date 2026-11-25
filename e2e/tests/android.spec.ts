@@ -7,7 +7,7 @@ test.describe('Android app download (browser side)', () => {
   test('Settings offers "Get the Android app" with version, guide and a working download', async ({ page }) => {
     await signUpAndSkipTutorial(page);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     const card = page.locator('.card', { has: page.getByRole('heading', { name: 'Get the Android app' }) });
     await expect(card).toContainText('Version 0.6.5');
     await expect(card).toContainText('Open the file. If Android asks, allow your browser to install unknown apps.');

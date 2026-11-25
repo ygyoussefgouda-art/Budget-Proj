@@ -64,6 +64,15 @@ describe('workbook formulas', () => {
     expect(rowStatus(s.rows[0])).toBe('OK');
   });
 
+  it('2.2.0: extra income adds to the income, what is left and what is not planned', () => {
+    const s = monthSummary(budget, cats, expenses, [], loans, 1, {}, 70000);
+    expect(s.fixedIncome).toBe(budget.income);
+    expect(s.extraIncome).toBe(70000);
+    expect(s.income).toBe(budget.income + 70000);
+    expect(s.unallocated).toBe(30000 + 70000);
+    expect(s.moneyLeft).toBe(245000 + 70000);
+  });
+
   it('over budget and goal met statuses', () => {
     const e = [...expenses, { id: 9, date: '2026-11-02', categoryId: 4, description: '', amount: 100 }];
     const s = monthSummary(budget, cats, e, [

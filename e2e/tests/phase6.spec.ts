@@ -34,7 +34,7 @@ test.describe('phase 6: offline viewing', () => {
     await setUpBudget(page);
     await page.waitForTimeout(1500);
     await tab(page, 'Home').click();
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await tab(page, 'Settings').click();
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
     await page.waitForTimeout(1500);
