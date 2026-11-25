@@ -59,6 +59,45 @@ test.describe('2.2.0: time on expenses, alerts open their cause, extra income, S
     await expect(page.locator('.list-item', { hasText: 'Bus to uni' })).toHaveCount(0);
   });
 
+  test('2.2.1: a read alert stops looking new; reaching the next level makes it new again', async ({ page }) => {
+    await setUpBudget(page); // Food: 1,500 EGP
+    const add = async (amount: string, what: string) => {
+      await tab(page, 'Expenses').click();
+      await page.getByRole('button', { name: 'Add an expense' }).click();
+      const f = sheet(page, 'Add expense');
+      await f.getByLabel('Amount').fill(amount);
+      await f.getByLabel('Category').selectOption({ label: 'Food' });
+      await f.getByLabel(/What for/).fill(what);
+      await f.getByRole('button', { name: 'Add expense' }).click();
+      await expect(f).toHaveCount(0);
+    };
+    const banner = page.locator('.alert-banner');
+    const badge = page.getByRole('link', { name: 'Budget, 1 budget alert' });
+
+    await add('1300', 'Groceries'); // 86%
+    await tab(page, 'Home').click();
+    await expect(banner).toHaveClass(/is-amber/);
+    await expect(badge).toBeVisible();
+    // Reading it (here: "Mark as read") makes it quiet and clears the badge
+    await banner.getByRole('button', { name: 'Mark as read' }).click();
+    await expect(banner).toHaveClass(/is-read/);
+    await expect(page.getByRole('link', { name: 'Budget', exact: true })).toBeVisible();
+    await expect(banner.getByRole('button', { name: 'Mark as read' })).toHaveCount(0);
+    // Still read after a reload
+    await page.reload();
+    await expect(page.locator('.alert-banner')).toHaveClass(/is-read/);
+
+    // Going over budget is new: colour and badge come back; opening Budget reads it
+    await add('300', 'Dinner out');
+    await tab(page, 'Home').click();
+    await expect(banner).toHaveClass(/is-red/);
+    await expect(badge).toBeVisible();
+    await tab(page, 'Budget').click();
+    await expect(page.getByRole('link', { name: 'Budget', exact: true })).toBeVisible();
+    await tab(page, 'Home').click();
+    await expect(banner).toHaveClass(/is-read/);
+  });
+
   test('extra income adds to the month, shows in recent activity, and can be deleted with Undo', async ({ page }) => {
     await setUpBudget(page); // income 5,000
     await tab(page, 'Home').click();

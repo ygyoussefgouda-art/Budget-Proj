@@ -114,7 +114,7 @@ export default function Budget() {
         }
       />
       <MonthBar />
-      <BudgetAlerts rows={s.rows} />
+      <BudgetAlerts rows={s.rows} readOnView />
 
       {data.canCopyPrevious && data.copyFrom && (
         <Card className="copy-card">

@@ -11,7 +11,9 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSeenAlerts } from '../alertsSeen';
 import { alertLevel, budgetAlerts, rowBar, rowLeft, rowMet, rowStatus, rowUnplanned, type BudgetAlert, type BudgetRow, type Txn } from '../domain/calc';
 import { t } from '../i18n';
 import { fmtTime, monthLabel, periodLabel, shiftMonth, shortDate, useApp } from '../state';
@@ -96,39 +98,67 @@ export function BudgetRowTile({ r, onClick }: { r: BudgetRow; onClick?: () => vo
  * Banner on Home and Budget: categories that used 80% of their budget or more (red at 100%).
  * Hidden when everything is fine. 2.2.0: each line is a button that opens what caused it: that
  * category's expenses this month. "And N more" opens Budget, where every category is listed.
+ * 2.2.1: alerts already read (tapped, "Mark as read", or seen on Budget) turn grey and stop counting on
+ * the Budget tab; the banner is only amber or red while something in it is new. `readOnView` (Budget):
+ * opening the page reads them all, but this visit still shows which ones were new.
  */
-export function BudgetAlerts({ rows }: { rows: BudgetRow[] }) {
-  const { fmt } = useApp();
+export function BudgetAlerts({ rows, readOnView = false }: { rows: BudgetRow[]; readOnView?: boolean }) {
+  const { fmt, user, month } = useApp();
   const nav = useNavigate();
+  const { isSeen, markRead } = useSeenAlerts(user.id, month);
   const alerts = budgetAlerts(rows);
+  const [newOnArrival] = useState(() => new Set(alerts.filter((a) => !isSeen(a)).map((a) => a.catId)));
+  // On Budget: new = not read when the page opened (they are all read now). Elsewhere: not read yet.
+  const isNew = (a: BudgetAlert) => (readOnView ? newOnArrival.has(a.catId) : !isSeen(a));
+  useEffect(() => {
+    if (readOnView && alerts.length) markRead(alerts);
+  }, [readOnView, alerts, markRead]);
   if (!alerts.length) return null;
-  const red = alerts.some((a) => a.level !== 'warn');
-  const color = red ? COLORS.red : COLORS.amber;
+  const fresh = alerts.filter(isNew);
+  // New ones first; within each group the usual order (worst first).
+  const ordered = [...fresh, ...alerts.filter((a) => !isNew(a))];
+  const red = fresh.some((a) => a.level !== 'warn');
+  const tone = fresh.length === 0 ? 'is-read' : red ? 'is-red' : 'is-amber';
+  const color = fresh.length === 0 ? 'var(--mute)' : red ? COLORS.red : COLORS.amber;
   return (
-    <div className={`alert-banner ${red ? 'is-red' : 'is-amber'}`} role="status">
+    <div className={`alert-banner ${tone}`} role="status">
       <AlertTriangle size={18} style={{ color, flex: 'none', marginTop: 2 }} aria-hidden="true" />
       <div className="grow">
-        <strong className="small block">
-          {alerts.length === 1 ? t('1 category needs a look') : t('{n} categories need a look', { n: alerts.length })}
-        </strong>
+        <div className="alert-head">
+          <strong className="small">
+            {alerts.length === 1 ? t('1 category needs a look') : t('{n} categories need a look', { n: alerts.length })}
+          </strong>
+          {fresh.length > 0 && !readOnView && (
+            <button type="button" className="link-btn alert-read" onClick={() => markRead(alerts)}>
+              {t('Mark as read')}
+            </button>
+          )}
+        </div>
         <ul className="alert-list">
-          {alerts.slice(0, 4).map((a) => (
-            <li key={a.catId}>
-              <button
-                type="button"
-                className="alert-item"
-                style={{ color: a.level === 'warn' ? COLORS.amber : COLORS.red }}
-                onClick={() => nav(`/expenses?cat=${a.catId}`)}
-                aria-label={`${alertText(a, fmt)}. ${t('See its expenses')}`}
-              >
-                <span className="grow">{alertText(a, fmt)}</span>
-                <ChevronRight size={16} className="flip-rtl" aria-hidden="true" />
-              </button>
-            </li>
-          ))}
+          {ordered.slice(0, 4).map((a) => {
+            const unread = isNew(a);
+            return (
+              <li key={a.catId}>
+                <button
+                  type="button"
+                  className={`alert-item ${unread ? 'is-new' : 'is-seen'}`}
+                  style={{ color: unread ? (a.level === 'warn' ? COLORS.amber : COLORS.red) : undefined }}
+                  onClick={() => {
+                    markRead([a]);
+                    nav(`/expenses?cat=${a.catId}`);
+                  }}
+                  aria-label={`${alertText(a, fmt)}${unread ? `, ${t('new')}` : ''}. ${t('See its expenses')}`}
+                >
+                  {unread && <span className="alert-dot" aria-hidden="true" />}
+                  <span className="grow">{alertText(a, fmt)}</span>
+                  <ChevronRight size={16} className="flip-rtl" aria-hidden="true" />
+                </button>
+              </li>
+            );
+          })}
           {alerts.length > 4 && (
             <li>
-              <button type="button" className="alert-item mute" onClick={() => nav('/budget')}>
+              <button type="button" className="alert-item is-seen" onClick={() => nav('/budget')}>
                 <span className="grow">{t('and {n} more', { n: alerts.length - 4 })}</span>
                 <ChevronRight size={16} className="flip-rtl" aria-hidden="true" />
               </button>
@@ -139,7 +169,6 @@ export function BudgetAlerts({ rows }: { rows: BudgetRow[] }) {
     </div>
   );
 }
-
 function alertText(a: BudgetAlert, fmt: (n: number) => string) {
   return a.level === 'over'
     ? t('{name}: over budget by {amount}', { name: a.name, amount: fmt(a.over) })

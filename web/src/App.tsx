@@ -12,6 +12,7 @@ import Tutorial from './components/Tutorial';
 import { useReminders } from './notify';
 import { FirstRunPermissions } from './pages/Permissions';
 import { budgetAlerts, dailyAllowance, periodRange } from './domain/calc';
+import { useSeenAlerts } from './alertsSeen';
 import { fmtMoney } from './domain/money';
 import { readLock } from './pin';
 import { sendWidget, widgetText } from './widget';
@@ -131,7 +132,10 @@ function Shell() {
     const a = dailyAllowance(monthEnd.left, todayIso(), month, user.monthStartDay || 1);
     sendWidget(widgetText(a ? { ...a, left: monthEnd.left, fmt: monthEnd.fmt } : null, monthEnd.locked));
   }, [monthEnd, month, user.id, user.monthStartDay]);
-  const alertBadge = alerts.length ? { n: alerts.length, red: alerts.some((a) => a.level !== 'warn') } : undefined;
+  // 2.2.1: only alerts not read yet (tapped, marked as read, or seen on the Budget tab) count on the badge.
+  const { isSeen } = useSeenAlerts(user.id, month);
+  const unread = alerts.filter((a) => !isSeen(a));
+  const alertBadge = unread.length ? { n: unread.length, red: unread.some((a) => a.level !== 'warn') } : undefined;
   if (loading && !data) return <Splash />;
   if (error && !data) return <Splash text={error.message} retry={() => void refresh()} />;
   return (

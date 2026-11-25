@@ -1169,4 +1169,6 @@ export const AR: Record<string, string> = {
   'incl. {amount} extra': 'منهم {amount} إضافي',
   'An identical income already exists. Save it anyway?': 'فيه دخل زيه بالظبط متسجل. تحفظه برضه؟',
   'Income not found.': 'الدخل ده مش موجود.',
+  // 2.2.1: read alerts
+  'Mark as read': 'اتقرا',
 };
