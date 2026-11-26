@@ -1,6 +1,6 @@
 {
   "name": "budget-me-mobile",
-  "version": "2.1.4",
+  "version": "2.4.2",
   "private": true,
   "description": "Budget me Android app: a Capacitor shell around the live site on the VPS (remote URL mode).",
   "scripts": {

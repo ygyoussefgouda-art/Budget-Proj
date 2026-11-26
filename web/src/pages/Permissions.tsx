@@ -1,5 +1,6 @@
 import { Bell, Camera as CameraIcon, Download, Image as ImageIcon, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { t } from '../i18n';
 import { App, BudgetNative, Camera, isNative, LocalNotifications } from '../native';
 
@@ -142,7 +143,10 @@ export function FirstRunPermissions({ userId }: { userId: number }) {
     return () => window.removeEventListener('bm-show-permissions', show);
   }, []);
   if (!open || !isNative()) return null;
-  return <PermissionsScreen userId={userId} onClose={() => setOpen(false)} />;
+  // 2.4.2 (bug from a user: "I keep clicking and nothing is happening"): on the first sign-in the tour opens
+  // too and makes #root inert. This screen used to live inside #root, so it was drawn on top of the tour but
+  // ignored every tap (Allow, Allow all, even Skip). It now lives outside #root, like the tour card.
+  return createPortal(<PermissionsScreen userId={userId} onClose={() => setOpen(false)} />, document.body);
 }
 
 /** Settings → "App permissions". */

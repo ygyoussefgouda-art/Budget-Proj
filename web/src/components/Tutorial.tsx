@@ -232,6 +232,8 @@ export default function Tutorial() {
       const el = e.target as HTMLElement | null;
       // Keys inside the day picker or a field belong to them.
       if (el?.closest('.day-grid') || el?.tagName === 'INPUT' || el?.tagName === 'SELECT') return;
+      // 2.4.2: the Android permissions screen is shown first, on top: its keys are its own.
+      if (document.querySelector('.perm-page')) return;
       // Esc closes the tour for now; it opens again next time until it is finished or skipped.
       if (e.key === 'Escape') setOpen(false);
       const fwd = isRtl() ? 'ArrowLeft' : 'ArrowRight';
