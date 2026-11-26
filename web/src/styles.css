@@ -1049,3 +1049,109 @@ html { scrollbar-color: var(--field-line) transparent; scrollbar-width: thin; }
 .more-details:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .more-details svg { flex: none; color: var(--accent-text); }
 .more-details .tiny { font-weight: 500; }
+/* ───────────── 2.5.0 polish pass (Impeccable + unslop + Emil/Apple audit; Figma "Masrofy polish pass") ─────────────
+   Tokens first, then one rule per audit item. Polish only: no colour, layout or behaviour changes outside these. */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --d-fast: 120ms;
+  --d-base: 200ms;
+  --d-sheet: 320ms;
+}
+
+/* T1: Arabic letters are joined, so no tracking ever; a taller line for the diacritics */
+[dir='rtl'] * { letter-spacing: 0 !important; }
+[dir='rtl'] body { line-height: 1.6; }
+
+/* M2: one press feel. Small controls 0.97, big surfaces 0.98; only transform, so nothing reflows */
+.btn, .chip, .add-btn, .icon-btn, .qa-icon, .tab-add, .segmented button,
+.more-item, .income-line, .list-main, .card.clickable, .budget-row.clickable {
+  transition: transform var(--d-fast) var(--ease-out), background-color var(--d-base) var(--ease-out), color var(--d-base) var(--ease-out);
+}
+.btn:active:not(:disabled), .chip:active, .add-btn:active, .icon-btn:active, .tab-add:active,
+.segmented button:active, .quick-action:active .qa-icon { transform: scale(0.97); }
+.more-item:active, .income-line:active, .list-main:active, .card.clickable:active, .budget-row.clickable:active { transform: scale(0.98); }
+
+/* M1: sheets rise like a drawer and follow the finger back with the same curve */
+@keyframes sheet-in { from { transform: translateY(100%); } }
+.sheet { animation: sheet-in var(--d-sheet) var(--ease-drawer); transition: transform var(--d-base) var(--ease-drawer); }
+.backdrop { animation: fade var(--d-base) var(--ease-out); }
+.backdrop.center .sheet { animation: up var(--d-base) var(--ease-out); }
+
+/* D2: radii on the scale (control 12, button/row 16, card 20, sheet 28, chip 999) */
+.pill-btn { border-radius: 16px; }
+.lang-switch { border-radius: 12px; }
+.tab-add { border-radius: 16px; }
+.qa-icon, .more-icon { border-radius: 16px; }
+.avatar { border-radius: 12px; }
+.stat-tile, .more-item, .first-step { border-radius: 20px; }
+.week-bar { border-radius: 4px; }
+
+/* C3: one accent. The stage badge no longer borrows a second highlight colour */
+.stage-badge { color: var(--mute); background: var(--card2); border: 1px solid var(--line); }
+
+/* Type scale: page 24, section 17/700, meta 12-13 */
+.hero .hero-value { letter-spacing: -0.035em; }
+.section-title h2 { font-size: 17px; font-weight: 700; }
+.week-head { font-size: 17px; font-weight: 700; align-items: baseline; }
+.week-head .num { font-size: 13px; }
+.page-header h1 { font-size: 24px; }
+.sum-hint { font-weight: 600; margin-inline-start: 4px; }
+.greeting { font-size: 13px; font-weight: 500; color: var(--mute); }
+.hero .hero-cur { color: var(--text2); }
+.home-band .hero-cur { color: #2e3833; } /* the band keeps its dark ink on lime */
+
+/* S1-S6: the 4px grid */
+.card, .home-band, .goal-strip-wrap, .list { margin-bottom: 12px; }
+.home-band { padding: 24px 20px 20px; }
+.home-band .hero-sum { margin-top: 16px; }
+.home-band .allowance { padding: 12px 16px; margin-top: 8px; }
+.section-title { min-height: 44px; margin-bottom: 8px; }
+.add-btn { position: relative; min-height: 36px; }
+.add-btn::after { content: ''; position: absolute; inset: -4px; }
+.tutorial { padding: 20px; }
+.tutorial-dots { margin: 16px 0; }
+.goal-card, .stat-tile, .alert-banner { padding: 16px; }
+.budget-row { gap: 8px; }
+.legend { gap: 12px; }
+.tab { gap: 4px; }
+.calc-keys { gap: 8px; }
+.sheet form > button[type='submit'].block:last-child {
+  box-shadow: 0 0 0 6px var(--card), 0 -8px 12px 2px var(--card), 0 calc(26px + var(--safe-b)) 0 14px var(--card);
+}
+
+/* D3-D5: details */
+.input:focus { outline: 2px solid var(--accent-text); outline-offset: -2px; border-color: transparent; }
+.alert-banner.is-amber { border-color: color-mix(in srgb, var(--amber) 28%, transparent); }
+.alert-banner.is-red { border-color: color-mix(in srgb, var(--red) 28%, transparent); }
+.day:disabled { text-decoration: none; }
+
+/* L1, L4: a lone goal fills the strip; a tour step with no Back button centres its action */
+.goal-strip > .goal-card:only-child { width: 100%; flex: 1; }
+.tutorial-actions:has(> span:empty:first-child) { grid-template-columns: 1fr; }
+.tutorial-actions > span:empty:first-child { display: none; }
+
+/* K2: "Undo" reads as a word, not a shout */
+.toast-action { text-transform: none; letter-spacing: 0; }
+
+/* M3: the switch knob moves with transform (GPU), not by re-laying out its inset */
+.switch::after { inset-inline-start: 2px; transition: transform var(--d-base) var(--ease-out), background-color var(--d-base) var(--ease-out); }
+.switch:checked::after { inset-inline-start: 2px; transform: translateX(18px); }
+[dir='rtl'] .switch:checked::after { transform: translateX(-18px); }
+
+/* M4, M5: page and boot transitions are quick fades; toasts rise 12px */
+.content.enter { animation: fade var(--d-base) var(--ease-out); }
+.boot-exit, .boot-exit .boot-inner { animation-duration: 240ms; animation-timing-function: var(--ease-out); }
+@keyframes toast-in { from { transform: translateY(12px); opacity: 0; } }
+.toast { animation: toast-in var(--d-base) var(--ease-out); }
+.swipe-front { transition: transform var(--d-base) var(--ease-out); }
+
+/* A healthy budget row says "OK" quietly instead of with a pill */
+.status-quiet { font-size: 12px; font-weight: 600; color: var(--mute); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .backdrop, .toast, .content.enter { animation: none; }
+  .btn:active, .chip:active, .add-btn:active, .icon-btn:active, .tab-add:active, .segmented button:active,
+  .quick-action:active .qa-icon, .more-item:active, .income-line:active, .list-main:active,
+  .card.clickable:active, .budget-row.clickable:active { transform: none; }
+}

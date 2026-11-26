@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { t } from '../i18n';
 import { applyUpdate, useUpdateReady } from '../swUpdate';
@@ -10,7 +10,7 @@ export function UpdateBar() {
   if (!ready || hidden) return null;
   return (
     <div className="update-bar" role="status">
-      <Sparkles size={18} aria-hidden="true" />
+      <RefreshCw size={18} aria-hidden="true" />
       <span className="grow">{t('A new version is ready.')}</span>
       <button className="btn ghost small" onClick={() => setHidden(true)}>
         {t('Later')}

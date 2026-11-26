@@ -68,7 +68,7 @@ export default function Reports() {
       <Card>
         <KV k={t('Spent on expenses')} v={fmt(spent)} bold />
         <KV k={t('Net saved')} v={fmt(saved)} color={COLORS.accent} bold />
-        <KV k={t('Loans repaid')} v={fmt(repaid)} color={COLORS.amber} bold />
+        <KV k={t('Loans repaid')} v={fmt(repaid)} color={repaid > 0 ? COLORS.amber : undefined} bold />
         <KV k={t('Average monthly spending')} v={fmt(active === 0 ? 0 : wholeUnits(Math.floor(spent / active)))} bold />
       </Card>
 

@@ -258,7 +258,7 @@ export default function Expenses() {
             <div className="big-value">{fmt(list.data?.total ?? 0)}</div>
           </div>
           <div className="stack-end">
-            <Pill color={COLORS.blue}>{count === 1 ? t('1 expense') : t('{n} expenses', { n: count })}</Pill>
+            <Pill color="var(--text2)">{count === 1 ? t('1 expense') : t('{n} expenses', { n: count })}</Pill>
             <button type="button" className="btn text small" onClick={() => setExportOpen(true)} disabled={count === 0}>
               <Download size={15} /> {t('Export')}
             </button>

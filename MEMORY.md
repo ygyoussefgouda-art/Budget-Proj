@@ -98,6 +98,17 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - **Row delete buttons** are quiet grey icons. Removing them needs a delete inside each edit sheet first (keyboard/screen-reader route).
 - **Sheets:** a submit button that is the form's last child stays pinned to the bottom (CSS only).
 
+## 2.5.0 polish pass (2026-11-26; owner: "Polish only", every screen, Figma first)
+- The tokens live at the end of `web/src/styles.css` ("2.5.0 polish pass"); spec board in Figma "Masrofy polish pass (Nov 2026)". Use them for new UI:
+  - spacing on a 4px grid (12 between cards, 24 between sections);
+  - radii 12 control / 16 button-row / 20 card / 28 sheet / 999 chip;
+  - motion `--ease-out`, `--ease-drawer`, `--d-fast` 120ms, `--d-base` 200ms, `--d-sheet` 320ms; press scale 0.97 (controls) / 0.98 (cards, rows).
+- **One accent.** Blue is not a second highlight (counts and badges are neutral). Red only means "over budget": in Reports, spending more is plain text, spending less is lime.
+- **Healthy is quiet:** a budget row that is OK shows muted "OK" text, not a pill.
+- **Arabic never gets letter-spacing** (`[dir='rtl'] *`), line height 1.6.
+- **User text inside a translated sentence** (e.g. a category name in an alert) is isolated with `<bdi>`, never FSI/PDI characters: those end up in the text that tests, searches and screen readers see.
+- Left out on purpose: removing trailing full stops (English text is the i18n key), bars to scaleX, settings-card icons, icon sizes.
+
 ## Security decisions (0.6.1)
 - 2026-11-21: Admin powers: reset codes and removals need the acting admin's password; admins from `ADMIN_USERNAMES` can't act on other admins, only `owner` can; nobody makes a code for `owner`. Why: one stolen admin session must not take over everyone.
 - 2026-11-21: Failed sign-ins: 10 per account+network, 200 per account overall (`accountFailLimit`) per 15 min. Why: a per-account-only limit let anyone lock out any user (incl. owner).

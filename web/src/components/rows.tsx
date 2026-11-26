@@ -71,7 +71,8 @@ export function BudgetRowTile({ r, onClick }: { r: BudgetRow; onClick?: () => vo
           {/* "Savings" / "Loan repayments" are built-in rows: translate; category names are the user's own */}
           <strong>{r.catId === null ? t(r.name) : r.name}</strong>
         </span>
-        <Pill color={color}>{t(rowStatus(r))}</Pill>
+        {/* 2.5.0 polish: a healthy row says so quietly; only the states that need attention get a pill */}
+        {rowStatus(r) === 'OK' ? <span className="status-quiet">{t('OK')}</span> : <Pill color={color}>{t(rowStatus(r))}</Pill>}
       </div>
       <Bar value={rowBar(r)} color={color} />
       <div className="row between tiny">
@@ -151,7 +152,9 @@ export function BudgetAlerts({ rows, readOnView = false }: { rows: BudgetRow[]; 
                   aria-label={`${alertText(a, fmt)}${unread ? `, ${t('new')}` : ''}. ${t('See its expenses')}`}
                 >
                   {unread && <span className="alert-dot" aria-hidden="true" />}
-                  <span className="grow">{alertText(a, fmt)}</span>
+                  <span className="grow">
+                    <AlertLine a={a} fmt={fmt} />
+                  </span>
                   <ChevronRight size={16} className="flip-rtl" aria-hidden="true" />
                 </button>
               </li>
@@ -170,12 +173,27 @@ export function BudgetAlerts({ rows, readOnView = false }: { rows: BudgetRow[]; 
     </div>
   );
 }
-function alertText(a: BudgetAlert, fmt: (n: number) => string) {
+/**
+ * 2.5.0 polish: the category name is the user's own text (often English inside an Arabic sentence): shown inside
+ * <bdi> so the colon stays on the right side of the name. An element, not FSI/PDI characters, so the text that
+ * screen readers and searches see stays clean.
+ */
+function AlertLine({ a, fmt }: { a: BudgetAlert; fmt: (n: number) => string }) {
+  const [before, after = ''] = alertText(a, fmt, '\u0000').split('\u0000');
+  return (
+    <>
+      {before}
+      <bdi>{a.name}</bdi>
+      {after}
+    </>
+  );
+}
+function alertText(a: BudgetAlert, fmt: (n: number) => string, name = a.name) {
   return a.level === 'over'
-    ? t('{name}: over budget by {amount}', { name: a.name, amount: fmt(a.over) })
+    ? t('{name}: over budget by {amount}', { name, amount: fmt(a.over) })
     : a.level === 'full'
-      ? t('{name}: budget used up', { name: a.name })
-      : t('{name}: {pct}% of the budget used', { name: a.name, pct: a.pct ?? 0 });
+      ? t('{name}: budget used up', { name })
+      : t('{name}: {pct}% of the budget used', { name, pct: a.pct ?? 0 });
 }
 
 const TXN: Record<string, { icon: LucideIcon; color: string }> = {
@@ -230,7 +248,9 @@ export function TxnTile({ t: x }: { t: Txn }) {
         </span>
       )}
       <div className="txn-main">
-        <div className="txn-title">{text.title}</div>
+        <div className="txn-title">
+          <bdi>{text.title}</bdi>
+        </div>
         <div className="tiny mute">
           {text.sub} · {shortDate(x.date)}
           {x.time ? ` · ${fmtTime(x.time)}` : ''}

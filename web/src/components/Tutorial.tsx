@@ -1,4 +1,4 @@
-import { CalendarClock, LayoutGrid, Lock, Plus, ShieldCheck, Sparkles, Wallet, type LucideIcon } from 'lucide-react';
+import { Banknote, CalendarClock, LayoutGrid, Lock, Plus, ShieldCheck, Wallet, type LucideIcon } from 'lucide-react';
 import { BiometricToggle } from './AppLockSettings';
 import { makeLock, PIN_RE, readLock, saveLock } from '../pin';
 import MonthStartPicker from './MonthStartPicker';
@@ -32,7 +32,7 @@ interface Step {
 const STEPS: Step[] = [
   {
     kind: 'welcome',
-    icon: Sparkles,
+    icon: Wallet, // 2.5.0 polish: the brand's own object, not the sparkle
     title: 'Welcome to {app}',
     text: 'Masrofy shows what is left of your money this month and how much you can spend each day. A few quick steps and you are ready.',
   },
@@ -44,7 +44,7 @@ const STEPS: Step[] = [
   },
   {
     kind: 'income',
-    icon: Wallet,
+    icon: Banknote,
     title: 'How much do you get a month?',
     text: 'Your allowance or salary. Masrofy uses it to work out what is left and your daily amount.',
   },

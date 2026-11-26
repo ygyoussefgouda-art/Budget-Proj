@@ -56,9 +56,12 @@ export function changeText(current: number, previous: number): string {
   return pct === 0 ? '0%' : `${pct > 0 ? '+' : '−'}${Math.abs(pct)}%`;
 }
 
-/** Spending more is shown in red, spending less in teal. */
+/**
+ * 2.5.0 polish: red means "over budget" everywhere else, so a change only gets colour when it is good news.
+ * Spending less: lime. Spending more: plain secondary text. Nothing before ("new"): muted.
+ */
 const changeColor = (current: number, previous: number) =>
-  current > previous ? COLORS.red : current < previous ? COLORS.accent : 'var(--mute)';
+  previous === 0 && current > 0 ? 'var(--mute)' : current > previous ? 'var(--text2)' : current < previous ? COLORS.accent : 'var(--mute)';
 
 function Change({ current, previous }: { current: number; previous: number }) {
   return (
@@ -221,8 +224,9 @@ export function WeekdaySpending({ year }: { year: number }) {
             <Bars
               values={values}
               labels={WEEK_ORDER.map((d) => weekdayName(d, 'short'))}
-              color={`color-mix(in srgb, ${COLORS.accent} 55%, transparent)`}
-              highlightColor={COLORS.highlight}
+              // 2.5.0 polish: the same rule as Home's "This week": neutral bars, the top one in the one accent
+              color="var(--card2)"
+              highlightColor={COLORS.accent}
               ariaLabel={t('Average spending per weekday')}
             />
           </div>

@@ -95,8 +95,8 @@ export function Bars({
         const fill = highlightColor && top > 0 && values[i] === top ? highlightColor : color;
         return (
           <g key={i}>
-            <rect x={x - bw / 2} y={chartH - h} width={bw} height={h} rx={Math.min(6, bw / 2)} style={{ fill }} />
-            <text x={x} y={height - 3} textAnchor="middle" fontSize="10.5" style={{ fill: 'var(--mute)' }}>
+            <rect x={x - bw / 2} y={chartH - h} width={bw} height={h} rx={Math.min(4, bw / 2)} style={{ fill }} />
+            <text x={x} y={height - 3} textAnchor="middle" fontSize="12" style={{ fill: 'var(--mute)' }}>
               {l}
             </text>
           </g>
