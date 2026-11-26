@@ -349,6 +349,21 @@ describe('month start day', () => {
   });
 });
 
+describe('accent colour (2.6.0)', () => {
+  it('is lime by default, saved on the account, kept by other settings, and only one of the five', async () => {
+    expect((await agent.get('/api/auth/me')).body.user.accent).toBe('lime');
+    expect((await agent.put('/api/settings').send({ accent: 'violet' })).body.user.accent).toBe('violet');
+    // another setting doesn't reset it, and a new sign-in sees it (it lives on the account)
+    await agent.put('/api/settings').send({ mergeRepeats: false }).expect(200);
+    expect((await agent.get('/api/auth/me')).body.user.accent).toBe('violet');
+    expect((await agent.put('/api/settings').send({ accent: 'red' })).status).toBe(400);
+    expect((await agent.put('/api/settings').send({ accent: '<script>' })).status).toBe(400);
+    // backups carry it
+    expect((await agent.get('/api/backup')).body.settings.accent).toBe('violet');
+    await agent.put('/api/settings').send({ accent: 'lime' }).expect(200);
+  });
+});
+
 describe('reports', () => {
   it('summarises a year', async () => {
     const r = await agent.get('/api/reports/year?y=2026');

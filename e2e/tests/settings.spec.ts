@@ -28,6 +28,35 @@ test.describe('settings, language and navigation', () => {
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   });
 
+  test('2.6.0: the accent colour changes the app at once and is saved on the account', async ({ page }) => {
+    await setUpBudget(page); // Home shows the coloured band once there is an income
+    await tab(page, 'Home').click();
+    await tab(page, 'Settings').click();
+    const picker = page.getByRole('group', { name: 'Accent colour' });
+    await expect(picker.getByRole('button', { name: 'Lime' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('html')).not.toHaveAttribute('data-accent', /./);
+
+    await picker.getByRole('button', { name: 'Violet' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-accent', 'violet');
+    await expect(picker.getByRole('button', { name: 'Violet' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.tab-add')).toHaveCSS('background-color', 'rgb(198, 156, 255)');
+
+    // It lives on the account, not only on this device: forget the device copy and it comes back
+    await page.evaluate(() => localStorage.removeItem('sb-accent'));
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-accent', 'violet');
+
+    // Light theme uses the darker ink for text and the bright colour on the band
+    await page.getByRole('tab', { name: 'Light' }).click();
+    await expect(page.getByRole('group', { name: 'Accent colour' })).toBeVisible();
+    await tab(page, 'Home').click();
+    await expect(page.locator('.home-band')).toHaveCSS('background-color', 'rgb(198, 156, 255)');
+
+    await tab(page, 'Settings').click();
+    await page.getByRole('group', { name: 'Accent colour' }).getByRole('button', { name: 'Lime' }).click();
+    await expect(page.locator('html')).not.toHaveAttribute('data-accent', /./);
+  });
+
   test('language selector is on the sign-in screen and defaults to the phone language', async ({ browser }) => {
     const ctx = await browser.newContext({ baseURL: 'http://localhost:3100', locale: 'ar-EG' });
     const p = await ctx.newPage();
@@ -55,9 +84,15 @@ test.describe('settings, language and navigation', () => {
   test('month start day changes the budget month range', async ({ page }) => {
     await tab(page, 'Home').click();
     await tab(page, 'Settings').click();
-    await page.getByRole('radio', { name: '10' }).click();
-    await expect(page.getByRole('radio', { name: '10' })).toHaveAttribute('aria-checked', 'true');
-    await expect(page.getByText(/Each month starts on the 10th/)).toBeVisible();
+    // 2.6.0: one row under "Your month" opens the calendar in a sheet
+    await page.getByRole('button', { name: /I get my money on day 1st/ }).click();
+    const s = page.getByRole('dialog', { name: 'Month start' });
+    await s.getByRole('radio', { name: '10' }).click();
+    await expect(s.getByRole('radio', { name: '10' })).toHaveAttribute('aria-checked', 'true');
+    await expect(s.getByText(/Each month starts on the 10th/)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(s).toBeHidden();
+    await expect(page.getByRole('button', { name: /I get my money on day 10th/ })).toBeVisible();
     await tab(page, 'Home').click();
     await expect(page.locator('.month-range')).toHaveText(/^10\s\w{3} – 9\s\w{3}$/);
   });
@@ -83,7 +118,7 @@ test.describe('settings, language and navigation', () => {
     await expect(page.locator('.stage-badge').first()).toHaveText('MK1');
     const footer = page.locator('footer.app-footer');
     await expect(footer).toContainText('Developed by Youssef Gouda');
-    await expect(footer).toContainText('Masrofy MK1 · Version 2.5.0');
+    await expect(footer).toContainText('Masrofy MK1 · Version 2.6.0');
     await expect(page.getByText(/alpha/i)).toHaveCount(0);
   });
 

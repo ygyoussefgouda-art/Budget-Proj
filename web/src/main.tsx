@@ -22,9 +22,10 @@ import '@fontsource/almarai/arabic-700.css';
 import '@fontsource/almarai/arabic-800.css';
 import './styles.css';
 import { registerServiceWorker } from './swUpdate';
-import { applyTheme, watchSystemTheme } from './theme';
+import { applyAccent, applyTheme, watchSystemTheme } from './theme';
 
 applyTheme();
+applyAccent(); // this device's copy until the account's own accent arrives (App)
 watchSystemTheme();
 watchGlobalErrors();
 

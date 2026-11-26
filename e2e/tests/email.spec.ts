@@ -70,7 +70,7 @@ test.describe('0.6.3: email', () => {
     const name = await signUpAndSkipTutorial(page);
     await tab(page, 'Home').click();
     await tab(page, 'Settings').click();
-    await page.getByRole('button', { name: 'Change', exact: true }).click();
+    await page.getByRole('button', { name: 'Change email', exact: true }).click();
     const s = page.getByRole('dialog', { name: 'Change email' });
     await s.getByLabel('Email').fill(`new.${name}@example.com`);
     await s.getByLabel('Your password', { exact: true }).fill(PASSWORD);

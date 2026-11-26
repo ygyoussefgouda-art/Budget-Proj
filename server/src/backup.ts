@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Db } from './db.js';
 import { HttpError } from './http.js';
-import { CATEGORY_COLORS, CATEGORY_ICONS, CURRENCIES, isoDate, monthStr, tag, timeOfDay } from './validation.js';
+import { ACCENTS, CATEGORY_COLORS, CATEGORY_ICONS, CURRENCIES, isoDate, monthStr, tag, timeOfDay } from './validation.js';
 
 /**
  * Backup format (version 2). Same table/column names as the original phone
@@ -18,7 +18,7 @@ export async function exportBackup(db: Db, userId: number) {
     version: 2,
     exportedAt: new Date().toISOString(),
     settings: (
-      await t.query('SELECT currency, month_start_day AS "monthStartDay", rollover, merge_repeats AS "mergeRepeats" FROM users WHERE id = $1', [userId])
+      await t.query('SELECT currency, month_start_day AS "monthStartDay", rollover, merge_repeats AS "mergeRepeats", accent FROM users WHERE id = $1', [userId])
     ).rows[0],
     tables: {
       categories: await q('SELECT id, name, is_uni, sort, icon, color FROM categories WHERE user_id = $1 ORDER BY sort, id'),
@@ -61,7 +61,7 @@ const backupSchema = z.object({
   app: z.literal('student_budget', { error: 'This is not a Masrofy backup.' }),
   version: z.number().int().min(1).max(2).optional(),
   settings: z
-    .object({ currency: z.enum(CURRENCIES).optional(), monthStartDay: z.number().int().min(1).max(28).optional(), rollover: z.boolean().optional(), mergeRepeats: z.boolean().optional() })
+    .object({ currency: z.enum(CURRENCIES).optional(), monthStartDay: z.number().int().min(1).max(28).optional(), rollover: z.boolean().optional(), mergeRepeats: z.boolean().optional(), accent: z.enum(ACCENTS).optional().catch(undefined) })
     .optional(),
   tables: z.object({
     categories: z
@@ -175,6 +175,8 @@ export async function restoreBackup(db: Db, userId: number, body: unknown) {
     }
     if (settings?.rollover !== undefined) await q.query('UPDATE users SET rollover = $1 WHERE id = $2', [settings.rollover, userId]);
     if (settings?.mergeRepeats !== undefined) await q.query('UPDATE users SET merge_repeats = $1 WHERE id = $2', [settings.mergeRepeats, userId]);
+    // 2.6.0+: accent colour; older backups have none (the current one stays).
+    if (settings?.accent) await q.query('UPDATE users SET accent = $1 WHERE id = $2', [settings.accent, userId]);
     for (const table of ['trash', 'recurring_rules', 'expenses', 'incomes', 'goal_entries', 'goals', 'loan_entries', 'category_plans', 'month_budgets', 'categories']) {
       await q.query(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
     }

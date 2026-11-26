@@ -149,10 +149,14 @@ interface DialogState {
   action: string;
   /** Ask for the account password too (big, irreversible actions). */
   password?: boolean;
+  /** 2.6.0: a safe step offered inside the dialog (e.g. "Download backup first"); runs without closing it. */
+  extra?: DialogExtra;
   resolve: (v: string | false) => void;
 }
+export interface DialogExtra { label: string; icon?: ReactNode; run: () => void | Promise<void> }
 interface ToastAction { label: string; run: () => void }
-/** Like confirm, but the user must also type their password. Resolves to the password, or null if cancelled. */export type ConfirmPasswordFn = (title: string, message: string, action: string) => Promise<string | null>;
+/** Like confirm, but the user must also type their password. Resolves to the password, or null if cancelled. */
+export type ConfirmPasswordFn = (title: string, message: string, action: string, extra?: DialogExtra) => Promise<string | null>;
 interface OverlayCtx {
   confirm: ConfirmFn;
   confirmPassword: ConfirmPasswordFn;
@@ -173,8 +177,8 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
     [],
   );
   const confirmPassword = useCallback<ConfirmPasswordFn>(
-    (title, message, action) =>
-      new Promise<string | null>((resolve) => setDialog({ title, message, action, password: true, resolve: (v) => resolve(v === false ? null : v) })),
+    (title, message, action, extra) =>
+      new Promise<string | null>((resolve) => setDialog({ title, message, action, password: true, extra, resolve: (v) => resolve(v === false ? null : v) })),
     [],
   );
   const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
@@ -234,6 +238,15 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
 function Dialog({ d, close }: { d: DialogState; close: (v: string | false) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [password, setPassword] = useState('');
+  const [extraBusy, setExtraBusy] = useState(false);
+  const runExtra = async () => {
+    setExtraBusy(true);
+    try {
+      await d.extra?.run();
+    } finally {
+      setExtraBusy(false);
+    }
+  };
   useLayer(ref, true, () => close(false));
   const destructive = /delete|remove|erase|clear|restore|حذف|إزالة|مسح|امسح|استعادة|استرجع|تصفير/i.test(d.action);
   return (
@@ -254,6 +267,11 @@ function Dialog({ d, close }: { d: DialogState; close: (v: string | false) => vo
       >
         <h3 id="dlg-title">{d.title}</h3>
         <p id="dlg-msg">{d.message}</p>
+        {d.extra && (
+          <button type="button" className="btn tonal block dialog-extra" disabled={extraBusy} onClick={runExtra}>
+            {d.extra.icon} {d.extra.label}
+          </button>
+        )}
         {d.password && (
           <label className="field">
             <span className="field-label">{t('Your password')}</span>

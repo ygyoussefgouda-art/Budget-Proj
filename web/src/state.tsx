@@ -33,6 +33,8 @@ export interface User {
   rollover?: boolean;
   /** The same expense added again within 5 minutes is added to the last one. */
   mergeRepeats?: boolean;
+  /** 2.6.0: accent colour, saved on the account ('lime' when the server is older). */
+  accent?: string;
 }
 
 export interface ServerState {

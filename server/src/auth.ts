@@ -32,11 +32,13 @@ export interface AuthUser {
   rollover?: boolean;
   /** Same expense added again within 5 minutes is added to the last one. */
   mergeRepeats?: boolean;
+  /** 2.6.0: accent colour (lime, sky, violet, pink, lemon). */
+  accent?: string;
 }
 
 export const USER_COLUMNS =
   'u.id, u.username, u.currency, u.month_start_day AS "monthStartDay", u.email, (u.totp_enabled_at IS NOT NULL) AS "twoFactor", ' +
-  'u.rollover, u.merge_repeats AS "mergeRepeats"';
+  'u.rollover, u.merge_repeats AS "mergeRepeats", u.accent';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -235,6 +237,7 @@ export const publicUser = (u: AuthUser) => ({
   twoFactor: !!u.twoFactor,
   rollover: !!u.rollover,
   mergeRepeats: !!u.mergeRepeats,
+  accent: u.accent ?? 'lime',
   isAdmin: isAdminUser(u),
 });
 

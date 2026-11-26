@@ -1,4 +1,4 @@
-# Masrofy (مصروفي) · MK1 (version 2.5.0)
+# Masrofy (مصروفي) · MK1 (version 2.6.0)
 
 *See where every pound goes.*
 

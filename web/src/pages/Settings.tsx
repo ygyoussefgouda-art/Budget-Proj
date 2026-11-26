@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Download, FileSpreadsheet, GraduationCap, ShieldCheck, KeyRound, Languages, LogOut, Mail, MonitorSmartphone, Trash2, Upload, UserX } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, ChevronRight, Download, FileSpreadsheet, GraduationCap, ShieldCheck, KeyRound, Languages, LogOut, Mail, MonitorSmartphone, Trash2, Upload, UserX } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
@@ -18,22 +18,22 @@ import { GetAndroidAppCard, UpdateCard } from '../components/AndroidApp';
 import RemindersCard from '../components/RemindersCard';
 import TwoFactorCard from '../components/TwoFactorCard';
 import ContactCard from '../components/ContactCard';
-import { CURRENCIES, useApp } from '../state';
-import { getThemePref, setThemePref, type ThemePref } from '../theme';
+import { CURRENCIES, ordinal, periodLabel, thisMonth, useApp } from '../state';
+import { ACCENT_INFO, ACCENTS, applyAccent, getThemePref, isAccent, setThemePref, type Accent, type ThemePref } from '../theme';
 import { APP_NAME, APP_VERSION, DEVELOPER, MARK, VERSION_KEY } from '../version';
 
 export default function Settings() {
-  const { user, refresh } = useApp();
+  const { user, refresh, startDay } = useApp();
   const { pref: langPref, setPref: setLangPref } = useI18n();
   const [themePref, setThemePrefState] = useState<ThemePref>(getThemePref);
   const { confirm, confirmPassword, toast } = useOverlay();
   const qc = useQueryClient();
   const nav = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [sheet, setSheet] = useState<'password' | 'email' | 'delete' | null>(null);
+  const [sheet, setSheet] = useState<'password' | 'email' | 'delete' | 'month' | null>(null);
 
   /** Saves one setting; false when it failed (the message is shown). */
-  const saveSetting = async (change: { currency?: string; rollover?: boolean; mergeRepeats?: boolean }) => {
+  const saveSetting = async (change: { currency?: string; rollover?: boolean; mergeRepeats?: boolean; accent?: Accent }) => {
     try {
       const r = await api<{ user: typeof user }>('/settings', 'PUT', change);
       qc.setQueryData(['me'], r);
@@ -45,6 +45,13 @@ export default function Settings() {
     }
   };
   const setCurrency = (currency: string) => saveSetting({ currency });
+  /** 2.6.0: the new colour shows at once; if saving fails it goes back to the account's colour. */
+  const accent: Accent = isAccent(user.accent) ? user.accent : 'lime';
+  const pickAccent = async (a: Accent) => {
+    if (a === accent) return;
+    applyAccent(a);
+    if (!(await saveSetting({ accent: a }))) applyAccent(accent);
+  };
 
   const exportBackup = async () => {
     try {
@@ -68,20 +75,31 @@ export default function Settings() {
         toast(t('This file is not a valid backup.'));
         return;
       }
-      const password = await confirmPassword(t('Restore backup?'), t('This replaces ALL current data with the backup, and removes all receipt photos. This cannot be undone.'), t('Restore'));
+      const password = await confirmPassword(
+        t('Restore backup?'),
+        t('This replaces ALL current data with the backup, and removes all receipt photos. This cannot be undone.'),
+        t('Restore'),
+        { label: t('Download backup first'), icon: <Download size={18} />, run: exportBackup },
+      );
       if (password === null) return;
       await api('/backup/restore', 'POST', { password, backup: json });
       await refresh();
       toast(t('Backup restored.'));
     } catch (e) {
-      toast((e as Error).message);
+      // Nothing was changed when a restore fails (it runs in one transaction): say so, then why.
+      toast(t('Nothing was restored: {error}', { error: (e as Error).message }));
     } finally {
       if (fileRef.current) fileRef.current.value = '';
     }
   };
 
   const erase = async () => {
-    const password = await confirmPassword(t('Erase everything?'), t('All expenses, receipts, loans, savings and budgets are deleted. Export a backup first if unsure.'), t('Erase'));
+    const password = await confirmPassword(
+      t('Erase everything?'),
+      t('All expenses, receipts, loans, savings and budgets are deleted. Export a backup first if unsure.'),
+      t('Erase'),
+      { label: t('Download backup first'), icon: <Download size={18} />, run: exportBackup },
+    );
     if (password === null) return;
     try {
       await api('/reset', 'POST', { password });
@@ -112,45 +130,69 @@ export default function Settings() {
     await signedOut();
   };
 
+  const range = periodLabel(thisMonth(startDay), startDay);
+
   return (
-    <div className="page">
+    <div className="page settings-page">
       <PageHeader
         title={t('Settings')}
         left={<IconButton icon={ArrowLeft} label={t('Back')} onClick={() => nav('/')} flip />}
       />
 
-      <Card>
-        <SectionTitle trailing={<Languages size={18} className="mute" />}>{t('Language')}</SectionTitle>
-        <Segmented value={langPref} onChange={(v: LangPref) => setLangPref(v)} options={langOptions()} />
-        <p className="tiny mute">
-          {t("System uses your phone's language. Arabic shows the app right-to-left. Saved on this device.")}
-        </p>
-      </Card>
+      {/* 2.6.0 (critique): who you are opens the page; the email is changed right here */}
+      <section className="card identity" aria-label={t('Account')}>
+        <span className="identity-avatar" aria-hidden="true">
+          {user.username.slice(0, 1).toUpperCase()}
+        </span>
+        <span className="identity-text">
+          <strong className="identity-name" dir="ltr">
+            {user.username}
+          </strong>
+          {user.email ? (
+            <span className="identity-email" dir="ltr">
+              {user.email}
+            </span>
+          ) : (
+            <span className="identity-email">{t('No email yet: add one so you can reset your password yourself.')}</span>
+          )}
+        </span>
+        <button type="button" className="btn tonal small identity-btn" onClick={() => setSheet('email')}>
+          <Mail size={16} aria-hidden="true" /> {user.email ? t('Change email') : t('Add email')}
+        </button>
+      </section>
 
+      <h2 className="settings-group">{t('Account and security')}</h2>
       <Card>
-        <SectionTitle>{t('Appearance')}</SectionTitle>
-        <Segmented
-          value={themePref}
-          onChange={(v) => {
-            setThemePrefState(v);
-            setThemePref(v);
-          }}
-          options={[
-            { value: 'dark', label: t('Dark') },
-            { value: 'light', label: t('Light') },
-            { value: 'system', label: t('System') },
-          ]}
-        />
-        <p className="tiny mute">{t("System follows your phone's light or dark setting. Saved on this device.")}</p>
+        <div className="stack" style={{ marginTop: 0 }}>
+          <button className="btn tonal block" onClick={() => setSheet('password')}>
+            <KeyRound size={18} /> {t('Change password')}
+          </button>
+          <button className="btn tonal block" onClick={logout}>
+            <LogOut size={18} className="flip-rtl" /> {t('Sign out')}
+          </button>
+          <button className="btn outline block" onClick={logoutAll}>
+            <MonitorSmartphone size={18} /> {t('Sign out everywhere')}
+          </button>
+        </div>
       </Card>
+      <TwoFactorCard />
+      <AppLockSettings />
 
+      <h2 className="settings-group">{t('Your month')}</h2>
       <Card>
-        <SectionTitle>{t('Month start')}</SectionTitle>
-        <MonthStartPicker />
-      </Card>
-
-      <Card>
-        <SectionTitle>{t('Budget options')}</SectionTitle>
+        {/* 2.6.0 (critique): changed about once a year, so one row that opens the calendar */}
+        <button type="button" className="settings-row" onClick={() => setSheet('month')}>
+          <CalendarDays size={18} className="mute" aria-hidden="true" />
+          <span className="grow">
+            <span className="settings-row-label">
+              {t('I get my money on day')} <strong>{ordinal(startDay)}</strong>
+            </span>
+            <span className="tiny mute block">
+              {startDay === 1 ? t('Months run from the 1st to the last day of the month.') : t('Each month starts on the {day}. Right now that is {range}.', { day: ordinal(startDay), range })}
+            </span>
+          </span>
+          <ChevronRight size={18} className="flip-rtl mute" aria-hidden="true" />
+        </button>
         <SettingSwitch
           value={!!user.rollover}
           save={(v) => saveSetting({ rollover: v })}
@@ -163,29 +205,65 @@ export default function Settings() {
           label={t('Add quick repeats together')}
           hint={t('The same expense (category, date and description) added again within 5 minutes goes into the last one: Transport 10 + Transport 10 = Transport 20.')}
         />
+        <div className="settings-block">
+          <Field label={t('Displayed currency')} hint={t('Only the label changes. Amounts are not converted.')}>
+            <select className="input" value={user.currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
       </Card>
+      <RemindersCard />
 
+      <h2 className="settings-group">{t('Look and language')}</h2>
       <Card>
-        <SectionTitle>{t('Currency')}</SectionTitle>
-        <Field label={t('Displayed currency')} hint={t('Only the label changes. Amounts are not converted.')}>
-          <select className="input" value={user.currency} onChange={(e) => setCurrency(e.target.value)}>
-            {CURRENCIES.map((c) => (
-              <option key={c}>{c}</option>
+        <SectionTitle trailing={<Languages size={18} className="mute" />}>{t('Language')}</SectionTitle>
+        <Segmented value={langPref} onChange={(v: LangPref) => setLangPref(v)} options={langOptions()} />
+        <p className="tiny mute">
+          {t("System uses your phone's language. Arabic shows the app right-to-left. Saved on this device.")}
+        </p>
+        <div className="settings-block">
+          <SectionTitle>{t('Appearance')}</SectionTitle>
+          <Segmented
+            value={themePref}
+            onChange={(v) => {
+              setThemePrefState(v);
+              setThemePref(v);
+            }}
+            options={[
+              { value: 'dark', label: t('Dark') },
+              { value: 'light', label: t('Light') },
+              { value: 'system', label: t('System') },
+            ]}
+          />
+          <p className="tiny mute">{t("System follows your phone's light or dark setting. Saved on this device.")}</p>
+        </div>
+        <div className="settings-block">
+          <SectionTitle>{t('Accent colour')}</SectionTitle>
+          <div className="accent-picker" role="group" aria-label={t('Accent colour')}>
+            {ACCENTS.map((a) => (
+              <button key={a} type="button" className={`accent-swatch ${accent === a ? 'on' : ''}`} aria-pressed={accent === a} onClick={() => void pickAccent(a)}>
+                <span className="accent-dot" style={{ background: ACCENT_INFO[a].swatch }} aria-hidden="true">
+                  {accent === a && <Check size={18} strokeWidth={3} />}
+                </span>
+                <span className="accent-name">{t(ACCENT_INFO[a].label)}</span>
+              </button>
             ))}
-          </select>
-        </Field>
+          </div>
+          <p className="tiny mute">{t('Saved on your account, so every phone and computer you sign in on uses it.')}</p>
+        </div>
       </Card>
 
+      <h2 className="settings-group">{t('Your data')}</h2>
       <Card>
         <SectionTitle trailing={<FileSpreadsheet size={18} className="mute" />}>{t('Export to a spreadsheet')}</SectionTitle>
         <ExportCardBody />
       </Card>
-
       <Card>
         <SectionTitle>{t('Backup & restore')}</SectionTitle>
-        <p className="small mute">
-          {t('Your data is stored on your server. Download a backup now and then; you can also restore a backup made by the old phone app.')}
-        </p>
+        <p className="small mute">{t("Your data is kept on Masrofy's server. Download a backup now and then to keep your own copy.")}</p>
         <p className="tiny mute" style={{ marginTop: 6 }}>
           {t('Receipt photos are not included in the downloaded file; they stay on the server.')}
         </p>
@@ -200,42 +278,51 @@ export default function Settings() {
         </div>
       </Card>
 
-      <AppLockSettings />
-      <RemindersCard />
-
+      <h2 className="settings-group">{t('Help and about')}</h2>
+      {user.isAdmin && (
+        <Card>
+          <SectionTitle trailing={<ShieldCheck size={18} className="mute" />}>{t('Admin')}</SectionTitle>
+          <p className="small mute">{t('Manage accounts, sign-ups and password resets.')}</p>
+          <div className="stack" style={{ marginTop: 10 }}>
+            <button className="btn tonal block" onClick={() => nav('/admin')}>
+              <ShieldCheck size={18} /> {t('Open the admin page')}
+            </button>
+          </div>
+        </Card>
+      )}
+      <UpdateCard />
+      <GetAndroidAppCard />
+      <ContactCard />
       <Card>
-        <SectionTitle>{t('Account')}</SectionTitle>
-        <p className="small" style={{ marginBottom: 12 }}>
-          {t('Signed in as')} <strong dir="ltr">{user.username}</strong>
-        </p>
-        <div className="email-row small" style={{ marginBottom: 12 }}>
-          <Mail size={16} className="mute" aria-hidden="true" />
-          <span className="grow">
-            {user.email ? (
-              <span dir="ltr">{user.email}</span>
-            ) : (
-              <span className="mute">{t('No email yet: add one so you can reset your password yourself.')}</span>
-            )}
-          </span>
-          <button className="btn text small" onClick={() => setSheet('email')}>
-            {user.email ? t('Change') : t('Add email')}
-          </button>
-        </div>
-        <div className="stack">
-          <button className="btn tonal block" onClick={() => setSheet('password')}>
-            <KeyRound size={18} /> {t('Change password')}
-          </button>
-          <button className="btn tonal block" onClick={logout}>
-            <LogOut size={18} className="flip-rtl" /> {t('Sign out')}
-          </button>
-          <button className="btn outline block" onClick={logoutAll}>
-            <MonitorSmartphone size={18} /> {t('Sign out everywhere')}
+        <SectionTitle trailing={<span className="stage-badge">{MARK}</span>}>{t('About')}</SectionTitle>
+        <div className="stack" style={{ marginTop: 0 }}>
+          <button className="btn tonal block" onClick={() => restartTutorial()}>
+            <GraduationCap size={18} /> {t('Show the tutorial again')}
           </button>
         </div>
       </Card>
 
-      <TwoFactorCard />
+      {/* Last on the page (2.6.0 critique): nothing everyday sits below it. Both can't be undone, so each says
+          what it removes, offers the backup first, and asks for the password. */}
+      <Card className="danger-card">
+        <SectionTitle>{t('Danger zone')}</SectionTitle>
+        <div className="danger-item">
+          <button className="btn outline danger-text block" onClick={erase}>
+            <Trash2 size={18} /> {t('Erase all data')}
+          </button>
+          <p className="tiny mute">{t('Keeps your account and settings. Removes every expense, budget, saving and loan.')}</p>
+        </div>
+        <div className="danger-item">
+          <button className="btn danger block" onClick={() => setSheet('delete')}>
+            <UserX size={18} /> {t('Delete my account')}
+          </button>
+          <p className="tiny mute">{t('Removes your account and everything in it, then signs you out.')}</p>
+        </div>
+      </Card>
 
+      <Sheet open={sheet === 'month'} onClose={() => setSheet(null)} title={t('Month start')}>
+        {sheet === 'month' && <MonthStartPicker />}
+      </Sheet>
       <Sheet open={sheet === 'password'} onClose={() => setSheet(null)} title={t('Change password')}>
         {sheet === 'password' && (
           <ChangePasswordForm
@@ -259,50 +346,8 @@ export default function Settings() {
         )}
       </Sheet>
       <Sheet open={sheet === 'delete'} onClose={() => setSheet(null)} title={t('Delete my account')}>
-        {sheet === 'delete' && <DeleteAccountForm onDeleted={signedOut} />}
+        {sheet === 'delete' && <DeleteAccountForm onDeleted={signedOut} downloadBackup={exportBackup} />}
       </Sheet>
-
-      <Card>
-        <SectionTitle>{t('Danger zone')}</SectionTitle>
-        {/* Both can't be undone, so they live together here, away from everyday buttons like Sign out. */}
-        <div className="stack" style={{ marginTop: 0 }}>
-          <button className="btn outline danger-text block" onClick={erase}>
-            <Trash2 size={18} /> {t('Erase all data')}
-          </button>
-          <button className="btn outline danger-text block" onClick={() => setSheet('delete')}>
-            <UserX size={18} /> {t('Delete my account')}
-          </button>
-        </div>
-      </Card>
-
-      {user.isAdmin && (
-        <Card>
-          <SectionTitle trailing={<ShieldCheck size={18} className="mute" />}>{t('Admin')}</SectionTitle>
-          <p className="small mute">{t('Manage accounts, sign-ups and password resets.')}</p>
-          <div className="stack" style={{ marginTop: 10 }}>
-            <button className="btn tonal block" onClick={() => nav('/admin')}>
-              <ShieldCheck size={18} /> {t('Open the admin page')}
-            </button>
-          </div>
-        </Card>
-      )}
-
-      <UpdateCard />
-      <GetAndroidAppCard />
-
-      <ContactCard />
-
-      <Card>
-        <SectionTitle trailing={<span className="stage-badge">{MARK}</span>}>{t('About')}</SectionTitle>
-        <p className="small mute" style={{ marginBottom: 10 }}>
-          {t('Download a backup now and then so your data is always safe.')}
-        </p>
-        <div className="stack">
-          <button className="btn tonal block" onClick={() => restartTutorial()}>
-            <GraduationCap size={18} /> {t('Show the tutorial again')}
-          </button>
-        </div>
-      </Card>
 
       <footer className="app-footer">
         <p>{t('Developed by {name}', { name: DEVELOPER })}</p>
@@ -391,7 +436,7 @@ function ChangePasswordForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function DeleteAccountForm({ onDeleted }: { onDeleted: () => void }) {
+function DeleteAccountForm({ onDeleted, downloadBackup }: { onDeleted: () => void; downloadBackup: () => Promise<void> }) {
   const { user } = useApp();
   const { confirm } = useOverlay();
   const [password, setPassword] = useState('');
@@ -421,6 +466,9 @@ function DeleteAccountForm({ onDeleted }: { onDeleted: () => void }) {
   return (
     <form onSubmit={submit} className="form">
       <p className="small">{t('Download a backup first if you might want your data later.')}</p>
+      <button type="button" className="btn tonal block" onClick={() => void downloadBackup()}>
+        <Download size={18} /> {t('Download backup first')}
+      </button>
       <Field label={t('Your password')}>
         <input className="input" dir="ltr" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </Field>

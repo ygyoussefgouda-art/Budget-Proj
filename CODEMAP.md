@@ -60,7 +60,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 ### Migrations (`server/migrations/`)
 `001_init` users, sessions, categories, month_budgets, category_plans, expenses, goals, goal_entries, loan_entries ·
 `002_month_start_day` · `003_receipts` · `004_recurring_and_undo` (recurring_rules, recurring_occurrences, trash) ·
-`005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`) · `009_two_factor` (totp columns, backup codes, login challenges) · `010_qol_icons_rollover_undo` · `011_remove_invite_code` (drops the saved invite code) · `012_expense_time_extra_income` (2.2.0: `expenses.time_of_day`, `incomes`, trash kind `income`) · `013_admin_gate_activity` (2.3.0: `sessions.admin_until`, `activity_days`)
+`005_tags_split_currency` · `006_offline_client_id` · `007_admin_audit_resets` (app_settings, audit_log, password_resets) · `008_email` (users.email, reset `via`/`attempts`) · `009_two_factor` (totp columns, backup codes, login challenges) · `010_qol_icons_rollover_undo` · `011_remove_invite_code` (drops the saved invite code) · `012_expense_time_extra_income` (2.2.0: `expenses.time_of_day`, `incomes`, trash kind `income`) · `013_admin_gate_activity` (2.3.0: `sessions.admin_until`, `activity_days`) · `014_accent` (2.6.0: `users.accent`)
 
 ### Server tests (`server/test/`)
 `api.test.ts` + `phase1..5.test.ts` + `reliability.test.ts` (0.6.0: version, request id, client errors, 500 shape) + `safety.test.ts` (0.6.1: admin limits, reset codes, split-locked loans) + `security.test.ts` (0.6.2) + `email.test.ts` (0.6.3) + `appRelease.test.ts` (0.6.5) + `twoFactor.test.ts` (0.6.6) + `spa.test.ts` (Express 5: static files, page fallback, no hidden-file leaks, APP_ONLY) + `ipKey.test.ts` (rate-limit key per IPv4 / IPv6 /56) + `qol.test.ts` (1.2.0: icons/colours, rollover, merge repeats, Undo for goals/people) + `starterCategories.test.ts` (2.1.0) + `v220.test.ts` (2.2.0: expense time, extra income) + `v230.test.ts` (2.3.0: one admin by email, admin gate, usage counts, audit fixes): vitest + supertest against PGlite.
@@ -91,7 +91,7 @@ Items marked **(planned)** don't exist yet; they come from `HANDOFF.md`.
 | `alertsSeen.ts` | 2.2.1: which budget alerts were read (per account, this device), `useSeenAlerts` |
 | `receipt.ts` | Shrinks photos before upload |
 | `i18n.tsx` / `i18n-ar.ts` | `t()` with English keys; Arabic dictionary; direction |
-| `theme.ts` | Light/dark/system theme |
+| `theme.ts` | Light/dark/system theme (per device); accent colour (`ACCENTS`, `applyAccent`, saved on the account, CSS in `styles.css` under "2.6.0 accent colours") |
 | `version.ts` | Version label text |
 | `styles.css` | All styles, CSS variables for themes |
 | `native.ts` | `isNative()`, `BudgetNative` + Capacitor plugins by name (camera, notifications, haptics, app, filesystem, share), `haptic`, `saveFile`, `nativeReceiptPhoto` |

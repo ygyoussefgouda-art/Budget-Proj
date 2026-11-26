@@ -81,12 +81,14 @@ export function apiRoutes(db: Db): Router {
         ...(s.monthStartDay ? { monthStartDay: s.monthStartDay } : {}),
         ...(s.rollover !== undefined ? { rollover: s.rollover } : {}),
         ...(s.mergeRepeats !== undefined ? { mergeRepeats: s.mergeRepeats } : {}),
+        ...(s.accent ? { accent: s.accent } : {}),
       };
-      await db.query('UPDATE users SET currency = $1, month_start_day = $2, rollover = $3, merge_repeats = $4 WHERE id = $5', [
+      await db.query('UPDATE users SET currency = $1, month_start_day = $2, rollover = $3, merge_repeats = $4, accent = $5 WHERE id = $6', [
         user.currency,
         user.monthStartDay,
         !!user.rollover,
         !!user.mergeRepeats,
+        user.accent ?? 'lime',
         uid(req),
       ]);
       res.json({ user: publicUser(user) });

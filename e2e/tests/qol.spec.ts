@@ -139,7 +139,8 @@ test.describe('1.2.0 quality of life', () => {
   test('language switch reads English, عربي, System', async ({ page }) => {
     await tab(page, 'Home').click();
     await tab(page, 'Settings').click();
-    const lang = page.getByRole('heading', { name: 'Language' }).locator('xpath=ancestor::section[1]').getByRole('tab');
+    // 2.6.0: Language shares the "Look and language" card with Appearance: take the first segmented control
+    const lang = page.getByRole('heading', { name: 'Language' }).locator('xpath=ancestor::section[1]').getByRole('tablist').first().getByRole('tab');
     await expect(lang).toHaveText(['English', 'عربي', 'System']);
   });
 });

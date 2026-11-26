@@ -37,6 +37,10 @@ test.describe('0.6.1 safety fixes', () => {
     await page.getByRole('button', { name: 'Erase all data' }).click();
     const dlg = page.getByRole('alertdialog');
     await expect(dlg.getByRole('button', { name: 'Erase' })).toBeDisabled();
+    // 2.6.0: the backup can be saved from inside the dialog, which stays open
+    const [dl] = await Promise.all([page.waitForEvent('download'), dlg.getByRole('button', { name: 'Download backup first' }).click()]);
+    expect(dl.suggestedFilename()).toMatch(/^budget-me-backup-.*\.json$/);
+    await expect(dlg).toBeVisible();
     await dlg.getByLabel('Your password').fill('not-my-password');
     await dlg.getByRole('button', { name: 'Erase' }).click();
     await expect(page.getByText('Your current password is not right.')).toBeVisible();

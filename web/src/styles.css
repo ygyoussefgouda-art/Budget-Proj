@@ -516,7 +516,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .toasts { position: fixed; left: 0; right: 0; bottom: calc(var(--nav-h) + var(--safe-b) + 80px); z-index: 60; display: grid; justify-items: center; gap: 8px; pointer-events: none; padding: 0 16px; }
 .toast { background: var(--toast-bg); color: #f5f5f5; border: 1px solid var(--line); padding: 12px 16px; border-radius: 14px; max-width: 520px; box-shadow: var(--shadow); animation: up .2s; }
 .toast.with-action { display: flex; align-items: center; gap: 16px; pointer-events: auto; padding-block: 6px; padding-inline: 16px 6px; min-width: 220px; justify-content: space-between; }
-.toast-action { border: 0; background: none; color: #b8f25c; font-weight: 800; font-size: 14px; padding: 10px 12px; border-radius: 10px; text-transform: uppercase; letter-spacing: .04em; }
+.toast-action { border: 0; background: none; color: var(--lime); font-weight: 800; font-size: 14px; padding: 10px 12px; border-radius: 10px; text-transform: uppercase; letter-spacing: .04em; }
 .toast-action:active { background: rgba(255, 255, 255, .08); }
 /* first-run tutorial: card at the bottom, the real screen stays visible above */
 .tutorial-backdrop { position: fixed; inset: 0; z-index: 70; background: rgba(0, 0, 0, 0.45); display: flex; align-items: flex-end; justify-content: center; padding: 12px 12px calc(12px + var(--safe-b)); animation: fade .15s; }
@@ -547,8 +547,8 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .boot-me { color: var(--accent-text); }
 .boot-tagline { margin: -6px 0 0; font-size: 15px; color: var(--mute); }
 /* Three dots hopping in turn: green, white, gold (spruce, indigo, golden earth in light mode) */
-.boot-dots { display: flex; gap: 8px; margin-top: 28px; --dot1: #b8f25c; --dot2: #f4f7f5; --dot3: #8fa39a; }
-:root[data-theme='light'] .boot-dots { --dot1: #3e6a0b; --dot2: #0b0f0d; --dot3: #4a544f; }
+.boot-dots { display: flex; gap: 8px; margin-top: 28px; --dot1: var(--accent-text); --dot2: #f4f7f5; --dot3: #8fa39a; }
+:root[data-theme='light'] .boot-dots { --dot1: var(--accent-text); --dot2: #0b0f0d; --dot3: #4a544f; }
 .boot-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--dot1); animation: hop 1s ease-in-out infinite; }
 .boot-dots i:nth-child(2) { background: var(--dot2); animation-delay: .15s; }
 .boot-dots i:nth-child(3) { background: var(--dot3); animation-delay: .3s; }
@@ -657,7 +657,7 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .app-footer p { margin: 0; }
 .app-footer p:first-child { font-weight: 700; }
 /* Light mode: the small MK1 badge in indigo on a golden-earth tint (golden text alone is too faint) */
-:root[data-theme='light'] .stage-badge { color: #3e6a0b; background: color-mix(in srgb, #3e6a0b 12%, transparent); border-color: color-mix(in srgb, #3e6a0b 40%, transparent); }
+:root[data-theme='light'] .stage-badge { color: var(--mute); background: var(--card2); border-color: var(--line); } /* 2.6.0: neutral like dark (2.5.0 rule lost to this one) */
 
 /* ---------- Home (1.3.0 critique fixes) ---------- */
 .hero-days { display: grid; justify-items: center; align-content: center; min-width: 56px; padding: 6px 10px; border-radius: 14px; flex: none;
@@ -1155,3 +1155,64 @@ html { scrollbar-color: var(--field-line) transparent; scrollbar-width: thin; }
   .quick-action:active .qa-icon, .more-item:active, .income-line:active, .list-main:active,
   .card.clickable:active, .budget-row.clickable:active { transform: none; }
 }
+/* ───────────── 2.6.0 accent colours (owner chose five; saved on the account, `web/src/theme.ts`) ─────────────
+   Lime is the default and needs no attribute. Each accent sets the bright value (dark theme fills and text, the
+   Home band, light-theme button labels) and a darker ink for text in the light theme. Night ink (#0b0f0d) on every
+   bright value and every ink on white / #edf0ee are >= 4.5:1. */
+:root[data-accent='sky'] { --accent: #6cc8ff; --accent-text: #6cc8ff; --lime: #6cc8ff; }
+:root[data-accent='violet'] { --accent: #c69cff; --accent-text: #c69cff; --lime: #c69cff; }
+:root[data-accent='pink'] { --accent: #ff8fcb; --accent-text: #ff8fcb; --lime: #ff8fcb; }
+:root[data-accent='lemon'] { --accent: #f2e85c; --accent-text: #f2e85c; --lime: #f2e85c; }
+:root[data-theme='light'][data-accent='sky'] { --accent: #0b0f0d; --accent-text: #0b5a8a; --on-accent: #6cc8ff; --lime: #6cc8ff; }
+:root[data-theme='light'][data-accent='violet'] { --accent: #0b0f0d; --accent-text: #6a2fb8; --on-accent: #c69cff; --lime: #c69cff; }
+:root[data-theme='light'][data-accent='pink'] { --accent: #0b0f0d; --accent-text: #a3195f; --on-accent: #ff8fcb; --lime: #ff8fcb; }
+:root[data-theme='light'][data-accent='lemon'] { --accent: #0b0f0d; --accent-text: #6b6200; --on-accent: #f2e85c; --lime: #f2e85c; }
+
+/* The picker: five round swatches with their names, 44px+ targets, a check on the chosen one */
+.accent-picker { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.accent-swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 72px; padding: 8px 4px; border: 0;
+  border-radius: 16px; background: none; color: var(--text2); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: transform var(--d-fast) var(--ease-out), background-color var(--d-base) var(--ease-out); }
+.accent-swatch:hover { background: var(--hover); }
+.accent-swatch:active { transform: scale(0.97); }
+.accent-swatch:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.accent-dot { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #0b0f0d;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.accent-swatch.on .accent-dot { box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--text); }
+.accent-swatch.on .accent-name { color: var(--text); }
+.accent-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .accent-swatch:active { transform: none; } }
+/* ───────────── 2.6.0 Settings structure (Impeccable critique of Settings, 26/40) ─────────────
+   Who you are first, then four labelled groups, the Danger zone last. Group headings are real headings
+   (bigger than the card titles under them), with more space above than below. */
+.settings-group { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; margin: 24px 2px 12px; text-wrap: balance; }
+[dir='rtl'] .settings-group { letter-spacing: 0; }
+.identity { display: flex; align-items: center; gap: 12px; padding: 16px; }
+.identity-avatar { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--lime); color: #0b0f0d; font-size: 20px; font-weight: 800; }
+.identity-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.identity-name { font-size: 17px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.identity-email { font-size: 13px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[dir='rtl'] .identity-name, [dir='rtl'] .identity-email[dir='ltr'] { text-align: end; }
+.identity-btn { flex: none; min-height: 44px; padding-inline: 12px; gap: 6px; }
+
+/* One row that opens a sheet (month start) */
+.settings-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 4px 0 14px; border: 0;
+  background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; border-radius: 12px;
+  transition: transform var(--d-fast) var(--ease-out); }
+.settings-row:active { transform: scale(0.98); }
+.settings-row:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 4px; }
+.settings-row-label { display: block; font-weight: 700; margin-bottom: 4px; }
+.settings-row-label strong { color: var(--accent-text); }
+.settings-row + .setting-switch { border-top: 1px solid var(--divider); padding-top: 18px; }
+.settings-block { border-top: 1px solid var(--divider); margin-top: 16px; padding-top: 16px; }
+.settings-block .field { margin-bottom: 0; }
+
+/* Danger zone: each action says what it removes; deleting the account is the heavier (filled) one */
+.danger-item + .danger-item { margin-top: 16px; }
+.danger-item p { margin: 8px 2px 0; }
+.dialog-extra { margin-top: 12px; }
+
+/* Adapt: a longer label (Arabic) wraps inside its segment instead of spilling out of a fixed height */
+.segmented button { height: auto; min-height: 44px; padding: 6px 8px; line-height: 1.25; }
+@media (prefers-reduced-motion: reduce) { .settings-row:active { transform: none; } }

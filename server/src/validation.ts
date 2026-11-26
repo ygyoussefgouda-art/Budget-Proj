@@ -25,6 +25,8 @@ const text = (max: number) => z.string().trim().max(max);
 const name = (max: number) => z.string().trim().min(1, 'is required').max(max);
 
 export const CURRENCIES = ['EGP', 'USD', 'EUR', 'GBP', 'SAR', 'AED', 'KWD', 'QAR', 'JOD'] as const;
+/** 2.6.0: accent colours the owner chose (same list as the CHECK in migration 014 and `web/src/theme.ts`). */
+export const ACCENTS = ['lime', 'sky', 'violet', 'pink', 'lemon'] as const;
 
 /** Category icons and colours the app can draw (same lists as web/src/components/CategoryIcon.tsx). */
 export const CATEGORY_ICONS = [
@@ -144,6 +146,7 @@ export const schemas = {
       monthStartDay: z.number().int().min(1).max(28).optional(),
       rollover: z.boolean().optional(),
       mergeRepeats: z.boolean().optional(),
+      accent: z.enum(ACCENTS).optional(),
     })
     .refine((s) => Object.values(s).some((v) => v !== undefined), 'Nothing to change.'),
   budget: z.object({

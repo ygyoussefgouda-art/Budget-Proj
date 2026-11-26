@@ -50,7 +50,8 @@ test.describe('accounts', () => {
     await expect(page.getByText('Nothing logged yet.')).toBeVisible();
 
     await tab(page, 'Settings').click();
-    await expect(page.getByText(`Signed in as ${user}`)).toBeVisible();
+    // 2.6.0: who you are opens Settings
+    await expect(page.getByRole('region', { name: 'Account' }).locator('.identity-name')).toHaveText(user);
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
 

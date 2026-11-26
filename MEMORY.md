@@ -109,6 +109,19 @@ Format: `YYYY-MM-DD: decision/fact. Why. (How to apply.)` Newest at the bottom o
 - **User text inside a translated sentence** (e.g. a category name in an alert) is isolated with `<bdi>`, never FSI/PDI characters: those end up in the text that tests, searches and screen readers see.
 - Left out on purpose: removing trailing full stops (English text is the i18n key), bars to scaleX, settings-card icons, icon sizes.
 
+## Settings structure (2026-11-26, after the Settings critique; owner chose "structure first", all fixes)
+- Order: identity row → Account and security → Your month → Look and language → Your data → Help and about → **Danger zone last**. New settings go into one of these groups; nothing everyday goes below the Danger zone.
+- Month start, carry-over and currency **stay in Settings** under "Your month" (owner's answer), not on the Budget tab.
+- Rarely changed settings are one row that opens a sheet (month start), not an open control on the page.
+- Anything that destroys or replaces data offers "Download backup first" in the same dialog or sheet (`confirmPassword(..., extra)`).
+- Arabic "System" is «تلقائي» (fits one line); Arabic hints quote with «».
+
+## Accent colours (2.6.0, owner's choice 2026-11-26)
+- Five accents: **Lime** (default), **Sky**, **Violet**, **Pink**, **Lemon**. Offered and not chosen: Mint, Aqua, Periwinkle, Coral, Mango (the last two sit too close to the red/amber alerts).
+- **Saved on the account** (`users.accent`, `PUT /settings { accent }`, in backups), so every device follows it. The device keeps a copy (`sb-accent`) only so the splash and sign-in open in the right colour. Light/dark stays per device.
+- Each accent = a bright value (dark-theme accent, Home band, light-theme button labels) + a darker ink for text in the light theme; night ink on the bright value and the ink on white are both ≥ 4.5:1. Values in `styles.css` ("2.6.0 accent colours") and swatches in `theme.ts`; the server list is `ACCENTS` in `validation.ts` + the CHECK in migration 014 (keep all three in step).
+- New UI must use `--accent` / `--accent-text` / `--lime` / `--on-accent`, never a lime hex, or it won't follow the accent. Category colours (`PALETTE`), the app icon and the splash stay lime (the icon would need a new APK).
+
 ## Security decisions (0.6.1)
 - 2026-11-21: Admin powers: reset codes and removals need the acting admin's password; admins from `ADMIN_USERNAMES` can't act on other admins, only `owner` can; nobody makes a code for `owner`. Why: one stolen admin session must not take over everyone.
 - 2026-11-21: Failed sign-ins: 10 per account+network, 200 per account overall (`accountFailLimit`) per 15 min. Why: a per-account-only limit let anyone lock out any user (incl. owner).

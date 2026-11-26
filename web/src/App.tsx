@@ -31,6 +31,7 @@ import { t } from './i18n';
 import { clearKit, isNetworkError, readKit, saveKit } from './offline';
 import { clearOfflineCache, readCacheOwner, writeCacheOwner } from './persist';
 import { AppStateProvider, thisMonth, todayIso, useApp, type User } from './state';
+import { applyAccent } from './theme';
 import type { DueItem } from './domain/calc';
 
 const NO_DUE: DueItem[] = [];
@@ -67,6 +68,12 @@ export default function App() {
       writeCacheOwner(uid);
     }
   }
+
+  // 2.6.0: the accent colour lives on the account, so every device follows it once signed in.
+  const accent = me.data?.user.accent;
+  useEffect(() => {
+    if (accent) applyAccent(accent);
+  }, [accent]);
 
   if (me.isLoading) return <Splash />;
   // Offline with a saved copy: show the app from it (read-only), not the offline entry screen.
